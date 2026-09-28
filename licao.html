@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#263f91">
+    <title>Lição | English in Your Time</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="lesson-body">
+    <header class="lesson-header">
+        <button class="lesson-close" id="closeLesson" type="button" aria-label="Sair da lição">
+            ×
+        </button>
+
+        <div class="lesson-progress-wrapper">
+            <div class="progress lesson-progress">
+                <div class="progress-bar" id="lessonProgressBar" style="width:0%"></div>
+            </div>
+
+            <small id="lessonProgressText">1 / 10</small>
+        </div>
+
+        <div class="lesson-xp">
+            ⭐ <strong id="lessonXp">0</strong>
+        </div>
+    </header>
+
+    <main class="lesson-main">
+        <section id="lessonIntro" class="lesson-intro hidden">
+            <div class="lesson-intro-icon">🇺🇸</div>
+            <span class="eyebrow">LESSON</span>
+            <h1 id="introTitle">Greetings</h1>
+            <p id="introDescription"></p>
+
+            <div class="lesson-intro-info">
+                <div>
+                    <strong id="introExercises">0</strong>
+                    <span>exercícios</span>
+                </div>
+
+                <div>
+                    <strong id="introXp">0</strong>
+                    <span>XP disponível</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="startLessonButton" type="button">
+                COMEÇAR LIÇÃO →
+            </button>
+        </section>
+
+        <section id="exerciseArea" class="exercise-area hidden">
+            <div class="exercise-type" id="exerciseType">
+                MULTIPLE CHOICE
+            </div>
+
+            <h1 id="exerciseQuestion">
+                Carregando...
+            </h1>
+
+            <p class="exercise-instruction" id="exerciseInstruction"></p>
+
+            <div id="exerciseContent"></div>
+        </section>
+
+        <section id="lessonComplete" class="lesson-complete hidden">
+            <div class="complete-icon">🏆</div>
+
+            <span class="eyebrow">LESSON COMPLETE</span>
+
+            <h1>Great job!</h1>
+
+            <p>
+                Você concluiu a lição
+                <strong id="completeLessonName"></strong>.
+            </p>
+
+            <div class="complete-stats">
+                <div>
+                    <span>⭐</span>
+                    <strong id="completeXp">0 XP</strong>
+                    <small>ganhos</small>
+                </div>
+
+                <div>
+                    <span>🎯</span>
+                    <strong id="completeAccuracy">0%</strong>
+                    <small>precisão</small>
+                </div>
+
+                <div>
+                    <span>🔥</span>
+                    <strong id="completeStreak">0</strong>
+                    <small>sequência</small>
+                </div>
+            </div>
+
+            <a href="curso.html" class="btn btn-primary">
+                CONTINUAR MINHA TRILHA →
+            </a>
+        </section>
+    </main>
+
+    <footer id="answerFooter" class="answer-footer hidden">
+        <div class="answer-footer-inner">
+            <div id="answerFeedback"></div>
+
+            <button id="checkAnswerButton" class="btn btn-primary" type="button">
+                VERIFICAR
+            </button>
+        </div>
+    </footer>
+
+    <script src="js/storage.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/licao.js"></script>
+</body>
+
+</html>
