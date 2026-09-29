@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <meta name="theme-color" content="#F7F3EA">
-
     <title>Lição | English in Your Time</title>
 
     <link rel="stylesheet" href="css/style.css">
@@ -15,50 +14,41 @@
 <body class="lesson-page">
 
     <header class="lesson-topbar">
-
-        <button class="lesson-close" id="closeLesson" type="button" aria-label="Fechar lição">
+        <button class="lesson-close" id="closeLesson" type="button" aria-label="Fechar">
             ×
         </button>
 
         <div class="lesson-top-progress">
             <div class="progress">
-                <div class="progress-bar" id="lessonProgressBar">
-                </div>
+                <div class="progress-bar" id="lessonProgressBar"></div>
             </div>
         </div>
 
         <div class="lesson-xp">
             +<span id="lessonXp">0</span> XP
         </div>
-
     </header>
 
-    <main id="lessonContent" class="lesson-content">
-    </main>
+    <main id="lessonContent" class="lesson-content"></main>
 
     <footer id="lessonFooter" class="lesson-answer-footer hidden">
-
         <div class="lesson-footer-inner">
 
-            <div id="lessonFeedback" class="lesson-feedback">
-            </div>
+            <div id="lessonFeedback" class="lesson-feedback"></div>
 
             <button id="lessonAction" class="btn btn-primary" type="button">
                 Verificar
             </button>
 
         </div>
-
     </footer>
 
     <script src="js/storage.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
 
-    <!-- Motor de narração -->
+    <!-- Speech precisa ser carregado ANTES da lógica da lição -->
     <script src="js/speech.js"></script>
-
-    <!-- Controle da lição -->
     <script src="js/licao.js"></script>
 
 </body>
