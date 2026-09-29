@@ -1,0 +1,408 @@
+/* ==========================================================================
+   ENGLISH IN YOUR TIME
+   LESSON FEEDBACK
+   ========================================================================== */
+
+.lesson-answer-footer {
+    max-height: 46vh;
+    overflow-y: auto;
+}
+
+.lesson-answer-footer.correct {
+    background: rgba(237, 247, 242, .985);
+    border-top-color: rgba(47, 138, 98, .24);
+}
+
+.lesson-answer-footer.incorrect {
+    background: rgba(255, 240, 242, .985);
+    border-top-color: rgba(196, 18, 48, .22);
+}
+
+.lesson-footer-inner {
+    padding: 14px 0;
+}
+
+.lesson-feedback {
+    min-width: 0;
+}
+
+.eyt-feedback-state {
+    width: 100%;
+
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+}
+
+.eyt-feedback-status-icon {
+    flex: 0 0 42px;
+
+    width: 42px;
+    height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    font-family:
+        "Work Sans",
+        sans-serif;
+
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.eyt-feedback-state.is-correct .eyt-feedback-status-icon {
+    color: #fff;
+
+    background:
+        var(--green, #2F8A62);
+
+    box-shadow:
+        0 7px 18px rgba(47, 138, 98, .18);
+}
+
+.eyt-feedback-state.is-incorrect .eyt-feedback-status-icon {
+    color: #fff;
+
+    background:
+        var(--red, #C41230);
+
+    box-shadow:
+        0 7px 18px rgba(196, 18, 48, .16);
+}
+
+.eyt-feedback-main {
+    flex: 1 1 auto;
+
+    min-width: 0;
+}
+
+.eyt-feedback-title {
+    display: block;
+
+    margin: 0;
+
+    font-family:
+        "Fraunces",
+        serif;
+
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.eyt-feedback-state.is-correct .eyt-feedback-title {
+    color:
+        var(--green-dark, #236C4C);
+}
+
+.eyt-feedback-state.is-incorrect .eyt-feedback-title {
+    color:
+        var(--red-dark, #9E0E26);
+}
+
+.eyt-feedback-text {
+    margin: 4px 0 0;
+
+    color:
+        var(--ink-soft, #4A4F5E);
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.eyt-feedback-text b {
+    color:
+        var(--navy, #0B1F3F);
+
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   EXPLICAR MINHA RESPOSTA
+   ========================================================================== */
+
+.eyt-explain-button {
+    margin-top: 9px;
+
+    padding: 0;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    color:
+        var(--red-dark, #9E0E26);
+
+    background:
+        transparent;
+
+    border: 0;
+
+    font-family:
+        "Work Sans",
+        sans-serif;
+
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+
+    text-decoration:
+        underline;
+
+    text-decoration-thickness:
+        1px;
+
+    text-underline-offset:
+        3px;
+
+    cursor: pointer;
+}
+
+.eyt-explain-button:hover {
+    color:
+        var(--navy, #0B1F3F);
+}
+
+.eyt-explain-button:focus-visible {
+    outline:
+        3px solid rgba(196, 18, 48, .14);
+
+    outline-offset:
+        4px;
+
+    border-radius:
+        4px;
+}
+
+/* ==========================================================================
+   PAINEL DA EXPLICAÇÃO
+   ========================================================================== */
+
+.eyt-explanation-panel {
+    max-width: 610px;
+
+    margin-top: 10px;
+
+    padding:
+        12px 14px;
+
+    color:
+        var(--ink, #1C1F2A);
+
+    background:
+        rgba(255, 255, 255, .72);
+
+    border:
+        1px solid rgba(196, 18, 48, .12);
+
+    border-radius:
+        11px;
+
+    box-shadow:
+        0 4px 14px rgba(11, 31, 63, .045);
+}
+
+.eyt-explanation-panel[hidden] {
+    display:
+        none !important;
+}
+
+.eyt-explanation-panel strong {
+    display: block;
+
+    margin:
+        0 0 4px;
+
+    color:
+        var(--navy, #0B1F3F);
+
+    font-family:
+        "Work Sans",
+        sans-serif;
+
+    font-size:
+        11px;
+
+    font-weight:
+        800;
+}
+
+.eyt-explanation-panel p {
+    margin: 0;
+
+    color:
+        var(--ink-soft, #4A4F5E);
+
+    font-size:
+        11px;
+
+    line-height:
+        1.55;
+}
+
+/* ==========================================================================
+   BOTÃO CONTINUAR — CORRETO
+   ========================================================================== */
+
+.lesson-answer-footer.correct .lesson-footer-inner .btn {
+    color: #fff;
+
+    background:
+        var(--green, #2F8A62);
+
+    border-color:
+        var(--green, #2F8A62);
+}
+
+.lesson-answer-footer.correct .lesson-footer-inner .btn:hover {
+    background:
+        var(--green-dark, #236C4C);
+
+    border-color:
+        var(--green-dark, #236C4C);
+}
+
+/* ==========================================================================
+   BOTÃO CONTINUAR — ERRO
+   ========================================================================== */
+
+.lesson-answer-footer.incorrect .lesson-footer-inner .btn {
+    color: #fff;
+
+    background:
+        var(--red, #C41230);
+
+    border-color:
+        var(--red, #C41230);
+}
+
+.lesson-answer-footer.incorrect .lesson-footer-inner .btn:hover {
+    background:
+        var(--red-dark, #9E0E26);
+
+    border-color:
+        var(--red-dark, #9E0E26);
+}
+
+/* ==========================================================================
+   REVISÃO
+   ========================================================================== */
+
+.eyt-review-note {
+    width:
+        min(100%,
+            530px);
+
+    margin:
+        -10px auto 24px;
+
+    padding:
+        12px 15px;
+
+    color:
+        var(--ink-soft, #4A4F5E);
+
+    background:
+        rgba(201, 162, 39, .08);
+
+    border:
+        1px solid rgba(201, 162, 39, .16);
+
+    border-radius:
+        11px;
+
+    font-size:
+        11px;
+
+    line-height:
+        1.5;
+}
+
+/* ==========================================================================
+   MOBILE
+   ========================================================================== */
+
+@media (max-width: 760px) {
+    .lesson-answer-footer {
+        max-height:
+            58vh;
+    }
+
+    .lesson-footer-inner {
+        padding:
+            12px 0;
+
+        gap:
+            10px;
+    }
+
+    .eyt-feedback-state {
+        gap:
+            11px;
+    }
+
+    .eyt-feedback-status-icon {
+        flex-basis:
+            36px;
+
+        width:
+            36px;
+
+        height:
+            36px;
+
+        font-size:
+            20px;
+    }
+
+    .eyt-feedback-title {
+        font-size:
+            17px;
+    }
+
+    .eyt-feedback-text {
+        font-size:
+            11px;
+    }
+
+    .eyt-explanation-panel {
+        max-width:
+            none;
+    }
+}
+
+@media (max-width: 390px) {
+    .eyt-feedback-status-icon {
+        flex-basis:
+            32px;
+
+        width:
+            32px;
+
+        height:
+            32px;
+
+        font-size:
+            18px;
+    }
+
+    .eyt-feedback-title {
+        font-size:
+            16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .eyt-feedback-status-icon,
+    .eyt-explanation-panel,
+    .eyt-explain-button {
+        transition:
+            none !important;
+    }
+}

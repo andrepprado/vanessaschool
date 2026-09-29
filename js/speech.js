@@ -4,46 +4,26 @@ const EYTSpeech = (() => {
     const CONFIG = {
         englishLang: "en-GB",
         portugueseLang: "pt-BR",
-
         englishRate: 0.88,
         portugueseRate: 0.96,
-        slowEnglishRate: 0.70,
-
+        slowEnglishRate: 0.72,
         englishPitch: 1,
         portuguesePitch: 1,
         volume: 1,
-
         debug: true,
+
+        dictionaryEndpoint: "https://api.dictionaryapi.dev/api/v2/entries/en/",
+        dictionaryTimeout: 2500,
 
         preferredBritishVoices: [
             "Microsoft Sonia Online (Natural) - English (United Kingdom)",
             "Microsoft Ryan Online (Natural) - English (United Kingdom)",
             "Microsoft Libby Online (Natural) - English (United Kingdom)",
             "Microsoft Thomas Online (Natural) - English (United Kingdom)",
-            "Microsoft Abbi Online (Natural) - English (United Kingdom)",
-            "Microsoft Alfie Online (Natural) - English (United Kingdom)",
-            "Microsoft Bella Online (Natural) - English (United Kingdom)",
-            "Microsoft Elliot Online (Natural) - English (United Kingdom)",
-            "Microsoft Ethan Online (Natural) - English (United Kingdom)",
-            "Microsoft Hollie Online (Natural) - English (United Kingdom)",
-            "Microsoft Maisie Online (Natural) - English (United Kingdom)",
-            "Microsoft Noah Online (Natural) - English (United Kingdom)",
-            "Microsoft Oliver Online (Natural) - English (United Kingdom)",
-            "Microsoft Olivia Online (Natural) - English (United Kingdom)",
             "Google UK English Female",
             "Google UK English Male",
             "Microsoft Hazel Desktop - English (Great Britain)",
             "Daniel"
-        ],
-
-        preferredFallbackEnglishVoices: [
-            "Microsoft Ava Online (Natural) - English (United States)",
-            "Microsoft Emma Online (Natural) - English (United States)",
-            "Microsoft Jenny Online (Natural) - English (United States)",
-            "Microsoft Aria Online (Natural) - English (United States)",
-            "Google US English",
-            "Samantha",
-            "Alex"
         ],
 
         preferredPortugueseVoices: [
@@ -55,25 +35,35 @@ const EYTSpeech = (() => {
     };
 
     let voices = [];
+    let voiceLoadPromise = null;
+
     let currentUtterance = null;
+    let currentAudio = null;
     let currentButton = null;
+
     let currentText = "";
     let currentLang = "";
     let currentVoice = null;
 
-    let voicesReady = false;
-    let voiceLoadPromise = null;
+    let requestId = 0;
 
-    let speechRequestId = 0;
+    const dictionaryAudioCache = new Map();
 
     /* ==========================================================================
        SUPORTE
        ========================================================================== */
 
-    function isSupported() {
+    function supportsSpeechSynthesis() {
         return (
             "speechSynthesis" in window &&
             "SpeechSynthesisUtterance" in window
+        );
+    }
+
+    function isSupported() {
+        return (
+            supportsSpeechSynthesis() ||
+            "Audio" in window
         );
     }
 
@@ -118,91 +108,84 @@ const EYTSpeech = (() => {
         );
     }
 
-    function isBritishLang(lang) {
-        const language = normalizeLang(lang);
-
-        return (
-            language === "en-gb" ||
-            language.startsWith("en-gb-")
-        );
+    function isPortugueseLang(lang) {
+        return normalizeLang(lang)
+            .startsWith("pt");
     }
 
-    function isAmericanLang(lang) {
-        const language = normalizeLang(lang);
-
-        return (
-            language === "en-us" ||
-            language.startsWith("en-us-")
-        );
+    function isEnglishLang(lang) {
+        return normalizeLang(lang)
+            .startsWith("en");
     }
 
-    function isAustralianLang(lang) {
-        const language = normalizeLang(lang);
+    /* ==========================================================================
+       VOZ BRITÂNICA
+       ========================================================================== */
+
+    function isBritishVoice(voice) {
+        if (!voice) {
+            return false;
+        }
+
+        const lang =
+            normalizeLang(
+                voice.lang
+            );
+
+        const name =
+            normalize(
+                voice.name
+            );
 
         return (
-            language === "en-au" ||
-            language.startsWith("en-au-")
-        );
-    }
-
-    function isCanadianLang(lang) {
-        const language = normalizeLang(lang);
-
-        return (
-            language === "en-ca" ||
-            language.startsWith("en-ca-")
-        );
-    }
-
-    function isIrishLang(lang) {
-        const language = normalizeLang(lang);
-
-        return (
-            language === "en-ie" ||
-            language.startsWith("en-ie-")
-        );
-    }
-
-    function isNewZealandLang(lang) {
-        const language = normalizeLang(lang);
-
-        return (
-            language === "en-nz" ||
-            language.startsWith("en-nz-")
+            lang === "en-gb" ||
+            lang.startsWith("en-gb-") ||
+            name.includes("united kingdom") ||
+            name.includes("great britain") ||
+            name.includes("uk english") ||
+            name.includes("british english")
         );
     }
 
     /* ==========================================================================
-       VOZES
+       CARREGAMENTO DE VOZES
        ========================================================================== */
 
     function loadVoices() {
-        if (!isSupported()) {
+        if (!supportsSpeechSynthesis()) {
             voices = [];
-            voicesReady = false;
             return [];
         }
 
         const available =
-            window.speechSynthesis.getVoices() || [];
+            window.speechSynthesis.getVoices() ||
+            [];
 
         if (available.length) {
-            voices = [...available];
-            voicesReady = true;
+            voices = [
+                ...available
+            ];
         }
 
-        return [...voices];
+        return [
+            ...voices
+        ];
     }
 
-    function waitForVoices(timeout = 2500) {
-        if (!isSupported()) {
+    function waitForVoices(
+        timeout = 2500
+    ) {
+        if (!supportsSpeechSynthesis()) {
             return Promise.resolve([]);
         }
 
-        const immediate = loadVoices();
+        const immediate =
+            loadVoices();
 
         if (immediate.length) {
-            return Promise.resolve(immediate);
+            return Promise.resolve(
+                immediate
+            );
         }
 
         if (voiceLoadPromise) {
@@ -211,363 +194,237 @@ const EYTSpeech = (() => {
 
         voiceLoadPromise =
             new Promise(resolve => {
-                let finished = false;
+                let finished =
+                    false;
 
                 const finish = () => {
                     if (finished) {
                         return;
                     }
 
-                    finished = true;
+                    finished =
+                        true;
 
-                    window.clearTimeout(timeoutId);
-
-                    window.speechSynthesis.removeEventListener(
-                        "voiceschanged",
-                        onVoicesChanged
+                    clearTimeout(
+                        timer
                     );
+
+                    window.speechSynthesis
+                        .removeEventListener(
+                            "voiceschanged",
+                            changed
+                        );
 
                     loadVoices();
 
-                    voiceLoadPromise = null;
+                    voiceLoadPromise =
+                        null;
 
-                    resolve([...voices]);
+                    resolve([
+                        ...voices
+                    ]);
                 };
 
-                const onVoicesChanged = () => {
-                    const available = loadVoices();
-
-                    if (available.length) {
+                const changed = () => {
+                    if (
+                        loadVoices()
+                            .length
+                    ) {
                         finish();
                     }
                 };
 
-                const timeoutId =
-                    window.setTimeout(
+                const timer =
+                    setTimeout(
                         finish,
                         timeout
                     );
 
-                window.speechSynthesis.addEventListener(
-                    "voiceschanged",
-                    onVoicesChanged
-                );
+                window.speechSynthesis
+                    .addEventListener(
+                        "voiceschanged",
+                        changed
+                    );
             });
 
         return voiceLoadPromise;
     }
 
-    function isEnglishVoice(voice) {
-        return normalizeLang(
-            voice?.lang
-        ).startsWith("en");
-    }
-
-    function isBritishVoice(voice) {
-        if (!voice) {
-            return false;
-        }
-
-        const lang = normalizeLang(voice.lang);
-        const name = normalize(voice.name);
-
-        if (isBritishLang(lang)) {
-            return true;
-        }
-
-        return (
-            name.includes("english (united kingdom)") ||
-            name.includes("english united kingdom") ||
-            name.includes("english (great britain)") ||
-            name.includes("english great britain") ||
-            name.includes("uk english") ||
-            name.includes("british english")
-        );
-    }
-
-    function isPortugueseVoice(voice) {
-        return normalizeLang(
-            voice?.lang
-        ).startsWith("pt");
-    }
-
-    function exactPreferredScore(
-        voice,
-        preferredList
-    ) {
-        const voiceName =
-            normalize(
-                voice?.name
-            );
-
-        for (
-            let index = 0;
-            index < preferredList.length;
-            index++
-        ) {
-            const preferred =
-                normalize(
-                    preferredList[index]
-                );
-
-            if (
-                voiceName ===
-                preferred
-            ) {
-                return (
-                    10000 -
-                    index * 10
-                );
-            }
-        }
-
-        return 0;
-    }
-
-    function partialPreferredScore(
-        voice,
-        preferredList
-    ) {
-        const voiceName =
-            normalize(
-                voice?.name
-            );
-
-        for (
-            let index = 0;
-            index < preferredList.length;
-            index++
-        ) {
-            const preferred =
-                normalize(
-                    preferredList[index]
-                );
-
-            if (
-                voiceName.includes(preferred) ||
-                preferred.includes(voiceName)
-            ) {
-                return (
-                    5000 -
-                    index * 10
-                );
-            }
-        }
-
-        return 0;
-    }
-
     /* ==========================================================================
-       QUALIDADE DAS VOZES BRITÂNICAS
+       SCORE
        ========================================================================== */
 
-    function scoreBritishVoice(voice) {
-        if (!isEnglishVoice(voice)) {
+    function preferredVoiceScore(
+        voice,
+        preferredList
+    ) {
+        const name =
+            normalize(
+                voice?.name
+            );
+
+        let score =
+            0;
+
+        preferredList.forEach(
+            (
+                preferredName,
+                index
+            ) => {
+                const preferred =
+                    normalize(
+                        preferredName
+                    );
+
+                if (
+                    name ===
+                    preferred
+                ) {
+                    score =
+                        Math.max(
+                            score,
+                            10000 -
+                            index * 10
+                        );
+                } else if (
+                    name.includes(
+                        preferred
+                    ) ||
+                    preferred.includes(
+                        name
+                    )
+                ) {
+                    score =
+                        Math.max(
+                            score,
+                            5000 -
+                            index * 10
+                        );
+                }
+            }
+        );
+
+        return score;
+    }
+
+    function scoreBritishVoice(
+        voice
+    ) {
+        if (
+            !voice ||
+            !normalizeLang(
+                voice.lang
+            ).startsWith("en")
+        ) {
             return -1000000;
         }
 
-        if (!isBritishVoice(voice)) {
+        if (
+            !isBritishVoice(
+                voice
+            )
+        ) {
             return -500000;
         }
 
-        const name = normalize(voice.name);
-        const lang = normalizeLang(voice.lang);
+        const name =
+            normalize(
+                voice.name
+            );
 
-        let score = 0;
+        const lang =
+            normalizeLang(
+                voice.lang
+            );
 
-        /*
-         * Lista de vozes britânicas conhecidas.
-         */
-
-        score += exactPreferredScore(
-            voice,
-            CONFIG.preferredBritishVoices
-        );
-
-        score += partialPreferredScore(
-            voice,
-            CONFIG.preferredBritishVoices
-        );
-
-        /*
-         * Locale britânico real recebe prioridade muito alta.
-         */
-
-        if (lang === "en-gb") {
-            score += 20000;
-        } else if (lang.startsWith("en-gb")) {
-            score += 19000;
-        } else {
-            /*
-             * Pode acontecer de o nome indicar UK,
-             * mesmo que o navegador exponha locale genérico.
-             */
-            score += 10000;
-        }
-
-        /*
-         * Vozes Natural / Neural são preferidas.
-         */
-
-        if (name.includes("natural")) {
-            score += 2500;
-        }
-
-        if (name.includes("neural")) {
-            score += 2500;
-        }
-
-        if (name.includes("online")) {
-            score += 1200;
-        }
-
-        /*
-         * Provedores conhecidos.
-         */
-
-        if (name.includes("microsoft")) {
-            score += 700;
-        }
-
-        if (name.includes("google")) {
-            score += 650;
-        }
-
-        /*
-         * Vozes britânicas conhecidas.
-         */
-
-        if (name.includes("sonia")) {
-            score += 700;
-        }
-
-        if (name.includes("ryan")) {
-            score += 680;
-        }
-
-        if (name.includes("libby")) {
-            score += 660;
-        }
-
-        if (name.includes("thomas")) {
-            score += 640;
-        }
-
-        if (name.includes("daniel")) {
-            score += 620;
-        }
-
-        if (name.includes("hazel")) {
-            score += 600;
-        }
-
-        if (name.includes("olivia")) {
-            score += 580;
-        }
-
-        if (name.includes("oliver")) {
-            score += 560;
-        }
-
-        if (name.includes("maisie")) {
-            score += 540;
-        }
-
-        /*
-         * Google UK.
-         */
+        let score =
+            preferredVoiceScore(
+                voice,
+                CONFIG
+                    .preferredBritishVoices
+            );
 
         if (
-            name.includes("google") &&
-            name.includes("uk")
+            lang === "en-gb"
         ) {
-            score += 1000;
-        }
-
-        if (voice.default) {
-            score += 20;
-        }
-
-        return score;
-    }
-
-    /* ==========================================================================
-       FALLBACK DE INGLÊS
-       ========================================================================== */
-
-    function scoreFallbackEnglishVoice(voice) {
-        if (!isEnglishVoice(voice)) {
-            return -1000000;
-        }
-
-        const name = normalize(voice.name);
-        const lang = normalizeLang(voice.lang);
-
-        let score = 0;
-
-        score += exactPreferredScore(
-            voice,
-            CONFIG.preferredFallbackEnglishVoices
-        );
-
-        score += partialPreferredScore(
-            voice,
-            CONFIG.preferredFallbackEnglishVoices
-        );
-
-        /*
-         * Caso não exista en-GB, tentamos manter
-         * uma variante relativamente próxima antes
-         * de cair diretamente no inglês americano.
-         */
-
-        if (isIrishLang(lang)) {
-            score += 7000;
-        } else if (isAustralianLang(lang)) {
-            score += 6500;
-        } else if (isNewZealandLang(lang)) {
-            score += 6200;
-        } else if (isCanadianLang(lang)) {
-            score += 5000;
-        } else if (isAmericanLang(lang)) {
-            score += 4000;
+            score +=
+                20000;
+        } else if (
+            lang.startsWith(
+                "en-gb"
+            )
+        ) {
+            score +=
+                19000;
         } else {
-            score += 3000;
+            score +=
+                10000;
         }
 
-        if (name.includes("natural")) {
-            score += 1500;
+        if (
+            name.includes(
+                "natural"
+            )
+        ) {
+            score +=
+                2500;
         }
 
-        if (name.includes("neural")) {
-            score += 1500;
+        if (
+            name.includes(
+                "neural"
+            )
+        ) {
+            score +=
+                2500;
         }
 
-        if (name.includes("online")) {
-            score += 700;
+        if (
+            name.includes(
+                "online"
+            )
+        ) {
+            score +=
+                1200;
         }
 
-        if (name.includes("microsoft")) {
-            score += 500;
+        if (
+            name.includes(
+                "microsoft"
+            )
+        ) {
+            score +=
+                700;
         }
 
-        if (name.includes("google")) {
-            score += 450;
+        if (
+            name.includes(
+                "google"
+            )
+        ) {
+            score +=
+                650;
         }
 
-        if (voice.default) {
-            score += 20;
+        if (
+            voice.default
+        ) {
+            score +=
+                20;
         }
 
         return score;
     }
 
-    /* ==========================================================================
-       PORTUGUÊS
-       ========================================================================== */
-
-    function scorePortugueseVoice(voice) {
-        if (!isPortugueseVoice(voice)) {
+    function scoreFallbackEnglishVoice(
+        voice
+    ) {
+        if (
+            !voice ||
+            !normalizeLang(
+                voice.lang
+            ).startsWith("en")
+        ) {
             return -1000000;
         }
 
@@ -581,62 +438,194 @@ const EYTSpeech = (() => {
                 voice.lang
             );
 
-        let score = 0;
+        let score =
+            0;
 
-        score +=
-            exactPreferredScore(
-                voice,
-                CONFIG.preferredPortugueseVoices
-            );
-
-        score +=
-            partialPreferredScore(
-                voice,
-                CONFIG.preferredPortugueseVoices
-            );
-
-        if (lang === "pt-br") {
-            score += 3000;
+        if (
+            lang === "en-ie"
+        ) {
+            score +=
+                7000;
+        } else if (
+            lang === "en-au"
+        ) {
+            score +=
+                6500;
+        } else if (
+            lang === "en-nz"
+        ) {
+            score +=
+                6200;
+        } else if (
+            lang === "en-ca"
+        ) {
+            score +=
+                5000;
+        } else if (
+            lang === "en-us"
+        ) {
+            score +=
+                3500;
         } else {
-            score += 1500;
+            score +=
+                3000;
         }
 
-        if (name.includes("natural")) {
-            score += 1400;
+        if (
+            name.includes(
+                "natural"
+            )
+        ) {
+            score +=
+                1500;
         }
 
-        if (name.includes("neural")) {
-            score += 1400;
+        if (
+            name.includes(
+                "neural"
+            )
+        ) {
+            score +=
+                1500;
         }
 
-        if (name.includes("online")) {
-            score += 700;
+        if (
+            name.includes(
+                "online"
+            )
+        ) {
+            score +=
+                700;
         }
 
-        if (name.includes("microsoft")) {
-            score += 500;
+        if (
+            name.includes(
+                "microsoft"
+            )
+        ) {
+            score +=
+                500;
         }
 
-        if (name.includes("google")) {
-            score += 450;
+        if (
+            name.includes(
+                "google"
+            )
+        ) {
+            score +=
+                450;
         }
 
-        if (voice.default) {
-            score += 30;
+        if (
+            voice.default
+        ) {
+            score +=
+                20;
+        }
+
+        return score;
+    }
+
+    function scorePortugueseVoice(
+        voice
+    ) {
+        if (
+            !voice ||
+            !normalizeLang(
+                voice.lang
+            ).startsWith("pt")
+        ) {
+            return -1000000;
+        }
+
+        const name =
+            normalize(
+                voice.name
+            );
+
+        const lang =
+            normalizeLang(
+                voice.lang
+            );
+
+        let score =
+            preferredVoiceScore(
+                voice,
+                CONFIG
+                    .preferredPortugueseVoices
+            );
+
+        score +=
+            lang === "pt-br"
+                ? 3000
+                : 1500;
+
+        if (
+            name.includes(
+                "natural"
+            )
+        ) {
+            score +=
+                1400;
+        }
+
+        if (
+            name.includes(
+                "neural"
+            )
+        ) {
+            score +=
+                1400;
+        }
+
+        if (
+            name.includes(
+                "online"
+            )
+        ) {
+            score +=
+                700;
+        }
+
+        if (
+            name.includes(
+                "microsoft"
+            )
+        ) {
+            score +=
+                500;
+        }
+
+        if (
+            name.includes(
+                "google"
+            )
+        ) {
+            score +=
+                450;
+        }
+
+        if (
+            voice.default
+        ) {
+            score +=
+                30;
         }
 
         return score;
     }
 
     /* ==========================================================================
-       LISTAS DE VOZES
+       SELEÇÃO DE VOZ
        ========================================================================== */
 
     function getBritishVoices() {
         loadVoices();
 
         return voices
-            .filter(isBritishVoice)
+            .filter(
+                isBritishVoice
+            )
             .sort(
                 (a, b) =>
                     scoreBritishVoice(b) -
@@ -648,55 +637,65 @@ const EYTSpeech = (() => {
         loadVoices();
 
         return voices
-            .filter(isEnglishVoice)
-            .sort((a, b) => {
-                /*
-                 * Regra absoluta:
-                 * voz britânica vem antes de qualquer outra.
-                 */
+            .filter(
+                voice =>
+                    normalizeLang(
+                        voice.lang
+                    ).startsWith(
+                        "en"
+                    )
+            )
+            .sort(
+                (a, b) => {
+                    const aBritish =
+                        isBritishVoice(a);
 
-                const aBritish =
-                    isBritishVoice(a);
+                    const bBritish =
+                        isBritishVoice(b);
 
-                const bBritish =
-                    isBritishVoice(b);
+                    if (
+                        aBritish &&
+                        !bBritish
+                    ) {
+                        return -1;
+                    }
 
-                if (
-                    aBritish &&
-                    !bBritish
-                ) {
-                    return -1;
-                }
+                    if (
+                        !aBritish &&
+                        bBritish
+                    ) {
+                        return 1;
+                    }
 
-                if (
-                    !aBritish &&
-                    bBritish
-                ) {
-                    return 1;
-                }
+                    if (
+                        aBritish
+                    ) {
+                        return (
+                            scoreBritishVoice(b) -
+                            scoreBritishVoice(a)
+                        );
+                    }
 
-                if (
-                    aBritish &&
-                    bBritish
-                ) {
                     return (
-                        scoreBritishVoice(b) -
-                        scoreBritishVoice(a)
+                        scoreFallbackEnglishVoice(b) -
+                        scoreFallbackEnglishVoice(a)
                     );
                 }
-
-                return (
-                    scoreFallbackEnglishVoice(b) -
-                    scoreFallbackEnglishVoice(a)
-                );
-            });
+            );
     }
 
     function getPortugueseVoices() {
         loadVoices();
 
         return voices
-            .filter(isPortugueseVoice)
+            .filter(
+                voice =>
+                    normalizeLang(
+                        voice.lang
+                    ).startsWith(
+                        "pt"
+                    )
+            )
             .sort(
                 (a, b) =>
                     scorePortugueseVoice(b) -
@@ -704,39 +703,18 @@ const EYTSpeech = (() => {
             );
     }
 
-    /* ==========================================================================
-       SELEÇÃO FINAL DE VOZ
-       ========================================================================== */
-
     function getBestEnglishVoice() {
-        /*
-         * Primeiro procura SOMENTE vozes britânicas.
-         *
-         * Isso evita o problema anterior:
-         * uma Microsoft Natural en-US não pode mais
-         * vencer uma voz en-GB apenas por ter mais bônus.
-         */
-
-        const britishVoices =
+        const british =
             getBritishVoices();
 
-        if (britishVoices.length) {
-            return britishVoices[0];
+        if (
+            british.length
+        ) {
+            return british[0];
         }
 
-        /*
-         * Somente se NÃO houver nenhuma voz britânica
-         * disponível no navegador, usa outro inglês.
-         */
-
         const fallback =
-            voices
-                .filter(isEnglishVoice)
-                .sort(
-                    (a, b) =>
-                        scoreFallbackEnglishVoice(b) -
-                        scoreFallbackEnglishVoice(a)
-                );
+            getEnglishVoices();
 
         return fallback.length
             ? fallback[0]
@@ -753,128 +731,334 @@ const EYTSpeech = (() => {
     }
 
     function getBestVoice(
-        lang = CONFIG.englishLang
+        lang =
+            CONFIG.englishLang
     ) {
-        const language =
-            normalizeLang(lang);
-
-        if (
-            language.startsWith("pt")
-        ) {
-            return getBestPortugueseVoice();
-        }
-
-        /*
-         * Qualquer pedido de inglês da plataforma
-         * usa a política britânica.
-         *
-         * Isso também protege contra código antigo
-         * chamando speak(..., { lang: "en-US" }).
-         */
-
-        if (
-            language.startsWith("en")
-        ) {
-            return getBestEnglishVoice();
-        }
-
-        return getBestEnglishVoice();
+        return isPortugueseLang(
+            lang
+        )
+            ? getBestPortugueseVoice()
+            : getBestEnglishVoice();
     }
 
     /* ==========================================================================
-       PREPARAÇÃO DO TEXTO
+       PALAVRAS ISOLADAS
        ========================================================================== */
 
-    function prepareEnglishText(text) {
-        let value =
-            cleanText(text);
+    function isSingleDictionaryWord(
+        text
+    ) {
+        const value =
+            cleanText(text)
+                .replace(
+                    /[.!?,;:]+$/g,
+                    ""
+                );
+
+        return /^[A-Za-z]+(?:['-][A-Za-z]+)*$/
+            .test(
+                value
+            );
+    }
+
+    function dictionaryWord(
+        text
+    ) {
+        return cleanText(text)
+            .replace(
+                /[.!?,;:]+$/g,
+                ""
+            )
+            .toLowerCase();
+    }
+
+    function normalizeAudioUrl(
+        url
+    ) {
+        const value =
+            String(
+                url || ""
+            ).trim();
 
         if (!value) {
             return "";
         }
 
-        /*
-         * Não alteramos a ortografia inglesa.
-         *
-         * "thanks" continua sendo "thanks".
-         * "please" continua sendo "please".
-         *
-         * O sotaque deve vir da voz en-GB,
-         * não de escrita fonética artificial.
-         */
-
-        value =
-            value
-                .replace(/[“”]/g, '"')
-                .replace(/[‘’]/g, "'");
-
-        /*
-         * Normaliza alguns caracteres que podem
-         * interferir com determinados sintetizadores.
-         */
-
-        value =
-            value
-                .replace(/[–—]/g, "-")
-                .replace(/\u00A0/g, " ");
-
-        /*
-         * Palavra isolada recebe pontuação.
-         * Isso ajuda o sintetizador a finalizar
-         * corretamente o último fonema.
-         */
-
         if (
-            /^[A-Za-zÀ-ÿ'-]+$/.test(value) &&
-            !/[.!?]$/.test(value)
+            value.startsWith(
+                "//"
+            )
         ) {
-            value += ".";
+            return `https:${value}`;
         }
 
         return value;
     }
 
-    function preparePortugueseText(text) {
-        return cleanText(text);
+    function looksBritishAudio(
+        url
+    ) {
+        const value =
+            normalize(
+                url
+            );
+
+        return (
+            value.includes("-uk.") ||
+            value.includes("_uk_") ||
+            value.includes("/uk/") ||
+            value.includes("-gb.") ||
+            value.includes("_gb_") ||
+            value.includes("/gb/") ||
+            value.includes("en-gb") ||
+            value.includes("british")
+        );
     }
 
     /* ==========================================================================
-       ESTADO VISUAL
+       FETCH
        ========================================================================== */
 
-    function resetButton() {
-        if (!currentButton) {
-            return;
+    async function fetchWithTimeout(
+        url,
+        timeout
+    ) {
+        const controller =
+            new AbortController();
+
+        const timer =
+            setTimeout(
+                () =>
+                    controller.abort(),
+                timeout
+            );
+
+        try {
+            return await fetch(
+                url,
+                {
+                    method: "GET",
+                    headers: {
+                        Accept:
+                            "application/json"
+                    },
+                    signal:
+                        controller.signal
+                }
+            );
+        } finally {
+            clearTimeout(
+                timer
+            );
         }
-
-        currentButton.classList.remove(
-            "is-speaking"
-        );
-
-        currentButton.setAttribute(
-            "aria-label",
-            currentButton.dataset.originalSpeechLabel ||
-            "Ouvir pronúncia"
-        );
-
-        currentButton.setAttribute(
-            "title",
-            currentButton.dataset.originalSpeechTitle ||
-            "Ouvir pronúncia"
-        );
-
-        currentButton = null;
     }
 
-    function activateButton(button) {
+    /* ==========================================================================
+       ÁUDIO DE DICIONÁRIO
+       ========================================================================== */
+
+    async function resolveBritishDictionaryAudio(
+        text
+    ) {
+        if (
+            !isSingleDictionaryWord(
+                text
+            )
+        ) {
+            return null;
+        }
+
+        const word =
+            dictionaryWord(
+                text
+            );
+
+        if (!word) {
+            return null;
+        }
+
+        if (
+            dictionaryAudioCache
+                .has(
+                    word
+                )
+        ) {
+            return dictionaryAudioCache
+                .get(
+                    word
+                );
+        }
+
+        const lookupPromise =
+            (async () => {
+                try {
+                    const response =
+                        await fetchWithTimeout(
+                            `${CONFIG.dictionaryEndpoint}${encodeURIComponent(word)}`,
+                            CONFIG.dictionaryTimeout
+                        );
+
+                    if (
+                        !response.ok
+                    ) {
+                        return null;
+                    }
+
+                    const data =
+                        await response.json();
+
+                    if (
+                        !Array.isArray(
+                            data
+                        )
+                    ) {
+                        return null;
+                    }
+
+                    const audioUrls =
+                        [];
+
+                    data.forEach(
+                        entry => {
+                            (
+                                entry
+                                    ?.phonetics ||
+                                []
+                            ).forEach(
+                                phonetic => {
+                                    const url =
+                                        normalizeAudioUrl(
+                                            phonetic
+                                                ?.audio
+                                        );
+
+                                    if (
+                                        url &&
+                                        !audioUrls
+                                            .includes(
+                                                url
+                                            )
+                                    ) {
+                                        audioUrls.push(
+                                            url
+                                        );
+                                    }
+                                }
+                            );
+                        }
+                    );
+
+                    const british =
+                        audioUrls.find(
+                            looksBritishAudio
+                        );
+
+                    if (
+                        CONFIG.debug &&
+                        british
+                    ) {
+                        console.log(
+                            `[EYT Speech] Áudio britânico real para "${word}":`,
+                            british
+                        );
+                    }
+
+                    return british ||
+                        null;
+                } catch (error) {
+                    if (
+                        CONFIG.debug &&
+                        error?.name !==
+                        "AbortError"
+                    ) {
+                        console.warn(
+                            `[EYT Speech] Dicionário indisponível para "${word}". Usando TTS en-GB.`,
+                            error
+                        );
+                    }
+
+                    return null;
+                }
+            })();
+
+        dictionaryAudioCache.set(
+            word,
+            lookupPromise
+        );
+
+        return lookupPromise;
+    }
+
+    /* ==========================================================================
+       PREPARAÇÃO DE TEXTO
+       ========================================================================== */
+
+    function prepareEnglishText(
+        text
+    ) {
+        let value =
+            cleanText(
+                text
+            )
+                .replace(
+                    /[“”]/g,
+                    "\""
+                )
+                .replace(
+                    /[‘’]/g,
+                    "'"
+                )
+                .replace(
+                    /[–—]/g,
+                    "-"
+                )
+                .replace(
+                    /\u00A0/g,
+                    " "
+                );
+
+        if (
+            /^[A-Za-z]+(?:['-][A-Za-z]+)*$/
+                .test(
+                    value
+                ) &&
+            !/[.!?]$/
+                .test(
+                    value
+                )
+        ) {
+            value +=
+                ".";
+        }
+
+        return value;
+    }
+
+    function preparePortugueseText(
+        text
+    ) {
+        return cleanText(
+            text
+        );
+    }
+
+    /* ==========================================================================
+       BOTÃO
+       ========================================================================== */
+
+    function rememberButtonLabel(
+        button
+    ) {
         if (!button) {
             return;
         }
 
         if (
-            !button.dataset.originalSpeechLabel
+            !button.dataset
+                .originalSpeechLabel
         ) {
-            button.dataset.originalSpeechLabel =
+            button.dataset
+                .originalSpeechLabel =
                 button.getAttribute(
                     "aria-label"
                 ) ||
@@ -882,71 +1066,95 @@ const EYTSpeech = (() => {
         }
 
         if (
-            !button.dataset.originalSpeechTitle
+            !button.dataset
+                .originalSpeechTitle
         ) {
-            button.dataset.originalSpeechTitle =
+            button.dataset
+                .originalSpeechTitle =
                 button.getAttribute(
                     "title"
                 ) ||
                 "Ouvir pronúncia";
         }
+    }
 
-        currentButton = button;
+    function activateButton(
+        button
+    ) {
+        if (!button) {
+            return;
+        }
 
-        currentButton.classList.add(
+        rememberButtonLabel(
+            button
+        );
+
+        currentButton =
+            button;
+
+        button.classList.add(
             "is-speaking"
         );
 
-        currentButton.setAttribute(
+        button.setAttribute(
             "aria-label",
             "Parar áudio"
         );
 
-        currentButton.setAttribute(
+        button.setAttribute(
             "title",
             "Parar áudio"
         );
     }
 
-    function resetState() {
-        resetButton();
-
-        currentUtterance = null;
-        currentText = "";
-        currentLang = "";
-        currentVoice = null;
-    }
-
-    /* ==========================================================================
-       PARAR
-       ========================================================================== */
-
-    function stop() {
-        /*
-         * Incrementa o ID para invalidar qualquer
-         * reprodução assíncrona ainda aguardando
-         * o carregamento das vozes.
-         */
-
-        speechRequestId++;
-
-        if (!isSupported()) {
-            resetState();
+    function resetButton() {
+        if (!currentButton) {
             return;
         }
 
-        try {
-            window.speechSynthesis.cancel();
-        } catch (error) {
-            if (CONFIG.debug) {
-                console.warn(
-                    "[EYT Speech] Falha ao cancelar fala:",
-                    error
-                );
-            }
-        }
+        currentButton
+            .classList
+            .remove(
+                "is-speaking"
+            );
 
-        resetState();
+        currentButton.setAttribute(
+            "aria-label",
+            currentButton
+                .dataset
+                .originalSpeechLabel ||
+            "Ouvir pronúncia"
+        );
+
+        currentButton.setAttribute(
+            "title",
+            currentButton
+                .dataset
+                .originalSpeechTitle ||
+            "Ouvir pronúncia"
+        );
+
+        currentButton =
+            null;
+    }
+
+    function clearCurrentState() {
+        resetButton();
+
+        currentUtterance =
+            null;
+
+        currentAudio =
+            null;
+
+        currentText =
+            "";
+
+        currentLang =
+            "";
+
+        currentVoice =
+            null;
     }
 
     /* ==========================================================================
@@ -968,7 +1176,208 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       EXECUTAR FALA
+       PARAR
+       ========================================================================== */
+
+    function stop() {
+        requestId++;
+
+        if (
+            currentAudio
+        ) {
+            try {
+                currentAudio.pause();
+                currentAudio.currentTime =
+                    0;
+            } catch (_) {
+                // Ignora.
+            }
+        }
+
+        if (
+            supportsSpeechSynthesis()
+        ) {
+            try {
+                window
+                    .speechSynthesis
+                    .cancel();
+            } catch (_) {
+                // Ignora.
+            }
+        }
+
+        clearCurrentState();
+    }
+
+    /* ==========================================================================
+       REPRODUÇÃO DE ÁUDIO REAL
+       ========================================================================== */
+
+    function playRecordedAudio(
+        url,
+        originalText,
+        button,
+        requestToken
+    ) {
+        return new Promise(
+            resolve => {
+                if (
+                    !url ||
+                    !(
+                        "Audio" in
+                        window
+                    )
+                ) {
+                    resolve(
+                        false
+                    );
+
+                    return;
+                }
+
+                const audio =
+                    new Audio(
+                        url
+                    );
+
+                audio.preload =
+                    "auto";
+
+                currentAudio =
+                    audio;
+
+                currentText =
+                    originalText;
+
+                currentLang =
+                    CONFIG.englishLang;
+
+                currentVoice =
+                    null;
+
+                if (button) {
+                    activateButton(
+                        button
+                    );
+                }
+
+                let finished =
+                    false;
+
+                const finish =
+                    success => {
+                        if (
+                            finished
+                        ) {
+                            return;
+                        }
+
+                        finished =
+                            true;
+
+                        if (
+                            currentAudio ===
+                            audio
+                        ) {
+                            clearCurrentState();
+                        }
+
+                        resolve(
+                            success
+                        );
+                    };
+
+                audio.addEventListener(
+                    "playing",
+                    () => {
+                        if (
+                            requestToken !==
+                            requestId
+                        ) {
+                            return;
+                        }
+
+                        dispatchSpeechEvent(
+                            "eyt:speech-start",
+                            {
+                                text:
+                                    originalText,
+
+                                spokenText:
+                                    originalText,
+
+                                lang:
+                                    CONFIG.englishLang,
+
+                                voice:
+                                    "British dictionary recording",
+
+                                source:
+                                    "dictionary"
+                            }
+                        );
+                    },
+                    {
+                        once: true
+                    }
+                );
+
+                audio.addEventListener(
+                    "ended",
+                    () => {
+                        dispatchSpeechEvent(
+                            "eyt:speech-end",
+                            {
+                                text:
+                                    originalText,
+
+                                source:
+                                    "dictionary"
+                            }
+                        );
+
+                        finish(
+                            true
+                        );
+                    },
+                    {
+                        once: true
+                    }
+                );
+
+                audio.addEventListener(
+                    "error",
+                    () =>
+                        finish(
+                            false
+                        ),
+                    {
+                        once: true
+                    }
+                );
+
+                const playPromise =
+                    audio.play();
+
+                if (
+                    playPromise &&
+                    typeof playPromise
+                        .catch ===
+                    "function"
+                ) {
+                    playPromise.catch(
+                        () =>
+                            finish(
+                                false
+                            )
+                    );
+                }
+            }
+        );
+    }
+
+    /* ==========================================================================
+       UTTERANCE
        ========================================================================== */
 
     function createUtterance(
@@ -977,18 +1386,13 @@ const EYTSpeech = (() => {
         options,
         voice
     ) {
-        const normalizedLanguage =
-            normalizeLang(
+        const portuguese =
+            isPortugueseLang(
                 requestedLang
             );
 
-        const isPortuguese =
-            normalizedLanguage.startsWith(
-                "pt"
-            );
-
         const preparedText =
-            isPortuguese
+            portuguese
                 ? preparePortugueseText(
                     originalText
                 )
@@ -1001,40 +1405,34 @@ const EYTSpeech = (() => {
                 preparedText
             );
 
-        /*
-         * IMPORTANTE:
-         *
-         * Todo inglês começa como en-GB.
-         */
-
         utterance.lang =
-            isPortuguese
-                ? CONFIG.portugueseLang
-                : CONFIG.englishLang;
-
-        /*
-         * Se encontramos uma voz, aplicamos
-         * explicitamente a voz.
-         */
+            portuguese
+                ? CONFIG
+                    .portugueseLang
+                : CONFIG
+                    .englishLang;
 
         if (voice) {
-            utterance.voice = voice;
-
-            /*
-             * Para inglês britânico, mantemos en-GB.
-             *
-             * Para fallback, usamos o locale real
-             * porque o navegador precisa casar
-             * corretamente a voz selecionada.
-             */
+            utterance.voice =
+                voice;
 
             if (
-                !isPortuguese &&
-                isBritishVoice(voice)
+                portuguese &&
+                voice.lang
             ) {
                 utterance.lang =
-                    CONFIG.englishLang;
+                    voice.lang;
             } else if (
+                !portuguese &&
+                isBritishVoice(
+                    voice
+                )
+            ) {
+                utterance.lang =
+                    CONFIG
+                        .englishLang;
+            } else if (
+                !portuguese &&
                 voice.lang
             ) {
                 utterance.lang =
@@ -1042,44 +1440,35 @@ const EYTSpeech = (() => {
             }
         }
 
-        /*
-         * Velocidade.
-         */
+        const defaultRate =
+            portuguese
+                ? CONFIG
+                    .portugueseRate
+                : CONFIG
+                    .englishRate;
 
-        if (
-            options.rate !== undefined &&
-            options.rate !== null
-        ) {
-            utterance.rate =
-                clamp(
+        utterance.rate =
+            options.slow &&
+                !portuguese
+                ? CONFIG
+                    .slowEnglishRate
+                : clamp(
                     options.rate,
                     0.5,
                     1.5,
-                    isPortuguese
-                        ? CONFIG.portugueseRate
-                        : CONFIG.englishRate
+                    defaultRate
                 );
-        } else if (
-            options.slow === true &&
-            !isPortuguese
-        ) {
-            utterance.rate =
-                CONFIG.slowEnglishRate;
-        } else {
-            utterance.rate =
-                isPortuguese
-                    ? CONFIG.portugueseRate
-                    : CONFIG.englishRate;
-        }
 
         utterance.pitch =
             clamp(
                 options.pitch,
                 0.5,
                 1.5,
-                isPortuguese
-                    ? CONFIG.portuguesePitch
-                    : CONFIG.englishPitch
+                portuguese
+                    ? CONFIG
+                        .portuguesePitch
+                    : CONFIG
+                        .englishPitch
             );
 
         utterance.volume =
@@ -1092,95 +1481,35 @@ const EYTSpeech = (() => {
 
         return {
             utterance,
-            preparedText,
-            isPortuguese
+            preparedText
         };
     }
 
-    async function speak(
-        text,
-        options = {}
+    /* ==========================================================================
+       SPEECH SYNTHESIS
+       ========================================================================== */
+
+    async function speakWithSynthesis(
+        originalText,
+        requestedLang,
+        options,
+        button,
+        requestToken
     ) {
-        if (!isSupported()) {
-            console.warn(
-                "[EYT Speech] SpeechSynthesis não é suportado neste navegador."
-            );
-
-            return false;
-        }
-
-        const originalText =
-            cleanText(text);
-
-        if (!originalText) {
-            return false;
-        }
-
-        /*
-         * Português respeita pt-BR.
-         *
-         * Qualquer pedido em inglês é normalizado
-         * para inglês britânico.
-         */
-
-        const requestedOptionLang =
-            options.lang ||
-            CONFIG.englishLang;
-
-        const normalizedRequestedLang =
-            normalizeLang(
-                requestedOptionLang
-            );
-
-        const requestedLang =
-            normalizedRequestedLang.startsWith("pt")
-                ? CONFIG.portugueseLang
-                : CONFIG.englishLang;
-
-        /*
-         * Invalida fala anterior.
-         */
-
-        stop();
-
-        const requestId =
-            ++speechRequestId;
-
-        /*
-         * Aguarda carregamento das vozes.
-         */
-
-        await waitForVoices();
-
-        /*
-         * Se outra reprodução foi solicitada enquanto
-         * aguardávamos, esta solicitação morre aqui.
-         */
-
         if (
-            requestId !==
-            speechRequestId
+            !supportsSpeechSynthesis()
         ) {
             return false;
         }
 
-        /*
-         * Cancela apenas a fila nativa do navegador,
-         * sem invalidar o requestId atual.
-         */
+        await waitForVoices();
 
-        try {
-            window.speechSynthesis.cancel();
-        } catch (error) {
-            if (CONFIG.debug) {
-                console.warn(
-                    "[EYT Speech] Falha ao limpar fila:",
-                    error
-                );
-            }
+        if (
+            requestToken !==
+            requestId
+        ) {
+            return false;
         }
-
-        resetState();
 
         const voice =
             getBestVoice(
@@ -1210,9 +1539,9 @@ const EYTSpeech = (() => {
         currentVoice =
             voice;
 
-        if (options.button) {
+        if (button) {
             activateButton(
-                options.button
+                button
             );
         }
 
@@ -1225,63 +1554,40 @@ const EYTSpeech = (() => {
                     return;
                 }
 
-                if (CONFIG.debug) {
-                    console.group(
-                        "[EYT Speech] Reprodução"
-                    );
-
+                if (
+                    CONFIG.debug
+                ) {
                     console.log(
-                        "Texto original:",
-                        originalText
-                    );
+                        "[EYT Speech] TTS:",
+                        {
+                            text:
+                                originalText,
 
-                    console.log(
-                        "Texto enviado:",
-                        preparedText
-                    );
+                            lang:
+                                utterance.lang,
 
-                    console.log(
-                        "Idioma solicitado:",
-                        requestedLang
-                    );
+                            voice:
+                                voice
+                                    ?.name ||
+                                "default",
 
-                    console.log(
-                        "Idioma usado:",
-                        utterance.lang
-                    );
+                            voiceLang:
+                                voice
+                                    ?.lang ||
+                                utterance.lang,
 
-                    console.log(
-                        "Voz:",
-                        voice
-                            ? voice.name
-                            : "voz padrão do navegador"
-                    );
+                            british:
+                                Boolean(
+                                    voice &&
+                                    isBritishVoice(
+                                        voice
+                                    )
+                                ),
 
-                    console.log(
-                        "Voz locale:",
-                        voice
-                            ? voice.lang
-                            : utterance.lang
+                            rate:
+                                utterance.rate
+                        }
                     );
-
-                    console.log(
-                        "Voz britânica:",
-                        voice
-                            ? isBritishVoice(voice)
-                            : false
-                    );
-
-                    console.log(
-                        "Velocidade:",
-                        utterance.rate
-                    );
-
-                    console.log(
-                        "Pitch:",
-                        utterance.pitch
-                    );
-
-                    console.groupEnd();
                 }
 
                 dispatchSpeechEvent(
@@ -1298,18 +1604,16 @@ const EYTSpeech = (() => {
 
                         voice:
                             voice
-                                ? voice.name
-                                : null,
+                                ?.name ||
+                            null,
 
                         voiceLang:
                             voice
-                                ? voice.lang
-                                : null,
+                                ?.lang ||
+                            null,
 
-                        british:
-                            voice
-                                ? isBritishVoice(voice)
-                                : false,
+                        source:
+                            "speechSynthesis",
 
                         rate:
                             utterance.rate
@@ -1323,35 +1627,7 @@ const EYTSpeech = (() => {
                     currentUtterance ===
                     utterance
                 ) {
-                    resetState();
-                }
-
-                dispatchSpeechEvent(
-                    "eyt:speech-end",
-                    {
-                        text:
-                            originalText
-                    }
-                );
-            };
-
-        utterance.onerror =
-            event => {
-                if (
-                    event.error !== "canceled" &&
-                    event.error !== "interrupted"
-                ) {
-                    console.warn(
-                        "[EYT Speech] Erro de reprodução:",
-                        event.error
-                    );
-                }
-
-                if (
-                    currentUtterance ===
-                    utterance
-                ) {
-                    resetState();
+                    clearCurrentState();
                 }
 
                 dispatchSpeechEvent(
@@ -1360,55 +1636,199 @@ const EYTSpeech = (() => {
                         text:
                             originalText,
 
+                        source:
+                            "speechSynthesis"
+                    }
+                );
+            };
+
+        utterance.onerror =
+            event => {
+                if (
+                    event.error !==
+                    "canceled" &&
+                    event.error !==
+                    "interrupted"
+                ) {
+                    console.warn(
+                        "[EYT Speech] Erro:",
+                        event.error
+                    );
+                }
+
+                if (
+                    currentUtterance ===
+                    utterance
+                ) {
+                    clearCurrentState();
+                }
+
+                dispatchSpeechEvent(
+                    "eyt:speech-end",
+                    {
+                        text:
+                            originalText,
+
+                        source:
+                            "speechSynthesis",
+
                         error:
                             event.error
                     }
                 );
             };
 
+        try {
+            window
+                .speechSynthesis
+                .cancel();
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        60
+                    )
+            );
+
+            if (
+                requestToken !==
+                requestId
+            ) {
+                return false;
+            }
+
+            window
+                .speechSynthesis
+                .speak(
+                    utterance
+                );
+
+            return true;
+        } catch (error) {
+            if (
+                currentUtterance ===
+                utterance
+            ) {
+                clearCurrentState();
+            }
+
+            console.error(
+                "[EYT Speech] Não foi possível iniciar o TTS:",
+                error
+            );
+
+            return false;
+        }
+    }
+
+    /* ==========================================================================
+       FALAR
+       ========================================================================== */
+
+    async function speak(
+        text,
+        options = {}
+    ) {
+        const originalText =
+            cleanText(
+                text
+            );
+
+        if (
+            !originalText ||
+            !isSupported()
+        ) {
+            return false;
+        }
+
+        stop();
+
+        const requestToken =
+            ++requestId;
+
+        const requestedLang =
+            isPortugueseLang(
+                options.lang
+            )
+                ? CONFIG
+                    .portugueseLang
+                : CONFIG
+                    .englishLang;
+
+        const english =
+            isEnglishLang(
+                requestedLang
+            );
+
+        const preferRecorded =
+            options
+                .preferRecorded !==
+            false;
+
+        const button =
+            options.button ||
+            null;
+
         /*
-         * Chromium/Edge podem ignorar speak()
-         * imediatamente após cancel().
+         * PALAVRA ISOLADA:
+         * tenta primeiro gravação real britânica.
          */
 
-        window.setTimeout(
-            () => {
-                if (
-                    requestId !==
-                    speechRequestId
-                ) {
-                    return;
-                }
+        if (
+            english &&
+            preferRecorded &&
+            isSingleDictionaryWord(
+                originalText
+            )
+        ) {
+            const dictionaryUrl =
+                await resolveBritishDictionaryAudio(
+                    originalText
+                );
 
-                if (
-                    currentUtterance !==
-                    utterance
-                ) {
-                    return;
-                }
+            if (
+                requestToken !==
+                requestId
+            ) {
+                return false;
+            }
 
-                try {
-                    window.speechSynthesis.speak(
-                        utterance
+            if (
+                dictionaryUrl
+            ) {
+                const played =
+                    await playRecordedAudio(
+                        dictionaryUrl,
+                        originalText,
+                        button,
+                        requestToken
                     );
-                } catch (error) {
-                    console.error(
-                        "[EYT Speech] Não foi possível iniciar o áudio:",
-                        error
-                    );
 
-                    if (
-                        currentUtterance ===
-                        utterance
-                    ) {
-                        resetState();
-                    }
+                if (
+                    played ||
+                    requestToken !==
+                    requestId
+                ) {
+                    return played;
                 }
-            },
-            80
+
+                clearCurrentState();
+            }
+        }
+
+        /*
+         * FRASE OU SEM ÁUDIO DO DICIONÁRIO:
+         * fallback TTS britânico.
+         */
+
+        return speakWithSynthesis(
+            originalText,
+            requestedLang,
+            options,
+            button,
+            requestToken
         );
-
-        return true;
     }
 
     /* ==========================================================================
@@ -1420,14 +1840,15 @@ const EYTSpeech = (() => {
         button,
         options = {}
     ) {
-        if (!isSupported()) {
-            return false;
-        }
-
         const value =
-            cleanText(text);
+            cleanText(
+                text
+            );
 
-        if (!value) {
+        if (
+            !value ||
+            !isSupported()
+        ) {
             return false;
         }
 
@@ -1435,20 +1856,36 @@ const EYTSpeech = (() => {
             currentButton ===
             button;
 
-        const currentlySpeaking =
-            window.speechSynthesis.speaking ||
-            window.speechSynthesis.pending;
+        const activeAudio =
+            Boolean(
+                currentAudio &&
+                !currentAudio.paused
+            );
+
+        const activeSpeech =
+            supportsSpeechSynthesis() &&
+            (
+                window
+                    .speechSynthesis
+                    .speaking ||
+                window
+                    .speechSynthesis
+                    .pending
+            );
 
         if (
             sameButton &&
-            currentlySpeaking
+            (
+                activeAudio ||
+                activeSpeech
+            )
         ) {
             stop();
 
             return false;
         }
 
-        speak(
+        void speak(
             value,
             {
                 ...options,
@@ -1472,12 +1909,9 @@ const EYTSpeech = (() => {
             {
                 ...options,
 
-                /*
-                 * Sempre britânico.
-                 */
-
                 lang:
-                    CONFIG.englishLang
+                    CONFIG
+                        .englishLang
             }
         );
     }
@@ -1492,7 +1926,8 @@ const EYTSpeech = (() => {
                 ...options,
 
                 lang:
-                    CONFIG.englishLang,
+                    CONFIG
+                        .englishLang,
 
                 slow:
                     true
@@ -1510,7 +1945,11 @@ const EYTSpeech = (() => {
                 ...options,
 
                 lang:
-                    CONFIG.portugueseLang
+                    CONFIG
+                        .portugueseLang,
+
+                preferRecorded:
+                    false
             }
         );
     }
@@ -1527,7 +1966,8 @@ const EYTSpeech = (() => {
                 ...options,
 
                 lang:
-                    CONFIG.englishLang
+                    CONFIG
+                        .englishLang
             }
         );
     }
@@ -1544,7 +1984,11 @@ const EYTSpeech = (() => {
                 ...options,
 
                 lang:
-                    CONFIG.portugueseLang
+                    CONFIG
+                        .portugueseLang,
+
+                preferRecorded:
+                    false
             }
         );
     }
@@ -1554,22 +1998,31 @@ const EYTSpeech = (() => {
        ========================================================================== */
 
     function isSpeaking() {
-        if (!isSupported()) {
-            return false;
-        }
+        const audioPlaying =
+            Boolean(
+                currentAudio &&
+                !currentAudio.paused
+            );
+
+        const synthesisPlaying =
+            supportsSpeechSynthesis() &&
+            (
+                window
+                    .speechSynthesis
+                    .speaking ||
+                window
+                    .speechSynthesis
+                    .pending
+            );
 
         return (
-            window.speechSynthesis.speaking ||
-            window.speechSynthesis.pending
+            audioPlaying ||
+            synthesisPlaying
         );
     }
 
     function getVoices() {
-        loadVoices();
-
-        return [
-            ...voices
-        ];
+        return loadVoices();
     }
 
     function getSelectedEnglishVoice() {
@@ -1586,24 +2039,12 @@ const EYTSpeech = (() => {
 
     function getConfig() {
         return {
-            ...CONFIG,
-
-            preferredBritishVoices: [
-                ...CONFIG.preferredBritishVoices
-            ],
-
-            preferredFallbackEnglishVoices: [
-                ...CONFIG.preferredFallbackEnglishVoices
-            ],
-
-            preferredPortugueseVoices: [
-                ...CONFIG.preferredPortugueseVoices
-            ]
+            ...CONFIG
         };
     }
 
     /* ==========================================================================
-       DIAGNÓSTICO
+       DEBUG
        ========================================================================== */
 
     function debugVoices() {
@@ -1615,117 +2056,43 @@ const EYTSpeech = (() => {
         const english =
             getEnglishVoices();
 
-        console.group(
-            "[EYT Speech] British English"
-        );
-
-        console.log(
-            "Idioma padrão do curso:",
-            CONFIG.englishLang
-        );
-
-        if (!british.length) {
-            console.warn(
-                "ATENÇÃO: o navegador não disponibilizou nenhuma voz en-GB. Será necessário usar uma voz inglesa de fallback."
-            );
-        } else {
-            console.log(
-                `Vozes britânicas encontradas: ${british.length}`
-            );
-
-            british.forEach(
-                (
-                    voice,
-                    index
-                ) => {
-                    console.log(
-                        `${index + 1}. ${voice.name}`,
-                        {
-                            lang:
-                                voice.lang,
-
-                            score:
-                                scoreBritishVoice(
-                                    voice
-                                ),
-
-                            local:
-                                voice.localService,
-
-                            default:
-                                voice.default
-                        }
-                    );
-                }
-            );
-        }
-
-        console.groupEnd();
-
-        console.group(
-            "[EYT Speech] Todas as vozes inglesas"
-        );
-
-        if (!english.length) {
-            console.warn(
-                "Nenhuma voz inglesa foi disponibilizada pelo navegador."
-            );
-        }
-
-        english.forEach(
-            (
-                voice,
-                index
-            ) => {
-                console.log(
-                    `${index + 1}. ${voice.name}`,
-                    {
-                        lang:
-                            voice.lang,
-
-                        british:
-                            isBritishVoice(
-                                voice
-                            ),
-
-                        score:
-                            isBritishVoice(
-                                voice
-                            )
-                                ? scoreBritishVoice(
-                                    voice
-                                )
-                                : scoreFallbackEnglishVoice(
-                                    voice
-                                ),
-
-                        local:
-                            voice.localService,
-
-                        default:
-                            voice.default
-                    }
-                );
-            }
-        );
-
         const selected =
             getBestEnglishVoice();
 
-        console.log(
-            "VOZ SELECIONADA:",
-            selected
-                ? `${selected.name} (${selected.lang})`
-                : "Nenhuma voz inglesa específica disponível"
+        console.group(
+            "[EYT Speech] Diagnóstico"
         );
 
         console.log(
-            "É BRITÂNICA:",
+            "Idioma padrão:",
+            CONFIG.englishLang
+        );
+
+        console.log(
+            "Vozes britânicas:",
+            british.map(
+                voice =>
+                    `${voice.name} (${voice.lang})`
+            )
+        );
+
+        console.log(
+            "Vozes inglesas:",
+            english.map(
+                voice =>
+                    `${voice.name} (${voice.lang})`
+            )
+        );
+
+        console.log(
+            "Voz selecionada:",
             selected
-                ? isBritishVoice(
-                    selected
-                )
-                : false
+                ? `${selected.name} (${selected.lang})`
+                : "Nenhuma"
+        );
+
+        console.log(
+            "Áudio real de dicionário para palavras isoladas: ATIVO"
         );
 
         console.groupEnd();
@@ -1733,47 +2100,13 @@ const EYTSpeech = (() => {
         return selected;
     }
 
-    /* ==========================================================================
-       TESTE DE PRONÚNCIA
-       ========================================================================== */
-
     async function testBritishPronunciation() {
-        await waitForVoices();
-
-        const selected =
-            getBestEnglishVoice();
-
-        console.group(
-            "[EYT Speech] Teste de pronúncia britânica"
-        );
-
-        console.log(
-            "Voz selecionada:",
-            selected
-                ? selected.name
-                : "Nenhuma"
-        );
-
-        console.log(
-            "Locale:",
-            selected
-                ? selected.lang
-                : CONFIG.englishLang
-        );
-
-        console.log(
-            "Britânica:",
-            selected
-                ? isBritishVoice(
-                    selected
-                )
-                : false
-        );
-
-        console.groupEnd();
-
         return speakEnglish(
-            "Thanks. Please. Thank you very much. Could you please help me?"
+            "Thanks",
+            {
+                preferRecorded:
+                    true
+            }
         );
     }
 
@@ -1781,31 +2114,17 @@ const EYTSpeech = (() => {
        INICIALIZAÇÃO
        ========================================================================== */
 
-    if (isSupported()) {
+    if (
+        supportsSpeechSynthesis()
+    ) {
         loadVoices();
 
-        window.speechSynthesis.addEventListener(
-            "voiceschanged",
-            () => {
-                loadVoices();
-
-                if (CONFIG.debug) {
-                    const selected =
-                        getBestEnglishVoice();
-
-                    if (selected) {
-                        console.log(
-                            `[EYT Speech] British English voice ready: ${selected.name} (${selected.lang})`
-                        );
-                    }
-                }
-            }
-        );
-
-        /*
-         * Chromium pode popular a lista de vozes
-         * em momentos diferentes.
-         */
+        window
+            .speechSynthesis
+            .addEventListener(
+                "voiceschanged",
+                loadVoices
+            );
 
         [
             100,
@@ -1814,12 +2133,11 @@ const EYTSpeech = (() => {
             1500,
             2500
         ].forEach(
-            delay => {
-                window.setTimeout(
+            delay =>
+                setTimeout(
                     loadVoices,
                     delay
-                );
-            }
+                )
         );
     }
 
@@ -1834,7 +2152,7 @@ const EYTSpeech = (() => {
     );
 
     /* ==========================================================================
-       API PÚBLICA
+       API
        ========================================================================== */
 
     return {
@@ -1853,6 +2171,8 @@ const EYTSpeech = (() => {
         getSelectedEnglishVoice,
         getSelectedPortugueseVoice,
         getCurrentVoice,
+
+        resolveBritishDictionaryAudio,
 
         speak,
         speakEnglish,
