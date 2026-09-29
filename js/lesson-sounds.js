@@ -4,36 +4,20 @@ const EYTLessonSounds = (() => {
     const CONFIG = {
         enabled: true,
         volume: 0.72,
-
         files: {
-            correct:
-                "audio/feedback/correct.wav",
-
-            incorrect:
-                "audio/feedback/incorrect.wav",
-
-            complete:
-                "audio/feedback/complete.mp3"
+            correct: "audio/feedback/correct.wav",
+            incorrect: "audio/feedback/incorrect.wav",
+            complete: "audio/feedback/finish.mp3"
         }
     };
 
-    const audioElements =
-        new Map();
+    const audioElements = new Map();
 
-    let audioContext =
-        null;
-
-    let currentAudio =
-        null;
-
-    /* ==========================================================================
-       WEB AUDIO
-       ========================================================================== */
+    let audioContext = null;
+    let currentAudio = null;
 
     function getAudioContext() {
-        if (
-            audioContext
-        ) {
+        if (audioContext) {
             return audioContext;
         }
 
@@ -41,501 +25,287 @@ const EYTLessonSounds = (() => {
             window.AudioContext ||
             window.webkitAudioContext;
 
-        if (
-            !AudioContextClass
-        ) {
+        if (!AudioContextClass) {
             return null;
         }
 
-        audioContext =
-            new AudioContextClass();
+        audioContext = new AudioContextClass();
 
         return audioContext;
     }
 
-    /* ==========================================================================
-       ARQUIVOS
-       ========================================================================== */
+    function getAudio(type) {
+        const file = CONFIG.files[type];
 
-    function getAudio(
-        type
-    ) {
-        if (
-            !CONFIG.files[
-            type
-            ]
-        ) {
+        if (!file) {
             return null;
         }
 
-        if (
-            !audioElements
-                .has(
-                    type
-                )
-        ) {
-            const audio =
-                new Audio(
-                    CONFIG.files[
-                    type
-                    ]
-                );
+        if (!audioElements.has(type)) {
+            const audio = new Audio(file);
 
-            audio.preload =
-                "auto";
+            audio.preload = "auto";
+            audio.volume = CONFIG.volume;
 
-            audio.volume =
-                CONFIG.volume;
-
-            audioElements.set(
-                type,
-                audio
-            );
+            audioElements.set(type, audio);
         }
 
-        return audioElements
-            .get(
-                type
-            );
+        return audioElements.get(type);
     }
 
-    /* ==========================================================================
-       STOP
-       ========================================================================== */
-
     function stop() {
-        if (
-            currentAudio
-        ) {
+        if (currentAudio) {
             try {
                 currentAudio.pause();
-
-                currentAudio.currentTime =
-                    0;
+                currentAudio.currentTime = 0;
             } catch (_) {
-                // Ignora.
             }
         }
 
-        currentAudio =
-            null;
+        currentAudio = null;
     }
 
-    /* ==========================================================================
-       FALLBACK DE SOM
-       ========================================================================== */
+    async function ensureAudioContext() {
+        const ctx = getAudioContext();
 
-    function playToneSequence(
-        notes
-    ) {
-        const ctx =
-            getAudioContext();
+        if (!ctx) {
+            return null;
+        }
+
+        try {
+            if (ctx.state === "suspended") {
+                await ctx.resume();
+            }
+        } catch (_) {
+        }
+
+        return ctx;
+    }
+
+    async function playToneSequence(notes) {
+        const ctx = await ensureAudioContext();
 
         if (!ctx) {
             return false;
         }
 
-        if (
-            ctx.state ===
-            "suspended"
-        ) {
-            void ctx.resume();
-        }
+        const start = ctx.currentTime + 0.02;
 
-        const master =
-            ctx.createGain();
+        notes.forEach(note => {
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
 
-        master.gain.value =
-            Math.min(
-                0.22,
-                CONFIG.volume *
-                0.22
+            oscillator.type = note.type || "sine";
+
+            oscillator.frequency.setValueAtTime(
+                note.frequency,
+                start + note.delay
             );
 
-        master.connect(
-            ctx.destination
-        );
+            gain.gain.setValueAtTime(
+                0.0001,
+                start + note.delay
+            );
 
-        const start =
-            ctx.currentTime +
-            0.01;
+            gain.gain.exponentialRampToValueAtTime(
+                Math.max(
+                    0.0002,
+                    note.gain || 0.06
+                ),
+                start + note.delay + 0.012
+            );
 
-        notes.forEach(
-            note => {
-                const oscillator =
-                    ctx.createOscillator();
+            gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                start + note.delay + note.duration
+            );
 
-                const gain =
-                    ctx.createGain();
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
 
-                oscillator.type =
-                    note.type ||
-                    "sine";
+            oscillator.start(
+                start + note.delay
+            );
 
-                oscillator
-                    .frequency
-                    .setValueAtTime(
-                        note.frequency,
-                        start +
-                        note.offset
-                    );
-
-                gain
-                    .gain
-                    .setValueAtTime(
-                        0.0001,
-                        start +
-                        note.offset
-                    );
-
-                gain
-                    .gain
-                    .exponentialRampToValueAtTime(
-                        note.gain ||
-                        0.7,
-                        start +
-                        note.offset +
-                        0.012
-                    );
-
-                gain
-                    .gain
-                    .exponentialRampToValueAtTime(
-                        0.0001,
-                        start +
-                        note.offset +
-                        note.duration
-                    );
-
-                oscillator.connect(
-                    gain
-                );
-
-                gain.connect(
-                    master
-                );
-
-                oscillator.start(
-                    start +
-                    note.offset
-                );
-
-                oscillator.stop(
-                    start +
-                    note.offset +
-                    note.duration +
-                    0.03
-                );
-            }
-        );
+            oscillator.stop(
+                start +
+                note.delay +
+                note.duration +
+                0.03
+            );
+        });
 
         return true;
     }
 
-    /* ==========================================================================
-       FALLBACK CORRETO
-       ========================================================================== */
-
     function fallbackCorrect() {
         return playToneSequence([
             {
-                frequency:
-                    659.25,
-
-                offset:
-                    0,
-
-                duration:
-                    0.11,
-
-                gain:
-                    0.55
+                frequency: 523.25,
+                delay: 0,
+                duration: 0.11,
+                gain: 0.045
             },
             {
-                frequency:
-                    783.99,
-
-                offset:
-                    0.09,
-
-                duration:
-                    0.16,
-
-                gain:
-                    0.72
+                frequency: 659.25,
+                delay: 0.10,
+                duration: 0.14,
+                gain: 0.05
+            },
+            {
+                frequency: 783.99,
+                delay: 0.22,
+                duration: 0.18,
+                gain: 0.055
             }
         ]);
     }
-
-    /* ==========================================================================
-       FALLBACK ERRO
-       ========================================================================== */
 
     function fallbackIncorrect() {
         return playToneSequence([
             {
-                frequency:
-                    392,
-
-                offset:
-                    0,
-
-                duration:
-                    0.12,
-
-                gain:
-                    0.50,
-
-                type:
-                    "triangle"
+                frequency: 246.94,
+                delay: 0,
+                duration: 0.16,
+                gain: 0.04,
+                type: "triangle"
             },
             {
-                frequency:
-                    293.66,
-
-                offset:
-                    0.10,
-
-                duration:
-                    0.19,
-
-                gain:
-                    0.68,
-
-                type:
-                    "triangle"
+                frequency: 196,
+                delay: 0.12,
+                duration: 0.24,
+                gain: 0.045,
+                type: "triangle"
             }
         ]);
     }
-
-    /* ==========================================================================
-       FALLBACK CONCLUSÃO
-       ========================================================================== */
 
     function fallbackComplete() {
         return playToneSequence([
             {
-                frequency:
-                    523.25,
-
-                offset:
-                    0,
-
-                duration:
-                    0.12,
-
-                gain:
-                    0.46
+                frequency: 523.25,
+                delay: 0,
+                duration: 0.13,
+                gain: 0.04
             },
             {
-                frequency:
-                    659.25,
-
-                offset:
-                    0.10,
-
-                duration:
-                    0.14,
-
-                gain:
-                    0.54
+                frequency: 659.25,
+                delay: 0.11,
+                duration: 0.13,
+                gain: 0.045
             },
             {
-                frequency:
-                    783.99,
-
-                offset:
-                    0.21,
-
-                duration:
-                    0.22,
-
-                gain:
-                    0.68
+                frequency: 783.99,
+                delay: 0.22,
+                duration: 0.14,
+                gain: 0.05
+            },
+            {
+                frequency: 1046.5,
+                delay: 0.35,
+                duration: 0.28,
+                gain: 0.055
             }
         ]);
     }
 
-    function fallback(
-        type
-    ) {
-        if (
-            type ===
-            "correct"
-        ) {
+    function fallback(type) {
+        if (type === "correct") {
             return fallbackCorrect();
         }
 
-        if (
-            type ===
-            "incorrect"
-        ) {
+        if (type === "incorrect") {
             return fallbackIncorrect();
         }
 
-        if (
-            type ===
-            "complete"
-        ) {
+        if (type === "complete") {
             return fallbackComplete();
         }
 
         return false;
     }
 
-    /* ==========================================================================
-       PLAY
-       ========================================================================== */
-
-    async function play(
-        type
-    ) {
-        if (
-            !CONFIG.enabled
-        ) {
+    async function play(type) {
+        if (!CONFIG.enabled) {
             return false;
         }
 
         stop();
 
-        const audio =
-            getAudio(
-                type
-            );
+        const audio = getAudio(type);
 
         if (!audio) {
-            return fallback(
-                type
-            );
+            return fallback(type);
         }
 
-        currentAudio =
-            audio;
-
-        audio.volume =
-            CONFIG.volume;
+        currentAudio = audio;
+        audio.volume = CONFIG.volume;
 
         try {
-            audio.currentTime =
-                0;
+            audio.currentTime = 0;
 
             await audio.play();
 
             return true;
         } catch (_) {
-            currentAudio =
-                null;
+            currentAudio = null;
 
-            return fallback(
-                type
-            );
+            return fallback(type);
         }
     }
 
     function playCorrect() {
-        return play(
-            "correct"
-        );
+        return play("correct");
     }
 
     function playIncorrect() {
-        return play(
-            "incorrect"
-        );
+        return play("incorrect");
     }
 
     function playComplete() {
-        return play(
-            "complete"
-        );
+        return play("complete");
     }
-
-    /* ==========================================================================
-       PRELOAD
-       ========================================================================== */
 
     function preload() {
-        Object
-            .keys(
-                CONFIG.files
-            )
-            .forEach(
-                type => {
-                    const audio =
-                        getAudio(
-                            type
-                        );
+        Object.keys(CONFIG.files).forEach(type => {
+            const audio = getAudio(type);
 
-                    try {
-                        audio?.load();
-                    } catch (_) {
-                        // Ignora.
-                    }
-                }
-            );
-    }
-
-    /* ==========================================================================
-       CONFIG
-       ========================================================================== */
-
-    function setVolume(
-        value
-    ) {
-        const volume =
-            Math.max(
-                0,
-                Math.min(
-                    1,
-                    Number(
-                        value
-                    ) || 0
-                )
-            );
-
-        CONFIG.volume =
-            volume;
-
-        audioElements.forEach(
-            audio => {
-                audio.volume =
-                    volume;
+            try {
+                audio?.load();
+            } catch (_) {
             }
-        );
+        });
     }
 
-    function setEnabled(
-        enabled
-    ) {
-        CONFIG.enabled =
-            Boolean(
-                enabled
-            );
+    function setVolume(value) {
+        const number = Number(value);
 
-        if (
-            !CONFIG.enabled
-        ) {
+        CONFIG.volume = Number.isFinite(number)
+            ? Math.max(0, Math.min(1, number))
+            : 0.72;
+
+        audioElements.forEach(audio => {
+            audio.volume = CONFIG.volume;
+        });
+    }
+
+    function setEnabled(enabled) {
+        CONFIG.enabled = Boolean(enabled);
+
+        if (!CONFIG.enabled) {
             stop();
         }
     }
 
     function getConfig() {
         return {
-            enabled:
-                CONFIG.enabled,
-
-            volume:
-                CONFIG.volume,
-
+            enabled: CONFIG.enabled,
+            volume: CONFIG.volume,
             files: {
                 ...CONFIG.files
             }
         };
     }
-
-    /* ==========================================================================
-       START
-       ========================================================================== */
 
     preload();
 
@@ -546,17 +316,13 @@ const EYTLessonSounds = (() => {
 
     return {
         play,
-
         playCorrect,
         playIncorrect,
         playComplete,
-
         stop,
         preload,
-
         setVolume,
         setEnabled,
-
         getConfig
     };
-})(); 
+})();
