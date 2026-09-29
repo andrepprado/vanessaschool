@@ -2,244 +2,495 @@
 <html lang="pt-BR">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#263f91">
-    <title>Dashboard | English in Your Time</title>
+
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+    <meta name="theme-color" content="#071229">
+
+    <title>
+        Início | English in Your Time
+    </title>
+
     <link rel="stylesheet" href="css/style.css">
+
 </head>
 
-<body>
+<body class="app-body">
+
     <div class="app-layout">
+
         <aside class="sidebar">
-            <a class="sidebar-brand" href="dashboard.html">
-                <img src="img/logo.png" alt="English in Your Time">
-                <div>
-                    <strong>ENGLISH</strong>
-                    <span>IN YOUR TIME</span>
-                </div>
+
+            <a href="dashboard.html" class="sidebar-logo">
+
+                <img src="img/logo.png" onerror="this.onerror=null;this.src='img/logo.jpg'" alt="English in Your Time">
+
             </a>
 
+            <div class="sidebar-brand-name">
+                English in Your Time
+            </div>
+
             <nav class="sidebar-nav">
-                <a class="nav-item active" href="dashboard.html">
-                    <span class="nav-icon">⌂</span>
+
+                <a href="dashboard.html" class="nav-item active">
+                    <span>⌂</span>
                     <span>Início</span>
                 </a>
 
-                <a class="nav-item" href="curso.html">
-                    <span class="nav-icon">▶</span>
+                <a href="curso.html" class="nav-item">
+                    <span>▶</span>
                     <span>Aprender</span>
                 </a>
 
-                <a class="nav-item" href="revisar.html">
-                    <span class="nav-icon">↻</span>
+                <a href="revisar.html" class="nav-item">
+                    <span>↻</span>
                     <span>Revisar</span>
                 </a>
 
-                <a class="nav-item" href="conquistas.html">
-                    <span class="nav-icon">★</span>
+                <a href="conquistas.html" class="nav-item">
+                    <span>★</span>
                     <span>Conquistas</span>
                 </a>
 
-                <a class="nav-item" href="perfil.html">
-                    <span class="nav-icon">●</span>
+                <a href="teacher.html" class="nav-item">
+                    <span>VG</span>
+                    <span>Teacher Vanessa</span>
+                </a>
+
+                <a href="perfil.html" class="nav-item">
+                    <span>●</span>
                     <span>Perfil</span>
                 </a>
+
             </nav>
 
             <div class="sidebar-bottom">
-                <div class="sidebar-teacher">
-                    <div class="teacher-avatar small">VG</div>
+
+                <a href="teacher.html" class="teacher-card">
+
+                    <div class="teacher-avatar">
+                        VG
+                    </div>
 
                     <div>
-                        <small>TEACHER</small>
-                        <strong>Vanessa</strong>
-                    </div>
-                </div>
-            </div>
-        </aside>
 
-        <main class="main-content">
-            <header class="mobile-header">
-                <a href="dashboard.html">
-                    <img src="img/logo.png" alt="English in Your Time">
+                        <strong>
+                            Teacher Vanessa
+                        </strong>
+
+                        <span>
+                            Conheça sua teacher
+                        </span>
+
+                    </div>
+
                 </a>
 
-                <div class="mobile-header-stats">
-                    <span>🔥 <strong id="mobileStreak">0</strong></span>
-                    <span>⭐ <strong id="mobileXp">0</strong></span>
-                </div>
-            </header>
+                <a href="index.html" class="sidebar-site-link">
 
-            <div class="page-container">
-                <header class="dashboard-header">
+                    <span class="sidebar-site-link-icon">
+                        ←
+                    </span>
+
                     <div>
-                        <span class="eyebrow">YOUR JOURNEY</span>
-                        <h1>Olá, <span id="nomeUsuario">Aluno</span>!</h1>
-                        <p>Pronto para continuar evoluindo no inglês?</p>
+
+                        <strong>
+                            Site da Teacher
+                        </strong>
+
+                        <span>
+                            Voltar para a página principal
+                        </span>
+
                     </div>
 
-                    <div class="header-stats">
-                        <div class="mini-stat">
-                            <span class="mini-stat-icon">🔥</span>
+                </a>
+
+            </div>
+
+        </aside>
+
+        <header class="mobile-header">
+
+            <a href="dashboard.html" class="mobile-header-logo">
+
+                <img src="img/logo.png" onerror="this.onerror=null;this.src='img/logo.jpg'" alt="English in Your Time">
+
+            </a>
+
+            <div class="mobile-header-stats">
+
+                <span class="mobile-header-stat" id="mobileStreak">
+                    🔥 0
+                </span>
+
+                <span class="mobile-header-stat" id="mobileXp">
+                    ★ 0
+                </span>
+
+                <a href="index.html" class="mobile-site-button">
+                    Site
+                </a>
+
+            </div>
+
+        </header>
+
+        <main class="app-main">
+
+            <div class="dashboard-page">
+
+                <header class="dashboard-header">
+
+                    <div class="dashboard-welcome">
+
+                        <span class="eyebrow">
+                            YOUR JOURNEY
+                        </span>
+
+                        <h1>
+                            Olá,
+                            <span id="userName">
+                                Aluno
+                            </span>!
+                        </h1>
+
+                        <p>
+                            Pronto para continuar evoluindo no inglês?
+                        </p>
+
+                    </div>
+
+                    <div class="dashboard-user-stats">
+
+                        <div class="top-stat">
+
+                            <span>
+                                🔥
+                            </span>
+
                             <div>
-                                <strong id="streakHeader">0</strong>
-                                <small>dias</small>
+
+                                <strong id="streakTop">
+                                    0 dias
+                                </strong>
+
+                                <small>
+                                    sequência
+                                </small>
+
                             </div>
+
                         </div>
 
-                        <div class="mini-stat">
-                            <span class="mini-stat-icon">⭐</span>
+                        <div class="top-stat">
+
+                            <span>
+                                ★
+                            </span>
+
                             <div>
-                                <strong id="xpHeader">0</strong>
-                                <small>XP</small>
+
+                                <strong id="xpTop">
+                                    0 XP
+                                </strong>
+
+                                <small>
+                                    experiência
+                                </small>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </header>
 
-                <section class="dashboard-grid">
-                    <article class="continue-card">
-                        <div class="continue-content">
-                            <span class="card-label">CONTINUE APRENDENDO</span>
-                            <h2 id="continueTitle">Greetings</h2>
-                            <p id="continueDescription">
-                                Aprenda as primeiras saudações em inglês.
-                            </p>
+                <section class="continue-card">
 
-                            <div class="lesson-progress-info">
-                                <span>Seu progresso</span>
-                                <strong id="continueProgressText">0%</strong>
+                    <div class="continue-card-content">
+
+                        <span class="continue-card-label">
+                            CONTINUE APRENDENDO
+                        </span>
+
+                        <h2 id="continueTitle">
+                            Greetings
+                        </h2>
+
+                        <p id="continueDescription">
+                            Aprenda as principais formas de cumprimentar alguém em inglês.
+                        </p>
+
+                    </div>
+
+                    <div class="continue-card-bottom">
+
+                        <div class="continue-progress">
+
+                            <div class="continue-progress-top">
+
+                                <span>
+                                    Seu progresso
+                                </span>
+
+                                <strong id="continuePercent">
+                                    0%
+                                </strong>
+
                             </div>
 
                             <div class="progress">
-                                <div class="progress-bar" id="continueProgressBar" style="width:0%"></div>
+
+                                <div class="progress-bar" id="continueProgressBar"></div>
+
                             </div>
 
-                            <a id="continueButton" href="licao.html?id=greetings" class="btn btn-light">
-                                CONTINUAR
-                                <span>→</span>
-                            </a>
                         </div>
 
-                        <div class="continue-decoration">
-                            <div class="big-circle">
-                                <span>EN</span>
-                            </div>
-                        </div>
-                    </article>
+                        <a id="continueButton" href="licao.html?id=greetings" class="btn">
 
-                    <article class="daily-card">
-                        <div class="daily-icon">🎯</div>
+                            Continuar
 
-                        <div class="daily-title">
-                            <div>
-                                <span class="card-label dark">META DIÁRIA</span>
-                                <h3 id="dailyXpText">0 / 50 XP</h3>
-                            </div>
+                            <span>
+                                →
+                            </span>
 
-                            <strong id="dailyPercentage">0%</strong>
-                        </div>
+                        </a>
 
-                        <div class="progress">
-                            <div class="progress-bar red" id="dailyProgressBar" style="width:0%"></div>
-                        </div>
+                    </div>
+
+                </section>
+
+                <section class="daily-goal-card">
+
+                    <div class="daily-goal-icon">
+                        ◎
+                    </div>
+
+                    <div class="daily-goal-info">
+
+                        <strong>
+                            META DIÁRIA
+                        </strong>
 
                         <p>
                             Complete exercícios hoje para manter sua sequência.
                         </p>
-                    </article>
-                </section>
 
-                <section class="stats-grid">
-                    <article class="stat-card">
-                        <div class="stat-icon blue">⭐</div>
+                        <div class="daily-goal-progress">
 
-                        <div>
-                            <span>XP TOTAL</span>
-                            <strong id="totalXp">0</strong>
-                            <small>experiência acumulada</small>
+                            <div class="progress">
+
+                                <div class="progress-bar" id="dailyGoalBar"></div>
+
+                            </div>
+
                         </div>
-                    </article>
 
-                    <article class="stat-card">
-                        <div class="stat-icon red">🔥</div>
-
-                        <div>
-                            <span>SEQUÊNCIA</span>
-                            <strong id="streakValue">0</strong>
-                            <small>dias consecutivos</small>
-                        </div>
-                    </article>
-
-                    <article class="stat-card">
-                        <div class="stat-icon green">✓</div>
-
-                        <div>
-                            <span>LIÇÕES</span>
-                            <strong id="completedLessons">0</strong>
-                            <small>concluídas</small>
-                        </div>
-                    </article>
-
-                    <article class="stat-card">
-                        <div class="stat-icon gold">🏆</div>
-
-                        <div>
-                            <span>CONQUISTAS</span>
-                            <strong id="achievementCount">0</strong>
-                            <small>desbloqueadas</small>
-                        </div>
-                    </article>
-                </section>
-
-                <section class="section-header">
-                    <div>
-                        <span class="eyebrow">LEARNING PATH</span>
-                        <h2>Sua trilha</h2>
                     </div>
 
-                    <a href="curso.html" class="text-link">
-                        VER CURSO COMPLETO →
-                    </a>
+                    <div class="daily-goal-value">
+
+                        <strong id="dailyGoalValue">
+                            0 / 50 XP
+                        </strong>
+
+                        <span id="dailyGoalPercent">
+                            0%
+                        </span>
+
+                    </div>
+
                 </section>
 
-                <section id="dashboardPath" class="dashboard-path"></section>
+                <div class="section-title">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            YOUR PROGRESS
+                        </span>
+
+                        <h2>
+                            Sua evolução
+                        </h2>
+
+                    </div>
+
+                </div>
+
+                <section class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            ★
+                        </div>
+
+                        <strong id="totalXp">
+                            0
+                        </strong>
+
+                        <span>
+                            XP total
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            🔥
+                        </div>
+
+                        <strong id="streak">
+                            0
+                        </strong>
+
+                        <span>
+                            dias consecutivos
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            ✓
+                        </div>
+
+                        <strong id="completedLessons">
+                            0
+                        </strong>
+
+                        <span>
+                            lições concluídas
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            ◆
+                        </div>
+
+                        <strong id="achievementCount">
+                            0
+                        </strong>
+
+                        <span>
+                            conquistas
+                        </span>
+
+                    </div>
+
+                </section>
+
+                <div class="section-title">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            LEARNING PATH
+                        </span>
+
+                        <h2>
+                            Sua trilha
+                        </h2>
+
+                        <p>
+                            Avance uma etapa de cada vez.
+                        </p>
+
+                    </div>
+
+                    <a href="curso.html">
+                        Ver curso →
+                    </a>
+
+                </div>
+
+                <section id="dashboardPath" class="learning-path"></section>
+
+                <section class="dashboard-teacher-banner">
+
+                    <div class="dashboard-teacher-banner-content">
+
+                        <span class="eyebrow">
+                            YOUR TEACHER
+                        </span>
+
+                        <h2>
+                            Conheça a Teacher Vanessa
+                        </h2>
+
+                        <p>
+                            Conheça um pouco mais sobre a metodologia e a proposta do
+                            English in Your Time.
+                        </p>
+
+                    </div>
+
+                    <div class="dashboard-teacher-banner-actions">
+
+                        <a href="teacher.html" class="btn btn-primary">
+                            Conhecer a Teacher
+                        </a>
+
+                        <a href="index.html" class="btn btn-secondary">
+                            Visitar o site
+                        </a>
+
+                    </div>
+
+                </section>
+
             </div>
+
         </main>
+
+        <nav class="mobile-bottom-nav">
+
+            <a href="dashboard.html" class="active">
+                <span>⌂</span>
+                <span>Início</span>
+            </a>
+
+            <a href="curso.html">
+                <span>▶</span>
+                <span>Aprender</span>
+            </a>
+
+            <a href="revisar.html">
+                <span>↻</span>
+                <span>Revisar</span>
+            </a>
+
+            <a href="conquistas.html">
+                <span>★</span>
+                <span>Conquistas</span>
+            </a>
+
+            <a href="perfil.html">
+                <span>●</span>
+                <span>Perfil</span>
+            </a>
+
+        </nav>
+
     </div>
-
-    <nav class="bottom-nav">
-        <a class="active" href="dashboard.html">
-            <span>⌂</span>
-            <small>Início</small>
-        </a>
-
-        <a href="curso.html">
-            <span>▶</span>
-            <small>Aprender</small>
-        </a>
-
-        <a href="revisar.html">
-            <span>↻</span>
-            <small>Revisar</small>
-        </a>
-
-        <a href="conquistas.html">
-            <span>★</span>
-            <small>Conquistas</small>
-        </a>
-
-        <a href="perfil.html">
-            <span>●</span>
-            <small>Perfil</small>
-        </a>
-    </nav>
 
     <script src="js/storage.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
     <script src="js/dashboard.js"></script>
+
 </body>
 
 </html>

@@ -1,608 +1,1089 @@
-let currentLesson = null;
-let currentExerciseIndex = 0;
-let lessonXP = 0;
-let correctAnswers = 0;
-let selectedAnswer = null;
-let answerChecked = false;
-let orderedWords = [];
-
 document.addEventListener("DOMContentLoaded", () => {
-    const usuario = EYTApp.requireUser();
-
-    if (!usuario) {
-        return;
-    }
+    if (!EYTApp.requireUser()) return;
 
     const params =
-        new URLSearchParams(window.location.search);
+        new URLSearchParams(location.search);
 
-    const lessonId = params.get("id");
+    const id =
+        params.get("id") ||
+        "greetings";
 
-    currentLesson =
-        EYTData.licoes[lessonId];
+    const lesson =
+        EYTApp
+            .getAllLessons()
+            .find(item => item.id === id);
 
-    if (!currentLesson) {
-        window.location.href = "curso.html";
+    if (
+        !lesson ||
+        !EYTApp.isLessonUnlocked(id)
+    ) {
+        location.href = "curso.html";
         return;
     }
-
-    if (!EYTApp.isLessonUnlocked(lessonId)) {
-        window.location.href = "curso.html";
-        return;
-    }
-
-    document.title =
-        `${currentLesson.titulo} | English in Your Time`;
-
-    showIntro();
-
-    document
-        .getElementById("startLessonButton")
-        .addEventListener("click", startLesson);
-
-    document
-        .getElementById("checkAnswerButton")
-        .addEventListener("click", checkOrContinue);
-
-    document
-        .getElementById("closeLesson")
-        .addEventListener("click", () => {
-            const sair = confirm(
-                "Deseja sair da lição? Seu progresso atual será salvo."
-            );
-
-            if (sair) {
-                saveCurrentProgress();
-                window.location.href = "curso.html";
-            }
-        });
-});
-
-function showIntro() {
-    document
-        .getElementById("lessonIntro")
-        .classList.remove("hidden");
-
-    document.getElementById("introTitle").textContent =
-        currentLesson.titulo;
-
-    document.getElementById(
-        "introDescription"
-    ).textContent =
-        currentLesson.descricao;
-
-    document.getElementById(
-        "introExercises"
-    ).textContent =
-        currentLesson.exercicios.length;
-
-    document.getElementById("introXp").textContent =
-        currentLesson.xp;
-}
-
-function startLesson() {
-    document
-        .getElementById("lessonIntro")
-        .classList.add("hidden");
-
-    document
-        .getElementById("exerciseArea")
-        .classList.remove("hidden");
-
-    document
-        .getElementById("answerFooter")
-        .classList.remove("hidden");
-
-    renderExercise();
-}
-
-function renderExercise() {
-    selectedAnswer = null;
-    answerChecked = false;
-    orderedWords = [];
-
-    const exercise =
-        currentLesson.exercicios[currentExerciseIndex];
-
-    updateProgress();
-
-    const typeNames = {
-        multipla_escolha: "MULTIPLE CHOICE",
-        traducao: "TRANSLATE",
-        completar: "COMPLETE",
-        ordenar: "PUT IN ORDER"
-    };
-
-    document.getElementById(
-        "exerciseType"
-    ).textContent =
-        typeNames[exercise.tipo] || "EXERCISE";
-
-    document.getElementById(
-        "exerciseQuestion"
-    ).textContent =
-        exercise.pergunta;
-
-    document.getElementById(
-        "exerciseInstruction"
-    ).textContent =
-        exercise.instrucao || "";
-
-    document.getElementById(
-        "answerFeedback"
-    ).innerHTML = "";
-
-    const button =
-        document.getElementById("checkAnswerButton");
-
-    button.textContent = "VERIFICAR";
-    button.disabled = true;
-    button.className = "btn btn-primary";
 
     const content =
-        document.getElementById("exerciseContent");
+        document.getElementById("lessonContent");
 
-    content.innerHTML = "";
+    const footer =
+        document.getElementById("lessonFooter");
 
-    if (exercise.tipo === "multipla_escolha") {
-        renderMultipleChoice(exercise, content);
-        return;
-    }
+    const action =
+        document.getElementById("lessonAction");
 
-    if (
-        exercise.tipo === "traducao" ||
-        exercise.tipo === "completar"
-    ) {
-        renderTextInput(exercise, content);
-        return;
-    }
+    const feedback =
+        document.getElementById("lessonFeedback");
 
-    if (exercise.tipo === "ordenar") {
-        renderOrdering(exercise, content);
-    }
-}
+    const bar =
+        document.getElementById("lessonProgressBar");
 
-function renderMultipleChoice(exercise, container) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "options-grid";
+    const closeLesson =
+        document.getElementById("closeLesson");
 
-    exercise.alternativas.forEach((option, index) => {
-        const button = document.createElement("button");
+    let index = 0;
+    let selected = null;
+    let checked = false;
+    let earned = 0;
+    let ordered = [];
 
-        button.type = "button";
-        button.className = "option-card";
+    /* =========================================================
+       HELPERS
+    ========================================================= */
 
-        button.innerHTML = `
-            <span class="option-letter">
-                ${String.fromCharCode(65 + index)}
-            </span>
+    const escapeAttribute = value => {
+        return EYTApp
+            .escapeHTML(
+                String(value ?? "")
+            )
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
 
-            <span>${EYTApp.escapeHTML(option)}</span>
+    const stopSpeech = () => {
+        if (
+            typeof EYTSpeech !== "undefined" &&
+            EYTSpeech.isSupported()
+        ) {
+            EYTSpeech.stop();
+        }
+    };
+
+    /*
+     * As perguntas atuais misturam instruções em português
+     * e conteúdo em inglês.
+     *
+     * Esta função tenta identificar quando a pergunta é
+     * predominantemente uma instrução em português.
+     *
+     * As alternativas, palavras e respostas são sempre
+     * pronunciadas em inglês.
+     */
+    const detectQuestionLanguage = text => {
+        const value =
+            String(text || "")
+                .toLowerCase();
+
+        const portugueseSignals = [
+            "como ",
+            "qual ",
+            "traduza",
+            "complete",
+            "organize",
+            "você",
+            " inglês",
+            "significa",
+            "se diz",
+            "para o inglês",
+            "frase",
+            "número",
+            "dia vem",
+            "depois de"
+        ];
+
+        const isPortuguese =
+            portugueseSignals.some(
+                signal =>
+                    value.includes(signal)
+            );
+
+        return isPortuguese
+            ? "pt-BR"
+            : "en-US";
+    };
+
+    const getSpeakerSVG = () => {
+        return `
+            <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path
+                    d="M4 9.5v5h4l5 4V5.5l-5 4H4Z"
+                    fill="currentColor"
+                ></path>
+
+                <path
+                    d="M16 8.2c1.1 1 1.7 2.3 1.7 3.8S17.1 14.8 16 15.8"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                ></path>
+
+                <path
+                    d="M18.6 5.8c1.8 1.6 2.9 3.8 2.9 6.2s-1.1 4.6-2.9 6.2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                ></path>
+            </svg>
+        `;
+    };
+
+    const createSpeechButton = (
+        text,
+        options = {}
+    ) => {
+        if (
+            typeof EYTSpeech === "undefined" ||
+            !EYTSpeech.isSupported()
+        ) {
+            return "";
+        }
+
+        const lang =
+            options.lang ||
+            "en-US";
+
+        const className =
+            options.className ||
+            "";
+
+        const label =
+            options.label ||
+            "Ouvir pronúncia";
+
+        return `
+            <button
+                type="button"
+                class="speech-button ${className}"
+                data-speech="${escapeAttribute(text)}"
+                data-speech-lang="${escapeAttribute(lang)}"
+                aria-label="${escapeAttribute(label)}"
+                title="${escapeAttribute(label)}"
+            >
+                <span class="speech-button-icon">
+                    ${getSpeakerSVG()}
+                </span>
+
+                <span class="speech-button-pulse"></span>
+            </button>
+        `;
+    };
+
+    const bindSpeechButtons = root => {
+        if (
+            typeof EYTSpeech === "undefined" ||
+            !EYTSpeech.isSupported()
+        ) {
+            return;
+        }
+
+        const container =
+            root ||
+            document;
+
+        container
+            .querySelectorAll("[data-speech]")
+            .forEach(button => {
+                if (
+                    button.dataset.speechBound ===
+                    "true"
+                ) {
+                    return;
+                }
+
+                button.dataset.speechBound =
+                    "true";
+
+                button.addEventListener(
+                    "click",
+                    event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const text =
+                            button.dataset.speech;
+
+                        const lang =
+                            button.dataset.speechLang ||
+                            "en-US";
+
+                        EYTSpeech.toggle(
+                            text,
+                            button,
+                            {
+                                lang
+                            }
+                        );
+                    }
+                );
+            });
+    };
+
+    const renderOrderedAnswer = () => {
+        const orderedAnswer =
+            document.getElementById(
+                "orderedAnswer"
+            );
+
+        if (!orderedAnswer) return;
+
+        orderedAnswer.innerHTML =
+            ordered
+                .map(
+                    (item, position) => `
+                        <button
+                            type="button"
+                            class="word-chip selected-word-chip"
+                            data-remove="${position}"
+                        >
+                            ${EYTApp.escapeHTML(item.word)}
+                        </button>
+                    `
+                )
+                .join("");
+
+        bindRemove();
+    };
+
+    /* =========================================================
+       FECHAR LIÇÃO
+    ========================================================= */
+
+    closeLesson.onclick = () => {
+        stopSpeech();
+
+        location.href =
+            "curso.html";
+    };
+
+    /* =========================================================
+       INTRODUÇÃO
+    ========================================================= */
+
+    const renderIntro = () => {
+        stopSpeech();
+
+        footer.classList.add(
+            "hidden"
+        );
+
+        content.innerHTML = `
+            <section class="lesson-intro">
+
+                <div class="lesson-intro-icon">
+                    ${lesson.icon}
+                </div>
+
+                <span class="eyebrow">
+                    UNIT ${lesson.unit.number}
+                </span>
+
+                <h1>
+                    ${EYTApp.escapeHTML(
+            lesson.title
+        )}
+                </h1>
+
+                <p>
+                    ${EYTApp.escapeHTML(
+            lesson.description
+        )}
+                </p>
+
+                <div class="lesson-intro-meta">
+
+                    <div class="lesson-meta-item">
+                        <strong>
+                            ${lesson.exercises.length}
+                        </strong>
+
+                        <span>
+                            exercícios
+                        </span>
+                    </div>
+
+                    <div class="lesson-meta-item">
+                        <strong>
+                            +${lesson.xp} XP
+                        </strong>
+
+                        <span>
+                            ao concluir
+                        </span>
+                    </div>
+
+                </div>
+
+                <button
+                    id="startLesson"
+                    class="btn btn-primary btn-large"
+                    type="button"
+                >
+                    Começar →
+                </button>
+
+            </section>
         `;
 
-        button.addEventListener("click", () => {
-            if (answerChecked) {
-                return;
-            }
-
-            document
-                .querySelectorAll(".option-card")
-                .forEach(item =>
-                    item.classList.remove("selected")
+        document
+            .getElementById("startLesson")
+            .onclick = () => {
+                footer.classList.remove(
+                    "hidden"
                 );
 
-            button.classList.add("selected");
+                renderExercise();
+            };
+    };
 
-            selectedAnswer = option;
+    /* =========================================================
+       EXERCÍCIO
+    ========================================================= */
 
-            document.getElementById(
-                "checkAnswerButton"
-            ).disabled = false;
-        });
+    const renderExercise = () => {
+        stopSpeech();
 
-        wrapper.appendChild(button);
-    });
+        checked = false;
+        selected = null;
+        ordered = [];
 
-    container.appendChild(wrapper);
-}
+        footer.className =
+            "lesson-answer-footer";
 
-function renderTextInput(exercise, container) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "text-answer-wrapper";
+        feedback.innerHTML = "";
 
-    if (exercise.instrucao) {
-        const prompt = document.createElement("div");
-        prompt.className = "translation-prompt";
-        prompt.textContent = exercise.instrucao;
-        wrapper.appendChild(prompt);
-    }
+        action.textContent =
+            "Verificar";
 
-    const input = document.createElement("input");
+        action.disabled =
+            false;
 
-    input.type = "text";
-    input.className = "text-answer";
-    input.id = "textAnswer";
-    input.placeholder = "Digite sua resposta...";
-    input.autocomplete = "off";
+        const ex =
+            lesson.exercises[index];
 
-    input.addEventListener("input", () => {
-        selectedAnswer = input.value;
+        const pct =
+            Math.round(
+                index /
+                lesson.exercises.length *
+                100
+            );
 
-        document.getElementById(
-            "checkAnswerButton"
-        ).disabled =
-            !input.value.trim();
-    });
+        bar.style.width =
+            `${pct}%`;
 
-    input.addEventListener("keydown", event => {
-        if (
-            event.key === "Enter" &&
-            input.value.trim()
-        ) {
-            checkOrContinue();
+        const questionLanguage =
+            detectQuestionLanguage(
+                ex.question
+            );
+
+        let answer = "";
+
+        /* =====================================================
+           MÚLTIPLA ESCOLHA
+        ===================================================== */
+
+        if (ex.type === "multiple") {
+            answer = `
+                <div class="answer-options">
+
+                    ${ex.options
+                    .map(
+                        option => `
+                                <div class="answer-option-container">
+
+                                    <button
+                                        type="button"
+                                        class="answer-option"
+                                        data-value="${escapeAttribute(option)}"
+                                    >
+                                        <span class="answer-option-text">
+                                            ${EYTApp.escapeHTML(option)}
+                                        </span>
+                                    </button>
+
+                                    ${createSpeechButton(
+                            option,
+                            {
+                                lang: "en-US",
+                                className: "answer-option-speech",
+                                label: `Ouvir: ${option}`
+                            }
+                        )}
+
+                                </div>
+                            `
+                    )
+                    .join("")}
+
+                </div>
+            `;
         }
-    });
 
-    wrapper.appendChild(input);
-    container.appendChild(wrapper);
+        /* =====================================================
+           TRADUÇÃO / PREENCHIMENTO
+        ===================================================== */
 
-    setTimeout(() => input.focus(), 100);
-}
+        if (
+            ex.type === "translation" ||
+            ex.type === "fill"
+        ) {
+            answer = `
+                <input
+                    id="textAnswer"
+                    class="text-answer-input"
+                    type="text"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    placeholder="Digite sua resposta..."
+                >
+            `;
+        }
 
-function renderOrdering(exercise, container) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "ordering-wrapper";
+        /* =====================================================
+           ORDENAÇÃO
+        ===================================================== */
 
-    const answerArea = document.createElement("div");
-    answerArea.className = "ordered-answer";
-    answerArea.id = "orderedAnswer";
+        if (ex.type === "order") {
+            answer = `
+                <div class="ordering-area">
 
-    const wordsArea = document.createElement("div");
-    wordsArea.className = "word-bank";
-    wordsArea.id = "wordBank";
+                    <div
+                        id="orderedAnswer"
+                        class="ordered-answer"
+                    ></div>
 
-    const shuffled = [...exercise.palavras]
-        .sort(() => Math.random() - 0.5);
+                    <div class="word-bank">
 
-    shuffled.forEach((word, index) => {
-        const button = document.createElement("button");
+                        ${ex.words
+                    .map(
+                        (word, wordIndex) => `
+                                    <div class="word-chip-container">
 
-        button.type = "button";
-        button.className = "word-chip";
-        button.textContent = word;
-        button.dataset.word = word;
-        button.dataset.id = String(index);
+                                        <button
+                                            type="button"
+                                            class="word-chip"
+                                            data-index="${wordIndex}"
+                                            data-word="${escapeAttribute(word)}"
+                                        >
+                                            ${EYTApp.escapeHTML(word)}
+                                        </button>
 
-        button.addEventListener("click", () => {
-            if (answerChecked) {
-                return;
+                                        ${createSpeechButton(
+                            word,
+                            {
+                                lang: "en-US",
+                                className: "word-chip-speech",
+                                label: `Ouvir: ${word}`
+                            }
+                        )}
+
+                                    </div>
+                                `
+                    )
+                    .join("")}
+
+                    </div>
+
+                </div>
+            `;
+        }
+
+        /* =====================================================
+           HTML PRINCIPAL
+        ===================================================== */
+
+        content.innerHTML = `
+            <section class="exercise-area">
+
+                <div class="exercise-type">
+                    ${index + 1}
+                    /
+                    ${lesson.exercises.length}
+                    •
+                    ${ex.type === "multiple"
+                ? "Escolha a resposta"
+                : ex.type === "order"
+                    ? "Organize a frase"
+                    : "Escreva a resposta"
             }
+                </div>
 
-            if (button.classList.contains("used")) {
-                return;
-            }
+                <div class="exercise-question-row">
 
-            button.classList.add("used");
+                    <h1 class="exercise-question">
+                        ${EYTApp.escapeHTML(
+                ex.question
+            )}
+                    </h1>
 
-            orderedWords.push({
-                word,
-                sourceId: button.dataset.id
+                    ${createSpeechButton(
+                ex.question,
+                {
+                    lang: questionLanguage,
+                    className: "question-speech",
+                    label: "Ouvir pergunta"
+                }
+            )}
+
+                </div>
+
+                ${answer}
+
+            </section>
+        `;
+
+        /* =====================================================
+           EVENTOS DAS ALTERNATIVAS
+        ===================================================== */
+
+        document
+            .querySelectorAll(
+                ".answer-option"
+            )
+            .forEach(btn => {
+                btn.onclick = () => {
+                    if (checked) return;
+
+                    document
+                        .querySelectorAll(
+                            ".answer-option"
+                        )
+                        .forEach(button => {
+                            button.classList.remove(
+                                "selected"
+                            );
+                        });
+
+                    btn.classList.add(
+                        "selected"
+                    );
+
+                    selected =
+                        btn.dataset.value;
+                };
             });
 
-            updateOrderedAnswer();
-        });
+        /* =====================================================
+           EVENTOS DAS PALAVRAS
+        ===================================================== */
 
-        wordsArea.appendChild(button);
-    });
-
-    wrapper.appendChild(answerArea);
-    wrapper.appendChild(wordsArea);
-
-    container.appendChild(wrapper);
-}
-
-function updateOrderedAnswer() {
-    const answerArea =
-        document.getElementById("orderedAnswer");
-
-    answerArea.innerHTML = "";
-
-    orderedWords.forEach((item, index) => {
-        const chip = document.createElement("button");
-
-        chip.type = "button";
-        chip.className = "word-chip selected-word";
-        chip.textContent = item.word;
-
-        chip.addEventListener("click", () => {
-            if (answerChecked) {
-                return;
-            }
-
-            const source =
-                document.querySelector(
-                    `.word-chip[data-id="${item.sourceId}"]`
-                );
-
-            if (source) {
-                source.classList.remove("used");
-            }
-
-            orderedWords.splice(index, 1);
-
-            updateOrderedAnswer();
-        });
-
-        answerArea.appendChild(chip);
-    });
-
-    selectedAnswer =
-        orderedWords.map(item => item.word).join(" ");
-
-    document.getElementById(
-        "checkAnswerButton"
-    ).disabled =
-        orderedWords.length === 0;
-}
-
-function checkOrContinue() {
-    if (answerChecked) {
-        nextExercise();
-        return;
-    }
-
-    checkAnswer();
-}
-
-function checkAnswer() {
-    const exercise =
-        currentLesson.exercicios[currentExerciseIndex];
-
-    if (
-        selectedAnswer === null ||
-        String(selectedAnswer).trim() === ""
-    ) {
-        return;
-    }
-
-    const normalizedAnswer =
-        EYTApp.normalizeText(selectedAnswer);
-
-    const accepted =
-        exercise.respostasAceitas
-            ? exercise.respostasAceitas.map(
-                resposta =>
-                    EYTApp.normalizeText(resposta)
+        document
+            .querySelectorAll(
+                ".word-chip[data-index]"
             )
-            : [
-                EYTApp.normalizeText(
-                    exercise.resposta
-                )
-            ];
+            .forEach(btn => {
+                btn.onclick = () => {
+                    if (checked) return;
 
-    const correct =
-        accepted.includes(normalizedAnswer);
+                    if (
+                        btn.classList.contains(
+                            "used"
+                        )
+                    ) {
+                        return;
+                    }
 
-    answerChecked = true;
+                    btn.classList.add(
+                        "used"
+                    );
 
-    EYTStorage.registerAnswer(correct);
+                    ordered.push({
+                        index:
+                            btn.dataset.index,
+                        word:
+                            btn.dataset.word
+                    });
 
-    if (correct) {
-        correctAnswers += 1;
-        lessonXP += exercise.xp || 10;
+                    selected =
+                        ordered
+                            .map(
+                                item =>
+                                    item.word
+                            )
+                            .join(" ");
 
-        EYTStorage.addXP(exercise.xp || 10);
+                    renderOrderedAnswer();
+                };
+            });
 
-        EYTStorage.removeMistake(
-            currentLesson.id,
-            exercise.id
+        bindSpeechButtons(
+            content
         );
-    } else {
-        EYTStorage.addMistake(
-            currentLesson.id,
-            exercise
-        );
-    }
 
-    showAnswerFeedback(exercise, correct);
+        const input =
+            document.getElementById(
+                "textAnswer"
+            );
 
-    document.getElementById(
-        "lessonXp"
-    ).textContent =
-        lessonXP;
+        if (input) {
+            input.focus();
 
-    const button =
-        document.getElementById("checkAnswerButton");
+            input.addEventListener(
+                "keydown",
+                event => {
+                    if (
+                        event.key === "Enter" &&
+                        !checked
+                    ) {
+                        event.preventDefault();
 
-    button.disabled = false;
-    button.textContent =
-        currentExerciseIndex ===
-            currentLesson.exercicios.length - 1
-            ? "FINALIZAR"
-            : "CONTINUAR";
+                        verify();
+                    }
+                }
+            );
+        }
+    };
 
-    button.className =
+    /* =========================================================
+       REMOVER PALAVRA DA ORDENAÇÃO
+    ========================================================= */
+
+    const bindRemove = () => {
+        document
+            .querySelectorAll(
+                "[data-remove]"
+            )
+            .forEach(btn => {
+                btn.onclick = () => {
+                    if (checked) return;
+
+                    const position =
+                        Number(
+                            btn.dataset.remove
+                        );
+
+                    const removed =
+                        ordered.splice(
+                            position,
+                            1
+                        )[0];
+
+                    if (!removed) return;
+
+                    const source =
+                        document.querySelector(
+                            `.word-chip[data-index="${removed.index}"]`
+                        );
+
+                    if (source) {
+                        source.classList.remove(
+                            "used"
+                        );
+                    }
+
+                    selected =
+                        ordered
+                            .map(
+                                item =>
+                                    item.word
+                            )
+                            .join(" ");
+
+                    renderOrderedAnswer();
+                };
+            });
+    };
+
+    /* =========================================================
+       MARCAR RESPOSTA VISUALMENTE
+    ========================================================= */
+
+    const markMultipleAnswer = (
+        ex,
+        value,
         correct
-            ? "btn btn-success"
-            : "btn btn-primary";
+    ) => {
+        if (ex.type !== "multiple") {
+            return;
+        }
 
-    saveCurrentProgress();
-}
+        document
+            .querySelectorAll(
+                ".answer-option"
+            )
+            .forEach(btn => {
+                btn.disabled = true;
 
-function showAnswerFeedback(exercise, correct) {
-    const feedback =
-        document.getElementById("answerFeedback");
+                const buttonValue =
+                    EYTApp.normalizeText(
+                        btn.dataset.value
+                    );
 
-    if (correct) {
+                const correctValue =
+                    EYTApp.normalizeText(
+                        ex.answer
+                    );
+
+                if (
+                    buttonValue ===
+                    correctValue
+                ) {
+                    btn.classList.add(
+                        "correct"
+                    );
+                }
+
+                if (
+                    !correct &&
+                    EYTApp.normalizeText(value) ===
+                    buttonValue
+                ) {
+                    btn.classList.add(
+                        "incorrect"
+                    );
+                }
+            });
+    };
+
+    /* =========================================================
+       FEEDBACK
+    ========================================================= */
+
+    const renderCorrectFeedback = ex => {
         feedback.innerHTML = `
-            <div class="feedback-message correct">
-                <div class="feedback-icon">✓</div>
+            <div class="lesson-feedback-content">
 
                 <div>
-                    <strong>Excellent!</strong>
+                    <strong>
+                        Excellent!
+                    </strong>
+
                     <p>
-                        ${EYTApp.escapeHTML(
-            exercise.explicacao || "Resposta correta."
-        )}
+                        Resposta correta. Continue assim.
                     </p>
                 </div>
+
+                ${createSpeechButton(
+            ex.answer,
+            {
+                lang: "en-US",
+                className: "feedback-speech",
+                label: "Ouvir resposta correta"
+            }
+        )}
+
             </div>
         `;
-    } else {
+
+        bindSpeechButtons(
+            feedback
+        );
+    };
+
+    const renderIncorrectFeedback = ex => {
         feedback.innerHTML = `
-            <div class="feedback-message incorrect">
-                <div class="feedback-icon">!</div>
+            <div class="lesson-feedback-content">
 
                 <div>
-                    <strong>Almost there!</strong>
+                    <strong>
+                        Quase!
+                    </strong>
+
                     <p>
                         Resposta correta:
-                        <b>${EYTApp.escapeHTML(exercise.resposta)}</b>.
-                        ${EYTApp.escapeHTML(exercise.explicacao || "")}
+                        <b>
+                            ${EYTApp.escapeHTML(
+            ex.answer
+        )}
+                        </b>
                     </p>
                 </div>
+
+                ${createSpeechButton(
+            ex.answer,
+            {
+                lang: "en-US",
+                className: "feedback-speech",
+                label: "Ouvir resposta correta"
+            }
+        )}
+
             </div>
         `;
-    }
 
-    if (exercise.tipo === "multipla_escolha") {
+        bindSpeechButtons(
+            feedback
+        );
+    };
+
+    /* =========================================================
+       VERIFICAR RESPOSTA
+    ========================================================= */
+
+    const verify = () => {
+        if (checked) return;
+
+        const ex =
+            lesson.exercises[index];
+
+        let value =
+            selected;
+
+        if (
+            ex.type === "translation" ||
+            ex.type === "fill"
+        ) {
+            const input =
+                document.getElementById(
+                    "textAnswer"
+                );
+
+            value =
+                input
+                    ? input.value
+                    : "";
+        }
+
+        if (
+            !String(
+                value || ""
+            ).trim()
+        ) {
+            return;
+        }
+
+        const valid = [
+            ex.answer,
+            ...(ex.alternatives || [])
+        ].map(
+            EYTApp.normalizeText
+        );
+
+        const correct =
+            valid.includes(
+                EYTApp.normalizeText(
+                    value
+                )
+            );
+
+        EYTStorage.registerAnswer(
+            correct
+        );
+
+        markMultipleAnswer(
+            ex,
+            value,
+            correct
+        );
+
+        const textInput =
+            document.getElementById(
+                "textAnswer"
+            );
+
+        if (textInput) {
+            textInput.disabled = true;
+
+            textInput.classList.add(
+                correct
+                    ? "answer-correct"
+                    : "answer-incorrect"
+            );
+        }
+
         document
-            .querySelectorAll(".option-card")
+            .querySelectorAll(
+                ".word-chip"
+            )
             .forEach(button => {
-                const optionText =
-                    button
-                        .querySelector("span:last-child")
-                        .textContent;
-
-                if (
-                    EYTApp.normalizeText(optionText) ===
-                    EYTApp.normalizeText(exercise.resposta)
-                ) {
-                    button.classList.add("correct");
-                }
-
-                if (
-                    button.classList.contains("selected") &&
-                    !correct
-                ) {
-                    button.classList.add("incorrect");
-                }
+                button.disabled = true;
             });
-    }
 
-    const textInput =
-        document.getElementById("textAnswer");
+        if (correct) {
+            earned += Math.max(
+                5,
+                Math.round(
+                    lesson.xp /
+                    lesson.exercises.length
+                )
+            );
 
-    if (textInput) {
-        textInput.disabled = true;
+            EYTStorage.removeMistake(
+                lesson.id,
+                ex.id
+            );
 
-        textInput.classList.add(
-            correct ? "correct-input" : "incorrect-input"
+            footer.classList.add(
+                "correct"
+            );
+
+            renderCorrectFeedback(
+                ex
+            );
+        } else {
+            EYTStorage.addMistake({
+                lessonId:
+                    lesson.id,
+                exerciseId:
+                    ex.id,
+                question:
+                    ex.question,
+                answer:
+                    ex.answer
+            });
+
+            footer.classList.add(
+                "incorrect"
+            );
+
+            renderIncorrectFeedback(
+                ex
+            );
+        }
+
+        checked = true;
+
+        action.textContent =
+            index ===
+                lesson.exercises.length - 1
+                ? "Finalizar"
+                : "Continuar";
+
+        EYTStorage.saveLessonProgress(
+            lesson.id,
+            index + 1,
+            lesson.exercises.length
         );
-    }
-}
+    };
 
-function nextExercise() {
-    currentExerciseIndex += 1;
+    /* =========================================================
+       FINALIZAR LIÇÃO
+    ========================================================= */
 
-    if (
-        currentExerciseIndex >=
-        currentLesson.exercicios.length
-    ) {
-        finishLesson();
-        return;
-    }
+    const finish = () => {
+        stopSpeech();
 
-    renderExercise();
-}
-
-function updateProgress() {
-    const total =
-        currentLesson.exercicios.length;
-
-    const atual =
-        currentExerciseIndex + 1;
-
-    const percentual =
-        Math.round(
-            (currentExerciseIndex / total) * 100
-        );
-
-    document.getElementById(
-        "lessonProgressBar"
-    ).style.width =
-        `${percentual}%`;
-
-    document.getElementById(
-        "lessonProgressText"
-    ).textContent =
-        `${atual} / ${total}`;
-}
-
-function saveCurrentProgress() {
-    EYTStorage.saveLessonProgress(
-        currentLesson.id,
-        Math.min(
-            currentExerciseIndex + 1,
-            currentLesson.exercicios.length
-        ),
-        currentLesson.exercicios.length
-    );
-}
-
-function finishLesson() {
-    EYTStorage.completeLesson(currentLesson.id);
-    EYTApp.evaluateAchievements();
-
-    const progress =
-        EYTStorage.getProgress();
-
-    const accuracy =
-        Math.round(
-            (
-                correctAnswers /
-                currentLesson.exercicios.length
-            ) * 100
+        EYTStorage.completeLesson(
+            lesson.id
         );
 
-    document
-        .getElementById("exerciseArea")
-        .classList.add("hidden");
+        EYTStorage.addXP(
+            lesson.xp
+        );
 
-    document
-        .getElementById("answerFooter")
-        .classList.add("hidden");
+        EYTApp.evaluateAchievements();
 
-    document
-        .getElementById("lessonComplete")
-        .classList.remove("hidden");
+        bar.style.width =
+            "100%";
 
-    document.getElementById(
-        "lessonProgressBar"
-    ).style.width = "100%";
+        footer.classList.add(
+            "hidden"
+        );
 
-    document.getElementById(
-        "lessonProgressText"
-    ).textContent =
-        `${currentLesson.exercicios.length} / ${currentLesson.exercicios.length}`;
+        document
+            .getElementById(
+                "lessonXp"
+            )
+            .textContent =
+            lesson.xp;
 
-    document.getElementById(
-        "completeLessonName"
-    ).textContent =
-        currentLesson.titulo;
+        content.innerHTML = `
+            <section class="lesson-complete">
 
-    document.getElementById(
-        "completeXp"
-    ).textContent =
-        `${lessonXP} XP`;
+                <div class="complete-icon">
+                    ✓
+                </div>
 
-    document.getElementById(
-        "completeAccuracy"
-    ).textContent =
-        `${accuracy}%`;
+                <span class="eyebrow">
+                    LESSON COMPLETE
+                </span>
 
-    document.getElementById(
-        "completeStreak"
-    ).textContent =
-        progress.streak;
-}
+                <h1>
+                    Great job!
+                </h1>
+
+                <p>
+                    Você concluiu
+                    ${EYTApp.escapeHTML(
+            lesson.title
+        )}.
+                </p>
+
+                <div class="complete-stats">
+
+                    <div class="complete-stat">
+                        <strong>
+                            +${lesson.xp}
+                        </strong>
+
+                        <span>
+                            XP
+                        </span>
+                    </div>
+
+                    <div class="complete-stat">
+                        <strong>
+                            ${lesson.exercises.length}
+                        </strong>
+
+                        <span>
+                            exercícios
+                        </span>
+                    </div>
+
+                    <div class="complete-stat">
+                        <strong>
+                            ✓
+                        </strong>
+
+                        <span>
+                            concluída
+                        </span>
+                    </div>
+
+                </div>
+
+                <a
+                    href="curso.html"
+                    class="btn btn-primary btn-large"
+                >
+                    Continuar aprendendo →
+                </a>
+
+            </section>
+        `;
+    };
+
+    /* =========================================================
+       BOTÃO PRINCIPAL
+    ========================================================= */
+
+    action.onclick = () => {
+        if (!checked) {
+            verify();
+            return;
+        }
+
+        if (
+            index >=
+            lesson.exercises.length - 1
+        ) {
+            finish();
+            return;
+        }
+
+        index++;
+
+        renderExercise();
+    };
+
+    /* =========================================================
+       INICIAR
+    ========================================================= */
+
+    renderIntro();
+});

@@ -1,0 +1,434 @@
+/* ==========================================================================
+   ENGLISH IN YOUR TIME
+   NARRAÇÃO / SPEECH
+   ========================================================================== */
+
+/* ==========================================================================
+   BOTÃO BASE
+   ========================================================================== */
+
+.speech-button {
+    position: relative;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--navy);
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(11, 31, 63, .06);
+    transition:
+        color var(--transition),
+        background var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition),
+        transform var(--transition);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.speech-button:hover {
+    color: var(--magenta-deep);
+    background: var(--magenta-soft);
+    border-color: rgba(233, 30, 140, .35);
+    box-shadow: 0 6px 16px rgba(11, 31, 63, .09);
+    transform: translateY(-1px);
+}
+
+.speech-button:active {
+    transform: scale(.95);
+}
+
+.speech-button:focus-visible {
+    outline: 3px solid rgba(233, 30, 140, .18);
+    outline-offset: 3px;
+}
+
+/* ==========================================================================
+   ÍCONE SVG
+   ========================================================================== */
+
+.speech-button-icon {
+    position: relative;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.speech-button-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+/* ==========================================================================
+   ESTADO REPRODUZINDO
+   ========================================================================== */
+
+.speech-button.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+    box-shadow:
+        0 7px 20px rgba(233, 30, 140, .24);
+}
+
+.speech-button-pulse {
+    position: absolute;
+    inset: -1px;
+    z-index: 1;
+    border: 1px solid transparent;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.speech-button.is-speaking .speech-button-pulse {
+    border-color: rgba(233, 30, 140, .42);
+    animation: eyt-speech-pulse 1.4s ease-out infinite;
+}
+
+@keyframes eyt-speech-pulse {
+    0% {
+        opacity: .8;
+        transform: scale(.92);
+    }
+
+    70% {
+        opacity: 0;
+        transform: scale(1.45);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.45);
+    }
+}
+
+/* ==========================================================================
+   PERGUNTA
+   ========================================================================== */
+
+.exercise-question-row {
+    margin-bottom: 27px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+}
+
+.exercise-question-row .exercise-question {
+    margin-bottom: 0;
+}
+
+.question-speech {
+    width: 48px;
+    height: 48px;
+    color: var(--magenta-deep);
+    background: rgba(233, 30, 140, .07);
+    border-color: rgba(233, 30, 140, .18);
+}
+
+.question-speech .speech-button-icon,
+.question-speech .speech-button-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* ==========================================================================
+   ALTERNATIVAS
+   ========================================================================== */
+
+.answer-option-container {
+    position: relative;
+    width: 100%;
+}
+
+.answer-option-container .answer-option {
+    padding-right: 68px;
+}
+
+.answer-option-text {
+    display: block;
+    pointer-events: none;
+}
+
+.answer-option-speech {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    color: var(--navy);
+    background: rgba(247, 243, 234, .92);
+    border-color: rgba(11, 31, 63, .10);
+    box-shadow: none;
+    transform: translateY(-50%);
+}
+
+.answer-option-speech:hover {
+    transform: translateY(calc(-50% - 1px));
+}
+
+.answer-option-speech:active {
+    transform:
+        translateY(-50%) scale(.94);
+}
+
+.answer-option-speech.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+}
+
+.answer-option-container:has(.answer-option.selected) .answer-option-speech {
+    color: var(--magenta-deep);
+    background: rgba(255, 255, 255, .72);
+    border-color: rgba(233, 30, 140, .20);
+}
+
+.answer-option-container:has(.answer-option.selected) .answer-option-speech.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+}
+
+.answer-option-container:has(.answer-option.correct) .answer-option-speech {
+    color: var(--green-dark);
+    background: rgba(255, 255, 255, .75);
+    border-color: rgba(47, 138, 98, .20);
+}
+
+.answer-option-container:has(.answer-option.incorrect) .answer-option-speech {
+    color: var(--red-dark);
+    background: rgba(255, 255, 255, .75);
+    border-color: rgba(196, 18, 48, .18);
+}
+
+/* ==========================================================================
+   WORD BANK
+   ========================================================================== */
+
+.word-chip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.word-chip-container>.word-chip {
+    padding-right: 38px;
+}
+
+.word-chip-speech {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 4px;
+    width: 30px;
+    height: 30px;
+    color: var(--navy);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    transform: translateY(-50%);
+}
+
+.word-chip-speech .speech-button-icon,
+.word-chip-speech .speech-button-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.word-chip-speech:hover {
+    color: var(--magenta);
+    background: rgba(233, 30, 140, .07);
+    border: 0;
+    box-shadow: none;
+    transform: translateY(-50%);
+}
+
+.word-chip-speech:active {
+    transform:
+        translateY(-50%) scale(.92);
+}
+
+.word-chip-speech.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+}
+
+.word-chip-container:has(.word-chip.used) {
+    opacity: .3;
+}
+
+.word-chip-container:has(.word-chip.used) .word-chip-speech {
+    pointer-events: auto;
+}
+
+.word-chip-container:has(.word-chip.used)>.word-chip {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   INPUT CORRETO / INCORRETO
+   ========================================================================== */
+
+.text-answer-input.answer-correct {
+    color: var(--green-dark);
+    background: var(--green-soft);
+    border-color: var(--green);
+}
+
+.text-answer-input.answer-incorrect {
+    color: var(--red-dark);
+    background: var(--danger-soft);
+    border-color: var(--red);
+}
+
+/* ==========================================================================
+   FEEDBACK
+   ========================================================================== */
+
+.lesson-feedback-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.lesson-feedback-content>div {
+    min-width: 0;
+}
+
+.feedback-speech {
+    width: 40px;
+    height: 40px;
+    box-shadow: none;
+}
+
+.lesson-answer-footer.correct .feedback-speech {
+    color: var(--green-dark);
+    background: rgba(255, 255, 255, .68);
+    border-color: rgba(47, 138, 98, .22);
+}
+
+.lesson-answer-footer.incorrect .feedback-speech {
+    color: var(--red-dark);
+    background: rgba(255, 255, 255, .68);
+    border-color: rgba(196, 18, 48, .20);
+}
+
+.lesson-answer-footer.correct .feedback-speech.is-speaking,
+.lesson-answer-footer.incorrect .feedback-speech.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+}
+
+/* ==========================================================================
+   BOTÕES DESABILITADOS APÓS VERIFICAÇÃO
+   ========================================================================== */
+
+.answer-option:disabled,
+.word-chip:disabled {
+    cursor: default;
+}
+
+.answer-option:disabled:hover,
+.word-chip:disabled:hover {
+    transform: none;
+}
+
+/* O áudio continua disponível depois da resposta ser verificada. */
+
+.speech-button:disabled {
+    cursor: default;
+    opacity: .45;
+}
+
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .speech-button {
+        transition: none;
+    }
+
+    .speech-button.is-speaking .speech-button-pulse {
+        animation: none;
+    }
+}
+
+/* ==========================================================================
+   MOBILE
+   ========================================================================== */
+
+@media (max-width: 760px) {
+    .exercise-question-row {
+        margin-bottom: 23px;
+        grid-template-columns: minmax(0, 1fr) 44px;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .question-speech {
+        width: 44px;
+        height: 44px;
+    }
+
+    .answer-option-container .answer-option {
+        padding-right: 62px;
+    }
+
+    .answer-option-speech {
+        right: 9px;
+        width: 38px;
+        height: 38px;
+    }
+
+    .lesson-feedback-content {
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 390px) {
+    .exercise-question-row {
+        grid-template-columns: minmax(0, 1fr) 40px;
+        gap: 8px;
+    }
+
+    .question-speech {
+        width: 40px;
+        height: 40px;
+    }
+
+    .question-speech .speech-button-icon,
+    .question-speech .speech-button-icon svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    .answer-option-container .answer-option {
+        padding-right: 58px;
+    }
+
+    .answer-option-speech {
+        right: 8px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .answer-option-speech .speech-button-icon,
+    .answer-option-speech .speech-button-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+}

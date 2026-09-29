@@ -1,139 +1,21 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const usuario = EYTApp.requireUser();
-
-    if (!usuario) {
-        return;
-    }
-
+    if (!EYTApp.requireUser()) return;
     EYTApp.evaluateAchievements();
-
-    const courseProgress =
-        EYTApp.getCourseProgress();
-
-    document.getElementById(
-        "courseProgressText"
-    ).textContent =
-        `${courseProgress.percentual}%`;
-
-    document.getElementById(
-        "courseProgressBar"
-    ).style.width =
-        `${courseProgress.percentual}%`;
-
-    renderCourse();
+    const progress = EYTApp.getCourseProgress();
+    document.getElementById("courseProgressText").textContent = `${progress}%`;
+    document.getElementById("courseProgressBar").style.width = `${progress}%`;
+    document.getElementById("courseUnits").innerHTML = EYTData.course.units.map(unit => `
+<article class="course-unit">
+<header class="course-unit-header"><div class="course-unit-number">${unit.number}</div><div><h2>${EYTApp.escapeHTML(unit.title)}</h2><p>${EYTApp.escapeHTML(unit.description)}</p></div></header>
+<div class="course-lessons">${unit.lessons.map(lesson => {
+        const status = EYTApp.getLessonStatus(lesson.id);
+        const label = status === "completed" ? "Concluída" : status === "available" ? "Começar" : "Bloqueada";
+        return `<${status === "locked" ? "div" : "a"} ${status !== "locked" ? `href="licao.html?id=${lesson.id}"` : ""} class="lesson-card ${status}">
+<div class="lesson-card-icon">${status === "completed" ? "✓" : lesson.icon}</div>
+<h3>${EYTApp.escapeHTML(lesson.title)}</h3>
+<p>${EYTApp.escapeHTML(lesson.description)}</p>
+<div class="lesson-card-footer"><span>+${lesson.xp} XP</span><span class="lesson-status">${label}</span></div>
+</${status === "locked" ? "div" : "a"}>`;
+    }).join("")}</div>
+</article>`).join("");
 });
-
-function renderCourse() {
-    const container =
-        document.getElementById("courseUnits");
-
-    container.innerHTML = "";
-
-    EYTData.unidades.forEach(unidade => {
-        const article =
-            document.createElement("section");
-
-        article.className = "course-unit";
-
-        const completedCount =
-            unidade.licoes.filter(id =>
-                EYTStorage
-                    .getProgress()
-                    .licoesConcluidas
-                    .includes(id)
-            ).length;
-
-        const lessons = unidade.licoes
-            .map((id, index) => {
-                const lesson = EYTData.licoes[id];
-
-                if (!lesson) {
-                    return "";
-                }
-
-                const status =
-                    EYTApp.getLessonStatus(id);
-
-                let statusText = "Bloqueada";
-                let buttonText = "🔒";
-                let href = "#";
-
-                if (status === "completed") {
-                    statusText = "Concluída";
-                    buttonText = "✓";
-                    href = `licao.html?id=${id}`;
-                }
-
-                if (status === "available") {
-                    statusText = "Disponível";
-                    buttonText = "→";
-                    href = `licao.html?id=${id}`;
-                }
-
-                return `
-                    <div class="course-lesson ${status}">
-                        <div class="course-lesson-number">
-                            ${status === "completed" ? "✓" : index + 1}
-                        </div>
-
-                        <div class="course-lesson-icon">
-                            ${status === "locked" ? "🔒" : lesson.icone}
-                        </div>
-
-                        <div class="course-lesson-info">
-                            <span>${lesson.subtitulo}</span>
-                            <h3>${lesson.titulo}</h3>
-                            <p>${lesson.descricao}</p>
-
-                            <div class="lesson-meta">
-                                <span>
-                                    ${lesson.exercicios.length} exercícios
-                                </span>
-
-                                <span>
-                                    ⭐ ${lesson.xp} XP
-                                </span>
-
-                                <span class="${status}">
-                                    ${statusText}
-                                </span>
-                            </div>
-                        </div>
-
-                        <a
-                            class="course-lesson-button"
-                            href="${href}"
-                            ${status === "locked" ? 'onclick="return false;"' : ""}
-                        >
-                            ${buttonText}
-                        </a>
-                    </div>
-                `;
-            })
-            .join("");
-
-        article.innerHTML = `
-            <header class="course-unit-header">
-                <div class="unit-number">
-                    ${unidade.numero}
-                </div>
-
-                <div>
-                    <span>UNIT ${unidade.numero}</span>
-                    <h2>${unidade.titulo}</h2>
-                    <p>${unidade.descricao}</p>
-                </div>
-
-                <div class="unit-counter">
-                    ${completedCount}/${unidade.licoes.length}
-                </div>
-            </header>
-
-            <div class="course-lessons">
-                ${lessons}
-            </div>
-        `;
-
-        container.appendChild(article);
-    });
-}

@@ -3,160 +3,79 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#263f91">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="theme-color" content="#071229">
     <title>Perfil | English in Your Time</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body>
+<body class="app-body">
     <div class="app-layout">
         <aside class="sidebar">
-            <a class="sidebar-brand" href="dashboard.html">
-                <img src="img/logo.png" alt="English in Your Time">
-
-                <div>
-                    <strong>ENGLISH</strong>
-                    <span>IN YOUR TIME</span>
-                </div>
-            </a>
-
+            <a href="dashboard.html" class="sidebar-logo"><img src="img/logo.png" onerror="this.src='img/logo.jpg'"
+                    alt="English in Your Time"></a>
+            <div class="sidebar-brand-name">English in Your Time</div>
             <nav class="sidebar-nav">
-                <a class="nav-item" href="dashboard.html">
-                    <span class="nav-icon">⌂</span>
-                    <span>Início</span>
-                </a>
-
-                <a class="nav-item" href="curso.html">
-                    <span class="nav-icon">▶</span>
-                    <span>Aprender</span>
-                </a>
-
-                <a class="nav-item" href="revisar.html">
-                    <span class="nav-icon">↻</span>
-                    <span>Revisar</span>
-                </a>
-
-                <a class="nav-item" href="conquistas.html">
-                    <span class="nav-icon">★</span>
-                    <span>Conquistas</span>
-                </a>
-
-                <a class="nav-item active" href="perfil.html">
-                    <span class="nav-icon">●</span>
-                    <span>Perfil</span>
-                </a>
+                <a href="dashboard.html" class="nav-item"><span>⌂</span><span>Início</span></a>
+                <a href="curso.html" class="nav-item"><span>▶</span><span>Aprender</span></a>
+                <a href="revisar.html" class="nav-item"><span>↻</span><span>Revisar</span></a>
+                <a href="conquistas.html" class="nav-item"><span>★</span><span>Conquistas</span></a>
+                <a href="teacher.html" class="nav-item"><span>VG</span><span>Teacher Vanessa</span></a>
+                <a href="perfil.html" class="nav-item active"><span>●</span><span>Perfil</span></a>
             </nav>
+            <div class="sidebar-bottom"><a href="teacher.html" class="teacher-card">
+                    <div class="teacher-avatar">VG</div>
+                    <div><strong>Teacher Vanessa</strong><span>Conheça sua teacher</span></div>
+                </a></div>
         </aside>
-
-        <main class="main-content">
-            <header class="mobile-header">
-                <a href="dashboard.html">
-                    <img src="img/logo.png" alt="English in Your Time">
-                </a>
-
-                <strong>Perfil</strong>
-            </header>
-
-            <div class="page-container narrow">
-                <header class="page-header">
-                    <span class="eyebrow">MY PROFILE</span>
-                    <h1>Meu perfil</h1>
+        <header class="mobile-header"><img src="img/logo.png" onerror="this.src='img/logo.jpg'"
+                alt="English in Your Time"></header>
+        <main class="app-main">
+            <div class="page-container">
+                <header id="profileHeader" class="profile-header">
+                    <div id="profileAvatar" class="profile-avatar">A</div>
+                    <div><span class="eyebrow">MY PROFILE</span>
+                        <h1 id="profileName">Aluno</h1>
+                        <p>Sua jornada no English in Your Time.</p>
+                    </div>
                 </header>
-
-                <section class="profile-card">
-                    <div class="profile-avatar" id="profileAvatar">A</div>
-
-                    <div class="profile-info">
-                        <span>ESTUDANTE</span>
-                        <h2 id="profileName">Aluno</h2>
-                        <p>
-                            English in Your Time • Teacher Vanessa Ghiringhelli
-                        </p>
-                    </div>
-                </section>
-
                 <section class="profile-stats">
-                    <article>
-                        <span>⭐</span>
-                        <strong id="profileXp">0</strong>
-                        <small>XP total</small>
-                    </article>
-
-                    <article>
-                        <span>🔥</span>
-                        <strong id="profileStreak">0</strong>
-                        <small>sequência</small>
-                    </article>
-
-                    <article>
-                        <span>✓</span>
-                        <strong id="profileLessons">0</strong>
-                        <small>lições</small>
-                    </article>
+                    <div class="profile-stat"><strong id="profileXp">0</strong><span>XP total</span></div>
+                    <div class="profile-stat"><strong id="profileStreak">0</strong><span>dias de sequência</span></div>
+                    <div class="profile-stat"><strong id="profileLessons">0</strong><span>lições concluídas</span></div>
+                    <div class="profile-stat"><strong id="profileAccuracy">0%</strong><span>precisão</span></div>
                 </section>
-
-                <section class="settings-card">
-                    <h3>Configurações</h3>
-
-                    <label for="profileNameInput">
-                        Nome
-                    </label>
-
-                    <input type="text" id="profileNameInput" maxlength="40">
-
-                    <button class="btn btn-primary" id="saveProfileButton" type="button">
-                        SALVAR ALTERAÇÕES
-                    </button>
+                <section class="profile-section">
+                    <h2>Informações pessoais</h2>
+                    <p>Atualize como seu nome aparece na plataforma.</p>
+                    <form id="profileForm" class="profile-form">
+                        <div class="form-group"><label for="profileNameInput">Seu nome</label><input
+                                id="profileNameInput" maxlength="50" required></div>
+                        <button class="btn btn-primary" type="submit">Salvar alterações</button>
+                    </form>
                 </section>
-
-                <section class="danger-card">
-                    <div>
-                        <strong>Reiniciar progresso</strong>
-                        <p>
-                            Apaga XP, sequência, erros e lições concluídas deste navegador.
-                        </p>
-                    </div>
-
-                    <button id="resetProgressButton" class="btn btn-outline-danger" type="button">
-                        REINICIAR
-                    </button>
+                <section class="profile-section">
+                    <h2>Sua conta</h2>
+                    <p>Você pode sair da plataforma e voltar quando quiser.</p>
+                    <div class="profile-actions"><button id="logoutButton" class="btn btn-secondary">Sair da
+                            plataforma</button></div>
                 </section>
-
-                <button id="logoutButton" class="btn btn-secondary btn-full" type="button">
-                    SAIR DA CONTA
-                </button>
+                <section class="profile-section danger-zone">
+                    <h2>Recomeçar progresso</h2>
+                    <p>Apaga XP, sequência, respostas, erros e lições concluídas deste dispositivo.</p>
+                    <div class="profile-actions"><button id="resetButton" class="btn btn-danger">Apagar meu
+                            progresso</button></div>
+                </section>
             </div>
         </main>
+        <nav class="mobile-bottom-nav">
+            <a href="dashboard.html"><span>⌂</span><span>Início</span></a>
+            <a href="curso.html"><span>▶</span><span>Aprender</span></a>
+            <a href="revisar.html"><span>↻</span><span>Revisar</span></a>
+            <a href="conquistas.html"><span>★</span><span>Conquistas</span></a>
+            <a href="perfil.html" class="active"><span>●</span><span>Perfil</span></a>
+        </nav>
     </div>
-
-    <nav class="bottom-nav">
-        <a href="dashboard.html">
-            <span>⌂</span>
-            <small>Início</small>
-        </a>
-
-        <a href="curso.html">
-            <span>▶</span>
-            <small>Aprender</small>
-        </a>
-
-        <a href="revisar.html">
-            <span>↻</span>
-            <small>Revisar</small>
-        </a>
-
-        <a href="conquistas.html">
-            <span>★</span>
-            <small>Conquistas</small>
-        </a>
-
-        <a class="active" href="perfil.html">
-            <span>●</span>
-            <small>Perfil</small>
-        </a>
-    </nav>
-
     <script src="js/storage.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
