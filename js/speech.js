@@ -5,31 +5,32 @@ const EYTSpeech = (() => {
         englishLang: "en-US",
         portugueseLang: "pt-BR",
 
-        englishRate: 0.96,
-        portugueseRate: 1.0,
-        slowEnglishRate: 0.74,
+        englishRate: 0.90,
+        portugueseRate: 0.96,
+        slowEnglishRate: 0.72,
 
-        pitch: 1,
+        englishPitch: 1,
+        portuguesePitch: 1,
         volume: 1,
 
         debug: true,
 
         preferredEnglishVoices: [
             "Microsoft Ava Online (Natural) - English (United States)",
-            "Microsoft Andrew Online (Natural) - English (United States)",
             "Microsoft Emma Online (Natural) - English (United States)",
-            "Microsoft Brian Online (Natural) - English (United States)",
-            "Microsoft Aria Online (Natural) - English (United States)",
             "Microsoft Jenny Online (Natural) - English (United States)",
+            "Microsoft Aria Online (Natural) - English (United States)",
+            "Microsoft Andrew Online (Natural) - English (United States)",
+            "Microsoft Brian Online (Natural) - English (United States)",
             "Microsoft Guy Online (Natural) - English (United States)",
-            "Microsoft Ana Online (Natural) - English (United States)",
             "Microsoft Christopher Online (Natural) - English (United States)",
             "Microsoft Eric Online (Natural) - English (United States)",
+            "Microsoft Ana Online (Natural) - English (United States)",
             "Google US English",
-            "Google UK English Female",
-            "Google UK English Male",
             "Samantha",
             "Alex",
+            "Google UK English Female",
+            "Google UK English Male",
             "Daniel"
         ],
 
@@ -46,11 +47,14 @@ const EYTSpeech = (() => {
     let currentButton = null;
     let currentText = "";
     let currentLang = "";
-    let voicesLoaded = false;
+    let currentVoice = null;
 
-    /* =========================================================
+    let voicesReady = false;
+    let voiceLoadPromise = null;
+
+    /* ==========================================================================
        SUPORTE
-    ========================================================= */
+       ========================================================================== */
 
     function isSupported() {
         return (
@@ -59,17 +63,9 @@ const EYTSpeech = (() => {
         );
     }
 
-    /* =========================================================
-       NORMALIZAÇÃO
-    ========================================================= */
-
-    function normalize(value) {
-        return String(value || "")
-            .trim()
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-    }
+    /* ==========================================================================
+       UTILITÁRIOS
+       ========================================================================== */
 
     function cleanText(value) {
         return String(value ?? "")
@@ -77,14 +73,45 @@ const EYTSpeech = (() => {
             .trim();
     }
 
-    /* =========================================================
+    function normalize(value) {
+        return String(value ?? "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function normalizeLang(value) {
+        return String(value || "")
+            .trim()
+            .toLowerCase()
+            .replace(/_/g, "-");
+    }
+
+    function clamp(value, min, max, fallback) {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) {
+            return fallback;
+        }
+
+        return Math.min(
+            max,
+            Math.max(
+                min,
+                number
+            )
+        );
+    }
+
+    /* ==========================================================================
        VOZES
-    ========================================================= */
+       ========================================================================== */
 
     function loadVoices() {
         if (!isSupported()) {
             voices = [];
-            voicesLoaded = false;
+            voicesReady = false;
             return [];
         }
 
@@ -93,271 +120,620 @@ const EYTSpeech = (() => {
 
         if (available.length) {
             voices = available;
-            voicesLoaded = true;
-        }
-
-        if (CONFIG.debug && available.length) {
-            console.groupCollapsed(
-                `[EYT Speech] ${available.length} voice(s) available`
-            );
-
-            available.forEach(voice => {
-                console.log(
-                    `${voice.name} | ${voice.lang} | local: ${voice.localService}`
-                );
-            });
-
-            console.groupEnd();
+            voicesReady = true;
         }
 
         return [...voices];
     }
 
+    function waitForVoices(timeout = 1500) {
+        if (!isSupported()) {
+            return Promise.resolve([]);
+        }
+
+        const immediate =
+            loadVoices();
+
+        if (immediate.length) {
+            return Promise.resolve(
+                immediate
+            );
+        }
+
+        if (voiceLoadPromise) {
+            return voiceLoadPromise;
+        }
+
+        voiceLoadPromise =
+            new Promise(resolve => {
+                let finished =
+                    false;
+
+                const finish = () => {
+                    if (finished) {
+                        return;
+                    }
+
+                    finished =
+                        true;
+
+                    window.clearTimeout(
+                        timeoutId
+                    );
+
+                    window.speechSynthesis.removeEventListener(
+                        "voiceschanged",
+                        onVoicesChanged
+                    );
+
+                    loadVoices();
+
+                    voiceLoadPromise =
+                        null;
+
+                    resolve(
+                        [...voices]
+                    );
+                };
+
+                const onVoicesChanged = () => {
+                    const available =
+                        loadVoices();
+
+                    if (available.length) {
+                        finish();
+                    }
+                };
+
+                const timeoutId =
+                    window.setTimeout(
+                        finish,
+                        timeout
+                    );
+
+                window.speechSynthesis.addEventListener(
+                    "voiceschanged",
+                    onVoicesChanged
+                );
+            });
+
+        return voiceLoadPromise;
+    }
+
     function isEnglishVoice(voice) {
-        return String(voice?.lang || "")
-            .toLowerCase()
-            .startsWith("en");
+        return normalizeLang(
+            voice?.lang
+        ).startsWith(
+            "en"
+        );
     }
 
     function isPortugueseVoice(voice) {
-        return String(voice?.lang || "")
-            .toLowerCase()
-            .startsWith("pt");
+        return normalizeLang(
+            voice?.lang
+        ).startsWith(
+            "pt"
+        );
     }
 
-    function scoreEnglishVoice(voice) {
-        if (!isEnglishVoice(voice)) {
-            return -100000;
-        }
+    function exactPreferredScore(
+        voice,
+        preferredList
+    ) {
+        const voiceName =
+            normalize(
+                voice?.name
+            );
 
-        const name = normalize(voice.name);
-        const lang = normalize(voice.lang);
+        for (
+            let index = 0;
+            index < preferredList.length;
+            index++
+        ) {
+            const preferred =
+                normalize(
+                    preferredList[index]
+                );
 
-        let score = 0;
-
-        /*
-         * O mais importante: a voz PRECISA ser inglesa.
-         */
-
-        if (lang === "en-us") {
-            score += 1000;
-        } else if (lang === "en-gb") {
-            score += 850;
-        } else if (lang === "en-ca") {
-            score += 700;
-        } else if (lang === "en-au") {
-            score += 650;
-        } else {
-            score += 500;
-        }
-
-        /*
-         * Prioriza vozes modernas/naturais quando disponíveis.
-         */
-
-        if (name.includes("natural")) {
-            score += 500;
-        }
-
-        if (name.includes("online")) {
-            score += 300;
-        }
-
-        if (name.includes("neural")) {
-            score += 500;
-        }
-
-        /*
-         * Microsoft e Google costumam fornecer boas vozes
-         * quando o navegador as disponibiliza.
-         */
-
-        if (name.includes("microsoft")) {
-            score += 160;
-        }
-
-        if (name.includes("google")) {
-            score += 140;
-        }
-
-        /*
-         * Preferências explícitas.
-         */
-
-        CONFIG.preferredEnglishVoices.forEach(
-            (preferredName, index) => {
-                const preferred =
-                    normalize(preferredName);
-
-                if (name === preferred) {
-                    score += 2000 - index;
-                } else if (
-                    name.includes(preferred) ||
-                    preferred.includes(name)
-                ) {
-                    score += 1000 - index;
-                }
+            if (
+                voiceName ===
+                preferred
+            ) {
+                return (
+                    10000 -
+                    index * 10
+                );
             }
-        );
+        }
+
+        return 0;
+    }
+
+    function partialPreferredScore(
+        voice,
+        preferredList
+    ) {
+        const voiceName =
+            normalize(
+                voice?.name
+            );
+
+        for (
+            let index = 0;
+            index < preferredList.length;
+            index++
+        ) {
+            const preferred =
+                normalize(
+                    preferredList[index]
+                );
+
+            if (
+                voiceName.includes(
+                    preferred
+                ) ||
+                preferred.includes(
+                    voiceName
+                )
+            ) {
+                return (
+                    5000 -
+                    index * 10
+                );
+            }
+        }
+
+        return 0;
+    }
+
+    function scoreEnglishVoice(
+        voice
+    ) {
+        if (
+            !isEnglishVoice(
+                voice
+            )
+        ) {
+            return -1000000;
+        }
+
+        const name =
+            normalize(
+                voice.name
+            );
+
+        const lang =
+            normalizeLang(
+                voice.lang
+            );
+
+        let score =
+            0;
+
+        score +=
+            exactPreferredScore(
+                voice,
+                CONFIG.preferredEnglishVoices
+            );
+
+        score +=
+            partialPreferredScore(
+                voice,
+                CONFIG.preferredEnglishVoices
+            );
 
         /*
-         * Pequeno bônus para a voz default,
-         * desde que ela já seja inglesa.
+         * Prioridade de idioma.
+         *
+         * O curso está configurado para inglês americano.
          */
 
-        if (voice.default) {
-            score += 20;
+        if (
+            lang ===
+            "en-us"
+        ) {
+            score +=
+                3000;
+        } else if (
+            lang.startsWith(
+                "en-us"
+            )
+        ) {
+            score +=
+                2900;
+        } else if (
+            lang ===
+            "en-ca"
+        ) {
+            score +=
+                1800;
+        } else if (
+            lang ===
+            "en-gb"
+        ) {
+            score +=
+                1500;
+        } else if (
+            lang ===
+            "en-au"
+        ) {
+            score +=
+                1300;
+        } else {
+            score +=
+                1000;
+        }
+
+        /*
+         * Vozes modernas.
+         */
+
+        if (
+            name.includes(
+                "natural"
+            )
+        ) {
+            score +=
+                1400;
+        }
+
+        if (
+            name.includes(
+                "neural"
+            )
+        ) {
+            score +=
+                1400;
+        }
+
+        if (
+            name.includes(
+                "online"
+            )
+        ) {
+            score +=
+                700;
+        }
+
+        /*
+         * Provedores.
+         */
+
+        if (
+            name.includes(
+                "microsoft"
+            )
+        ) {
+            score +=
+                500;
+        }
+
+        if (
+            name.includes(
+                "google"
+            )
+        ) {
+            score +=
+                450;
+        }
+
+        /*
+         * Vozes conhecidas.
+         */
+
+        if (
+            name.includes(
+                "ava"
+            )
+        ) {
+            score +=
+                350;
+        }
+
+        if (
+            name.includes(
+                "emma"
+            )
+        ) {
+            score +=
+                330;
+        }
+
+        if (
+            name.includes(
+                "jenny"
+            )
+        ) {
+            score +=
+                320;
+        }
+
+        if (
+            name.includes(
+                "aria"
+            )
+        ) {
+            score +=
+                310;
+        }
+
+        if (
+            name.includes(
+                "samantha"
+            )
+        ) {
+            score +=
+                300;
+        }
+
+        /*
+         * Pequeno bônus para voz default,
+         * desde que ela seja inglesa.
+         */
+
+        if (
+            voice.default
+        ) {
+            score +=
+                30;
         }
 
         return score;
     }
 
-    function scorePortugueseVoice(voice) {
-        if (!isPortugueseVoice(voice)) {
-            return -100000;
+    function scorePortugueseVoice(
+        voice
+    ) {
+        if (
+            !isPortugueseVoice(
+                voice
+            )
+        ) {
+            return -1000000;
         }
 
-        const name = normalize(voice.name);
-        const lang = normalize(voice.lang);
+        const name =
+            normalize(
+                voice.name
+            );
 
-        let score = 0;
+        const lang =
+            normalizeLang(
+                voice.lang
+            );
 
-        if (lang === "pt-br") {
-            score += 1000;
+        let score =
+            0;
+
+        score +=
+            exactPreferredScore(
+                voice,
+                CONFIG.preferredPortugueseVoices
+            );
+
+        score +=
+            partialPreferredScore(
+                voice,
+                CONFIG.preferredPortugueseVoices
+            );
+
+        if (
+            lang ===
+            "pt-br"
+        ) {
+            score +=
+                3000;
         } else {
-            score += 600;
+            score +=
+                1500;
         }
 
-        if (name.includes("natural")) {
-            score += 500;
+        if (
+            name.includes(
+                "natural"
+            )
+        ) {
+            score +=
+                1400;
         }
 
-        if (name.includes("online")) {
-            score += 300;
+        if (
+            name.includes(
+                "neural"
+            )
+        ) {
+            score +=
+                1400;
         }
 
-        if (name.includes("neural")) {
-            score += 500;
+        if (
+            name.includes(
+                "online"
+            )
+        ) {
+            score +=
+                700;
         }
 
-        if (name.includes("microsoft")) {
-            score += 160;
+        if (
+            name.includes(
+                "microsoft"
+            )
+        ) {
+            score +=
+                500;
         }
 
-        if (name.includes("google")) {
-            score += 140;
+        if (
+            name.includes(
+                "google"
+            )
+        ) {
+            score +=
+                450;
         }
 
-        CONFIG.preferredPortugueseVoices.forEach(
-            (preferredName, index) => {
-                const preferred =
-                    normalize(preferredName);
-
-                if (name === preferred) {
-                    score += 2000 - index;
-                } else if (
-                    name.includes(preferred) ||
-                    preferred.includes(name)
-                ) {
-                    score += 1000 - index;
-                }
-            }
-        );
+        if (
+            voice.default
+        ) {
+            score +=
+                30;
+        }
 
         return score;
+    }
+
+    function getEnglishVoices() {
+        loadVoices();
+
+        return voices
+            .filter(
+                isEnglishVoice
+            )
+            .sort(
+                (a, b) =>
+                    scoreEnglishVoice(b) -
+                    scoreEnglishVoice(a)
+            );
+    }
+
+    function getPortugueseVoices() {
+        loadVoices();
+
+        return voices
+            .filter(
+                isPortugueseVoice
+            )
+            .sort(
+                (a, b) =>
+                    scorePortugueseVoice(b) -
+                    scorePortugueseVoice(a)
+            );
     }
 
     function getBestEnglishVoice() {
-        loadVoices();
-
-        const candidates = voices
-            .filter(isEnglishVoice)
-            .map(voice => ({
-                voice,
-                score: scoreEnglishVoice(voice)
-            }))
-            .sort((a, b) => b.score - a.score);
+        const candidates =
+            getEnglishVoices();
 
         return candidates.length
-            ? candidates[0].voice
+            ? candidates[0]
             : null;
     }
 
     function getBestPortugueseVoice() {
-        loadVoices();
-
-        const candidates = voices
-            .filter(isPortugueseVoice)
-            .map(voice => ({
-                voice,
-                score: scorePortugueseVoice(voice)
-            }))
-            .sort((a, b) => b.score - a.score);
+        const candidates =
+            getPortugueseVoices();
 
         return candidates.length
-            ? candidates[0].voice
+            ? candidates[0]
             : null;
     }
 
-    function getBestVoice(lang = CONFIG.englishLang) {
+    function getBestVoice(
+        lang = CONFIG.englishLang
+    ) {
         const language =
-            String(lang || "")
-                .toLowerCase();
+            normalizeLang(
+                lang
+            );
 
-        if (language.startsWith("pt")) {
+        if (
+            language.startsWith(
+                "pt"
+            )
+        ) {
             return getBestPortugueseVoice();
         }
 
         return getBestEnglishVoice();
     }
 
-    /* =========================================================
-       TEXTO PARA PRONÚNCIA
-    ========================================================= */
+    /* ==========================================================================
+       PREPARAÇÃO DO TEXTO
+       ========================================================================== */
 
-    function prepareEnglishText(text) {
-        /*
-         * NÃO fazemos substituições como:
-         *
-         * thanks -> thénks
-         * please -> pliz
-         *
-         * Isso prejudica o sintetizador.
-         *
-         * A voz recebe a grafia inglesa real.
-         */
+    function prepareEnglishText(
+        text
+    ) {
+        let value =
+            cleanText(
+                text
+            );
 
-        let value = cleanText(text);
-
-        if (!value) {
+        if (
+            !value
+        ) {
             return "";
         }
 
         /*
-         * Pontuação ajuda alguns motores a interpretar
-         * uma palavra isolada como uma unidade completa.
+         * IMPORTANTE:
+         *
+         * A palavra permanece escrita em inglês.
+         *
+         * Não usamos:
+         *
+         * thanks -> tenks
+         * thanks -> thénks
+         * please -> pliz
+         *
+         * Isso faria o sintetizador interpretar outra palavra.
+         */
+
+        /*
+         * Aspas tipográficas podem gerar pausas estranhas
+         * em alguns mecanismos.
+         */
+
+        value =
+            value
+                .replace(
+                    /[“”]/g,
+                    '"'
+                )
+                .replace(
+                    /[‘’]/g,
+                    "'"
+                );
+
+        /*
+         * Uma palavra isolada recebe pontuação final.
+         *
+         * Isso ajuda especialmente os motores do Chromium
+         * a finalizar corretamente o último fonema.
          */
 
         if (
-            /^[A-Za-zÀ-ÿ'-]+$/.test(value) &&
-            !/[.!?]$/.test(value)
+            /^[A-Za-z'-]+$/.test(
+                value
+            ) &&
+            !/[.!?]$/.test(
+                value
+            )
         ) {
-            value += ".";
+            value +=
+                ".";
         }
 
         return value;
     }
 
-    function preparePortugueseText(text) {
-        return cleanText(text);
+    function preparePortugueseText(
+        text
+    ) {
+        return cleanText(
+            text
+        );
     }
 
-    /* =========================================================
-       BOTÃO ATUAL
-    ========================================================= */
+    /* ==========================================================================
+       ESTADO VISUAL
+       ========================================================================== */
 
     function resetButton() {
-        if (!currentButton) {
+        if (
+            !currentButton
+        ) {
             return;
         }
 
@@ -367,85 +743,158 @@ const EYTSpeech = (() => {
 
         currentButton.setAttribute(
             "aria-label",
+            currentButton.dataset.originalSpeechLabel ||
             "Ouvir pronúncia"
         );
 
         currentButton.setAttribute(
             "title",
+            currentButton.dataset.originalSpeechTitle ||
             "Ouvir pronúncia"
         );
 
-        currentButton = null;
+        currentButton =
+            null;
+    }
+
+    function activateButton(
+        button
+    ) {
+        if (
+            !button
+        ) {
+            return;
+        }
+
+        if (
+            !button.dataset
+                .originalSpeechLabel
+        ) {
+            button.dataset.originalSpeechLabel =
+                button.getAttribute(
+                    "aria-label"
+                ) ||
+                "Ouvir pronúncia";
+        }
+
+        if (
+            !button.dataset
+                .originalSpeechTitle
+        ) {
+            button.dataset.originalSpeechTitle =
+                button.getAttribute(
+                    "title"
+                ) ||
+                "Ouvir pronúncia";
+        }
+
+        currentButton =
+            button;
+
+        currentButton.classList.add(
+            "is-speaking"
+        );
+
+        currentButton.setAttribute(
+            "aria-label",
+            "Parar áudio"
+        );
+
+        currentButton.setAttribute(
+            "title",
+            "Parar áudio"
+        );
     }
 
     function resetState() {
         resetButton();
 
-        currentUtterance = null;
-        currentText = "";
-        currentLang = "";
+        currentUtterance =
+            null;
+
+        currentText =
+            "";
+
+        currentLang =
+            "";
+
+        currentVoice =
+            null;
     }
 
-    /* =========================================================
+    /* ==========================================================================
        PARAR
-    ========================================================= */
+       ========================================================================== */
 
     function stop() {
-        if (!isSupported()) {
+        if (
+            !isSupported()
+        ) {
             return;
         }
 
-        window.speechSynthesis.cancel();
+        try {
+            window.speechSynthesis.cancel();
+        } catch (error) {
+            if (
+                CONFIG.debug
+            ) {
+                console.warn(
+                    "[EYT Speech] Falha ao cancelar fala:",
+                    error
+                );
+            }
+        }
 
         resetState();
     }
 
-    /* =========================================================
-       SPEAK
-    ========================================================= */
+    /* ==========================================================================
+       EVENTOS
+       ========================================================================== */
 
-    function speak(text, options = {}) {
-        if (!isSupported()) {
-            console.warn(
-                "[EYT Speech] Speech synthesis is not supported."
+    function dispatchSpeechEvent(
+        name,
+        detail = {}
+    ) {
+        window.dispatchEvent(
+            new CustomEvent(
+                name,
+                {
+                    detail
+                }
+            )
+        );
+    }
+
+    /* ==========================================================================
+       EXECUTAR FALA
+       ========================================================================== */
+
+    function createUtterance(
+        originalText,
+        requestedLang,
+        options,
+        voice
+    ) {
+        const normalizedLanguage =
+            normalizeLang(
+                requestedLang
             );
 
-            return false;
-        }
-
-        const requestedLang =
-            options.lang ||
-            CONFIG.englishLang;
-
         const isPortuguese =
-            String(requestedLang)
-                .toLowerCase()
-                .startsWith("pt");
-
-        const originalText =
-            cleanText(text);
-
-        if (!originalText) {
-            return false;
-        }
+            normalizedLanguage.startsWith(
+                "pt"
+            );
 
         const preparedText =
             isPortuguese
-                ? preparePortugueseText(originalText)
-                : prepareEnglishText(originalText);
-
-        stop();
-
-        /*
-         * Recarrega as vozes no momento exato da interação.
-         * Isso evita depender apenas da lista obtida no carregamento
-         * inicial da página.
-         */
-
-        loadVoices();
-
-        const voice =
-            getBestVoice(requestedLang);
+                ? preparePortugueseText(
+                    originalText
+                )
+                : prepareEnglishText(
+                    originalText
+                );
 
         const utterance =
             new SpeechSynthesisUtterance(
@@ -453,9 +902,7 @@ const EYTSpeech = (() => {
             );
 
         /*
-         * Mesmo se nenhuma voz específica estiver disponível,
-         * mantemos o locale correto para impedir que o navegador
-         * trate inglês como português.
+         * Define primeiro o idioma desejado.
          */
 
         utterance.lang =
@@ -463,25 +910,50 @@ const EYTSpeech = (() => {
                 ? CONFIG.portugueseLang
                 : CONFIG.englishLang;
 
-        if (voice) {
-            utterance.voice = voice;
-
-            /*
-             * Usa o locale real da voz selecionada.
-             */
-            utterance.lang =
-                voice.lang ||
-                utterance.lang;
-        }
+        /*
+         * Se uma voz adequada realmente existir,
+         * usa essa voz e o locale real dela.
+         */
 
         if (
-            options.rate !== undefined &&
-            options.rate !== null
+            voice
+        ) {
+            utterance.voice =
+                voice;
+
+            if (
+                voice.lang
+            ) {
+                utterance.lang =
+                    voice.lang;
+            }
+        }
+
+        /*
+         * Velocidade.
+         *
+         * Inglês levemente abaixo de 1.0 melhora
+         * a clareza para quem está aprendendo.
+         */
+
+        if (
+            options.rate !==
+            undefined &&
+            options.rate !==
+            null
         ) {
             utterance.rate =
-                Number(options.rate);
+                clamp(
+                    options.rate,
+                    0.5,
+                    1.5,
+                    isPortuguese
+                        ? CONFIG.portugueseRate
+                        : CONFIG.englishRate
+                );
         } else if (
-            options.slow === true &&
+            options.slow ===
+            true &&
             !isPortuguese
         ) {
             utterance.rate =
@@ -494,35 +966,97 @@ const EYTSpeech = (() => {
         }
 
         utterance.pitch =
-            Number(
-                options.pitch ??
-                CONFIG.pitch
+            clamp(
+                options.pitch,
+                0.5,
+                1.5,
+                isPortuguese
+                    ? CONFIG.portuguesePitch
+                    : CONFIG.englishPitch
             );
 
         utterance.volume =
-            Number(
-                options.volume ??
+            clamp(
+                options.volume,
+                0,
+                1,
                 CONFIG.volume
             );
 
-        if (options.button) {
-            currentButton =
-                options.button;
+        return {
+            utterance,
+            preparedText,
+            isPortuguese
+        };
+    }
 
-            currentButton.classList.add(
-                "is-speaking"
+    async function speak(
+        text,
+        options = {}
+    ) {
+        if (
+            !isSupported()
+        ) {
+            console.warn(
+                "[EYT Speech] SpeechSynthesis não é suportado neste navegador."
             );
 
-            currentButton.setAttribute(
-                "aria-label",
-                "Parar áudio"
-            );
-
-            currentButton.setAttribute(
-                "title",
-                "Parar áudio"
-            );
+            return false;
         }
+
+        const originalText =
+            cleanText(
+                text
+            );
+
+        if (
+            !originalText
+        ) {
+            return false;
+        }
+
+        const requestedLang =
+            options.lang ||
+            CONFIG.englishLang;
+
+        /*
+         * Cancela qualquer áudio anterior antes
+         * de preparar o próximo.
+         */
+
+        stop();
+
+        /*
+         * Espera o navegador disponibilizar as vozes.
+         *
+         * No Chromium a lista pode estar vazia nos
+         * primeiros milissegundos após carregar a página.
+         */
+
+        await waitForVoices();
+
+        /*
+         * O aluno pode ter iniciado outra fala enquanto
+         * aguardávamos as vozes. Cancela novamente.
+         */
+
+        stop();
+
+        const voice =
+            getBestVoice(
+                requestedLang
+            );
+
+        const {
+            utterance,
+            preparedText
+        } =
+            createUtterance(
+                originalText,
+                requestedLang,
+                options,
+                voice
+            );
 
         currentUtterance =
             utterance;
@@ -533,165 +1067,218 @@ const EYTSpeech = (() => {
         currentLang =
             utterance.lang;
 
-        utterance.onstart = () => {
-            if (CONFIG.debug) {
-                console.group(
-                    "[EYT Speech] Playback"
-                );
+        currentVoice =
+            voice;
 
-                console.log(
-                    "Text:",
-                    originalText
-                );
+        if (
+            options.button
+        ) {
+            activateButton(
+                options.button
+            );
+        }
 
-                console.log(
-                    "Speech text:",
-                    preparedText
-                );
+        utterance.onstart =
+            () => {
+                if (
+                    currentUtterance !==
+                    utterance
+                ) {
+                    return;
+                }
 
-                console.log(
-                    "Requested language:",
-                    requestedLang
-                );
+                if (
+                    CONFIG.debug
+                ) {
+                    console.group(
+                        "[EYT Speech] Reprodução"
+                    );
 
-                console.log(
-                    "Actual language:",
-                    utterance.lang
-                );
+                    console.log(
+                        "Texto original:",
+                        originalText
+                    );
 
-                console.log(
-                    "Voice:",
-                    voice
-                        ? voice.name
-                        : "Browser default English voice"
-                );
+                    console.log(
+                        "Texto enviado:",
+                        preparedText
+                    );
 
-                console.log(
-                    "Voice language:",
-                    voice
-                        ? voice.lang
-                        : utterance.lang
-                );
+                    console.log(
+                        "Idioma solicitado:",
+                        requestedLang
+                    );
 
-                console.log(
-                    "Rate:",
-                    utterance.rate
-                );
+                    console.log(
+                        "Idioma usado:",
+                        utterance.lang
+                    );
 
-                console.groupEnd();
-            }
+                    console.log(
+                        "Voz:",
+                        voice
+                            ? voice.name
+                            : "voz padrão do navegador"
+                    );
 
-            window.dispatchEvent(
-                new CustomEvent(
+                    console.log(
+                        "Voz locale:",
+                        voice
+                            ? voice.lang
+                            : utterance.lang
+                    );
+
+                    console.log(
+                        "Velocidade:",
+                        utterance.rate
+                    );
+
+                    console.log(
+                        "Pitch:",
+                        utterance.pitch
+                    );
+
+                    console.groupEnd();
+                }
+
+                dispatchSpeechEvent(
                     "eyt:speech-start",
                     {
-                        detail: {
-                            text: originalText,
-                            spokenText:
-                                preparedText,
-                            lang:
-                                utterance.lang,
-                            voice:
-                                voice
-                                    ? voice.name
-                                    : null
-                        }
+                        text:
+                            originalText,
+                        spokenText:
+                            preparedText,
+                        lang:
+                            utterance.lang,
+                        voice:
+                            voice
+                                ? voice.name
+                                : null,
+                        rate:
+                            utterance.rate
                     }
-                )
-            );
-        };
-
-        utterance.onend = () => {
-            if (
-                currentUtterance ===
-                utterance
-            ) {
-                resetState();
-            }
-
-            window.dispatchEvent(
-                new CustomEvent(
-                    "eyt:speech-end"
-                )
-            );
-        };
-
-        utterance.onerror = event => {
-            /*
-             * cancel/interrupted são normais quando o aluno
-             * troca rapidamente de alternativa.
-             */
-
-            if (
-                event.error !== "canceled" &&
-                event.error !== "interrupted"
-            ) {
-                console.warn(
-                    "[EYT Speech] Playback error:",
-                    event.error
                 );
-            }
+            };
 
-            if (
-                currentUtterance ===
-                utterance
-            ) {
-                resetState();
-            }
+        utterance.onend =
+            () => {
+                if (
+                    currentUtterance ===
+                    utterance
+                ) {
+                    resetState();
+                }
 
-            window.dispatchEvent(
-                new CustomEvent(
-                    "eyt:speech-end"
-                )
-            );
-        };
+                dispatchSpeechEvent(
+                    "eyt:speech-end",
+                    {
+                        text:
+                            originalText
+                    }
+                );
+            };
+
+        utterance.onerror =
+            event => {
+                if (
+                    event.error !==
+                    "canceled" &&
+                    event.error !==
+                    "interrupted"
+                ) {
+                    console.warn(
+                        "[EYT Speech] Erro de reprodução:",
+                        event.error
+                    );
+                }
+
+                if (
+                    currentUtterance ===
+                    utterance
+                ) {
+                    resetState();
+                }
+
+                dispatchSpeechEvent(
+                    "eyt:speech-end",
+                    {
+                        text:
+                            originalText,
+                        error:
+                            event.error
+                    }
+                );
+            };
 
         /*
-         * Pequeno atraso depois do cancel() evita um problema
-         * conhecido de alguns navegadores ao substituir uma fala
-         * imediatamente.
+         * Pequeno atraso depois do cancel().
+         *
+         * Chromium/Brave/Edge podem ignorar um speak()
+         * executado imediatamente após cancel().
          */
 
-        window.setTimeout(() => {
-            try {
-                window.speechSynthesis.speak(
+        window.setTimeout(
+            () => {
+                if (
+                    currentUtterance !==
                     utterance
-                );
-            } catch (error) {
-                console.error(
-                    "[EYT Speech] Unable to start playback:",
-                    error
-                );
+                ) {
+                    return;
+                }
 
-                resetState();
-            }
-        }, 25);
+                try {
+                    window.speechSynthesis.speak(
+                        utterance
+                    );
+                } catch (error) {
+                    console.error(
+                        "[EYT Speech] Não foi possível iniciar o áudio:",
+                        error
+                    );
+
+                    if (
+                        currentUtterance ===
+                        utterance
+                    ) {
+                        resetState();
+                    }
+                }
+            },
+            60
+        );
 
         return true;
     }
 
-    /* =========================================================
+    /* ==========================================================================
        TOGGLE
-    ========================================================= */
+       ========================================================================== */
 
     function toggle(
         text,
         button,
         options = {}
     ) {
-        if (!isSupported()) {
+        if (
+            !isSupported()
+        ) {
             return false;
         }
 
         const value =
-            cleanText(text);
+            cleanText(
+                text
+            );
 
-        if (!value) {
+        if (
+            !value
+        ) {
             return false;
         }
 
         const sameButton =
-            currentButton === button;
+            currentButton ===
+            button;
 
         const currentlySpeaking =
             window.speechSynthesis.speaking ||
@@ -705,18 +1292,20 @@ const EYTSpeech = (() => {
             return false;
         }
 
-        return speak(
+        speak(
             value,
             {
                 ...options,
                 button
             }
         );
+
+        return true;
     }
 
-    /* =========================================================
+    /* ==========================================================================
        ATALHOS
-    ========================================================= */
+       ========================================================================== */
 
     function speakEnglish(
         text,
@@ -742,7 +1331,8 @@ const EYTSpeech = (() => {
                 ...options,
                 lang:
                     CONFIG.englishLang,
-                slow: true
+                slow:
+                    true
             }
         );
     }
@@ -793,12 +1383,14 @@ const EYTSpeech = (() => {
         );
     }
 
-    /* =========================================================
+    /* ==========================================================================
        STATUS
-    ========================================================= */
+       ========================================================================== */
 
     function isSpeaking() {
-        if (!isSupported()) {
+        if (
+            !isSupported()
+        ) {
             return false;
         }
 
@@ -810,19 +1402,10 @@ const EYTSpeech = (() => {
 
     function getVoices() {
         loadVoices();
-        return [...voices];
-    }
 
-    function getEnglishVoices() {
-        loadVoices();
-
-        return voices
-            .filter(isEnglishVoice)
-            .sort(
-                (a, b) =>
-                    scoreEnglishVoice(b) -
-                    scoreEnglishVoice(a)
-            );
+        return [
+            ...voices
+        ];
     }
 
     function getSelectedEnglishVoice() {
@@ -833,15 +1416,19 @@ const EYTSpeech = (() => {
         return getBestPortugueseVoice();
     }
 
+    function getCurrentVoice() {
+        return currentVoice;
+    }
+
     function getConfig() {
         return {
             ...CONFIG
         };
     }
 
-    /* =========================================================
+    /* ==========================================================================
        DIAGNÓSTICO
-    ========================================================= */
+       ========================================================================== */
 
     function debugVoices() {
         loadVoices();
@@ -850,17 +1437,22 @@ const EYTSpeech = (() => {
             getEnglishVoices();
 
         console.group(
-            "[EYT Speech] English voice ranking"
+            "[EYT Speech] Ranking das vozes inglesas"
         );
 
-        if (!english.length) {
+        if (
+            !english.length
+        ) {
             console.warn(
-                "No English voice was exposed by this browser."
+                "Nenhuma voz inglesa foi disponibilizada pelo navegador."
             );
         }
 
         english.forEach(
-            (voice, index) => {
+            (
+                voice,
+                index
+            ) => {
                 console.log(
                     `${index + 1}. ${voice.name}`,
                     {
@@ -883,10 +1475,10 @@ const EYTSpeech = (() => {
             getBestEnglishVoice();
 
         console.log(
-            "SELECTED:",
+            "VOZ SELECIONADA:",
             selected
                 ? `${selected.name} (${selected.lang})`
-                : "Browser default en-US voice"
+                : "Nenhuma voz inglesa específica disponível"
         );
 
         console.groupEnd();
@@ -894,11 +1486,13 @@ const EYTSpeech = (() => {
         return selected;
     }
 
-    /* =========================================================
+    /* ==========================================================================
        INICIALIZAÇÃO
-    ========================================================= */
+       ========================================================================== */
 
-    if (isSupported()) {
+    if (
+        isSupported()
+    ) {
         loadVoices();
 
         window.speechSynthesis.addEventListener(
@@ -906,32 +1500,40 @@ const EYTSpeech = (() => {
             () => {
                 loadVoices();
 
-                if (CONFIG.debug) {
+                if (
+                    CONFIG.debug
+                ) {
                     const selected =
                         getBestEnglishVoice();
 
-                    if (selected) {
+                    if (
+                        selected
+                    ) {
                         console.log(
-                            `[EYT Speech] English voice ready: ${selected.name} (${selected.lang})`
+                            `[EYT Speech] Voz inglesa pronta: ${selected.name} (${selected.lang})`
                         );
                     }
                 }
             }
         );
 
-        window.setTimeout(
-            loadVoices,
-            250
-        );
+        /*
+         * Chromium pode preencher a lista em momentos diferentes.
+         */
 
-        window.setTimeout(
-            loadVoices,
-            750
-        );
-
-        window.setTimeout(
-            loadVoices,
-            1500
+        [
+            100,
+            300,
+            750,
+            1500,
+            2500
+        ].forEach(
+            delay => {
+                window.setTimeout(
+                    loadVoices,
+                    delay
+                );
+            }
         );
     }
 
@@ -950,12 +1552,16 @@ const EYTSpeech = (() => {
         isSpeaking,
 
         loadVoices,
+        waitForVoices,
+
         getVoices,
         getEnglishVoices,
+        getPortugueseVoices,
 
         getBestVoice,
         getSelectedEnglishVoice,
         getSelectedPortugueseVoice,
+        getCurrentVoice,
 
         speak,
         speakEnglish,
