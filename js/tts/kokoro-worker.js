@@ -1,6 +1,11 @@
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const KOKORO_MODULE_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 
+const RUNTIME = {
+    device: "wasm",
+    dtype: "q8"
+};
+
 const PROFILES = {
     "en-GB": {
         teacher: "bf_emma",
@@ -24,7 +29,6 @@ const PROFILES = {
 let KokoroTTS = null;
 let tts = null;
 let initPromise = null;
-let runtime = null;
 
 const originalFetch =
     self.fetch.bind(self);
@@ -62,7 +66,9 @@ function clamp(
     const number =
         Number(value);
 
-    return Number.isFinite(number)
+    return Number.isFinite(
+        number
+    )
         ? Math.min(
             max,
             Math.max(
@@ -73,20 +79,7 @@ function clamp(
         : fallback;
 }
 
-function isMobileDevice() {
-    const userAgent =
-        String(
-            self.navigator?.userAgent ||
-            ""
-        );
-
-    return /Android|iPhone|iPad|iPod|Mobile/i
-        .test(
-            userAgent
-        );
-}
-
-function postStatus(
+function sendStatus(
     status,
     extra = {}
 ) {
@@ -96,21 +89,24 @@ function postStatus(
 
         status,
 
+        device:
+            RUNTIME.device,
+
+        dtype:
+            RUNTIME.dtype,
+
         ...extra
     });
 }
 
 /* ==========================================================================
-   FETCH PROXY
+   FETCH
 
-   Todo acesso ao Hugging Face é redirecionado para /hf/ no domínio
-   da própria Vanessa School.
+   Mantemos o Hugging Face passando pelo domínio da Vanessa School.
 
-   Browser:
-   /hf/onnx-community/...
-
-   Vercel:
-   https://huggingface.co/onnx-community/...
+   huggingface.co/...
+   ↓
+   vanessaschool.vercel.app/hf/...
    ========================================================================== */
 
 function patchFetch() {
@@ -128,11 +124,11 @@ function patchFetch() {
             input,
             init
         ) => {
-            let urlString =
+            let originalUrl =
                 "";
 
             try {
-                urlString =
+                originalUrl =
                     typeof input ===
                         "string"
                         ? input
@@ -143,9 +139,13 @@ function patchFetch() {
 
                 const url =
                     new URL(
-                        urlString,
+                        originalUrl,
                         self.location.origin
                     );
+
+                /*
+                 * Arquivos normais do Hugging Face.
+                 */
 
                 if (
                     url.hostname ===
@@ -154,9 +154,16 @@ function patchFetch() {
                     const proxyUrl =
                         `${self.location.origin}/hf${url.pathname}${url.search}`;
 
+                    sendStatus(
+                        "download-request",
+                        {
+                            file:
+                                url.pathname
+                        }
+                    );
+
                     if (
-                        input instanceof
-                        Request
+                        input instanceof Request
                     ) {
                         const proxiedRequest =
                             new Request(
@@ -176,16 +183,20 @@ function patchFetch() {
                     );
                 }
 
+                /*
+                 * Demais URLs, incluindo CDN/Xet após redirects.
+                 */
+
                 return originalFetch(
                     input,
                     init
                 );
             } catch (error) {
-                postStatus(
-                    "fetch-error",
+                sendStatus(
+                    "download-error",
                     {
                         url:
-                            urlString,
+                            originalUrl,
 
                         message:
                             error?.message ||
@@ -199,10 +210,10 @@ function patchFetch() {
 }
 
 /* ==========================================================================
-   BIBLIOTECA
+   KOKORO LIBRARY
    ========================================================================== */
 
-async function loadKokoroModule() {
+async function loadLibrary() {
     if (
         KokoroTTS
     ) {
@@ -211,12 +222,8 @@ async function loadKokoroModule() {
 
     patchFetch();
 
-    postStatus(
-        "library-loading",
-        {
-            url:
-                KOKORO_MODULE_URL
-        }
+    sendStatus(
+        "library-loading"
     );
 
     const module =
@@ -224,18 +231,18 @@ async function loadKokoroModule() {
             KOKORO_MODULE_URL
         );
 
-    KokoroTTS =
-        module.KokoroTTS;
-
     if (
-        !KokoroTTS
+        !module?.KokoroTTS
     ) {
         throw new Error(
-            "KokoroTTS não foi exportado pelo módulo kokoro-js."
+            "KokoroTTS não foi encontrado no módulo kokoro-js."
         );
     }
 
-    postStatus(
+    KokoroTTS =
+        module.KokoroTTS;
+
+    sendStatus(
         "library-ready"
     );
 
@@ -243,118 +250,16 @@ async function loadKokoroModule() {
 }
 
 /* ==========================================================================
-   WEBGPU
+   MODEL
    ========================================================================== */
 
-async function hasWebGPU() {
-    try {
-        if (
-            !self.navigator?.gpu
-        ) {
-            return false;
-        }
-
-        /*
-         * Não usamos powerPreference.
-         *
-         * O Chromium atualmente ignora essa opção
-         * no Windows e gera apenas um warning.
-         */
-
-        const adapter =
-            await self
-                .navigator
-                .gpu
-                .requestAdapter();
-
-        return Boolean(
-            adapter
-        );
-    } catch (_) {
-        return false;
-    }
-}
-
-/* ==========================================================================
-   RUNTIME
-
-   Mobile:
-   WASM + Q4
-
-   Desktop com GPU:
-   WebGPU + FP32
-
-   Desktop sem GPU:
-   WASM + Q4
-   ========================================================================== */
-
-async function selectRuntime() {
-    const mobile =
-        isMobileDevice();
-
-    if (
-        mobile
-    ) {
-        return {
-            device:
-                "wasm",
-
-            dtype:
-                "q4",
-
-            reason:
-                "mobile"
-        };
-    }
-
-    const gpu =
-        await hasWebGPU();
-
-    if (
-        gpu
-    ) {
-        return {
-            device:
-                "webgpu",
-
-            dtype:
-                "fp32",
-
-            reason:
-                "webgpu"
-        };
-    }
-
-    return {
-        device:
-            "wasm",
-
-        dtype:
-            "q4",
-
-        reason:
-            "fallback"
-    };
-}
-
-/* ==========================================================================
-   MODELO
-   ========================================================================== */
-
-async function loadModel(
-    device,
-    dtype,
-    reason
-) {
+async function loadModel() {
     const TTS =
-        await loadKokoroModule();
+        await loadLibrary();
 
-    postStatus(
+    sendStatus(
         "model-loading",
         {
-            device,
-            dtype,
-            reason,
             model:
                 MODEL_ID
         }
@@ -365,82 +270,65 @@ async function loadModel(
             .from_pretrained(
                 MODEL_ID,
                 {
-                    device,
-                    dtype,
+                    device:
+                        RUNTIME.device,
+
+                    dtype:
+                        RUNTIME.dtype,
 
                     progress_callback:
                         progress => {
-                            const payload = {
-                                device,
-                                dtype
+                            const status = {
+                                file:
+                                    progress?.file ||
+                                    null,
+
+                                progressStatus:
+                                    progress?.status ||
+                                    null
                             };
 
                             if (
-                                progress &&
-                                typeof progress ===
-                                "object"
+                                Number.isFinite(
+                                    progress?.progress
+                                )
                             ) {
-                                if (
-                                    progress.status !=
-                                    null
-                                ) {
-                                    payload.progressStatus =
-                                        progress.status;
-                                }
-
-                                if (
-                                    progress.file !=
-                                    null
-                                ) {
-                                    payload.file =
-                                        progress.file;
-                                }
-
-                                if (
-                                    Number.isFinite(
-                                        progress.progress
-                                    )
-                                ) {
-                                    payload.progress =
-                                        progress.progress;
-                                }
-
-                                if (
-                                    Number.isFinite(
-                                        progress.loaded
-                                    )
-                                ) {
-                                    payload.loaded =
-                                        progress.loaded;
-                                }
-
-                                if (
-                                    Number.isFinite(
-                                        progress.total
-                                    )
-                                ) {
-                                    payload.total =
-                                        progress.total;
-                                }
+                                status.progress =
+                                    progress.progress;
                             }
 
-                            postStatus(
+                            if (
+                                Number.isFinite(
+                                    progress?.loaded
+                                )
+                            ) {
+                                status.loaded =
+                                    progress.loaded;
+                            }
+
+                            if (
+                                Number.isFinite(
+                                    progress?.total
+                                )
+                            ) {
+                                status.total =
+                                    progress.total;
+                            }
+
+                            sendStatus(
                                 "model-progress",
-                                payload
+                                status
                             );
                         }
                 }
             );
 
-    runtime = {
-        device,
-        dtype,
-        reason
-    };
-
-    postStatus(
+    sendStatus(
         "ready",
-        runtime
+        {
+            reason:
+                "wasm-q8"
+        }
     );
 
     return instance;
@@ -460,73 +348,24 @@ async function ensureTTS() {
     }
 
     initPromise =
-        (
-            async () => {
-                const preferred =
-                    await selectRuntime();
-
-                try {
+        loadModel()
+            .then(
+                instance => {
                     tts =
-                        await loadModel(
-                            preferred.device,
-                            preferred.dtype,
-                            preferred.reason
-                        );
+                        instance;
 
                     return tts;
-                } catch (error) {
-                    /*
-                     * WebGPU falhou?
-                     *
-                     * Faz nova tentativa completa com
-                     * WASM Q4.
-                     */
-
-                    if (
-                        preferred.device ===
-                        "webgpu"
-                    ) {
-                        postStatus(
-                            "fallback",
-                            {
-                                from:
-                                    "webgpu",
-
-                                to:
-                                    "wasm",
-
-                                message:
-                                    error?.message ||
-                                    String(error)
-                            }
-                        );
-
-                        tts =
-                            await loadModel(
-                                "wasm",
-                                "q4",
-                                "webgpu-failed"
-                            );
-
-                        return tts;
-                    }
-
-                    throw error;
                 }
-            }
-        )()
+            )
             .catch(
                 error => {
                     tts =
                         null;
 
-                    runtime =
-                        null;
-
                     initPromise =
                         null;
 
-                    postStatus(
+                    sendStatus(
                         "error",
                         {
                             message:
@@ -543,7 +382,7 @@ async function ensureTTS() {
 }
 
 /* ==========================================================================
-   VOZ
+   VOICE
    ========================================================================== */
 
 function chooseVoice(
@@ -557,14 +396,14 @@ function chooseVoice(
         return requestedVoice;
     }
 
-    const language =
+    const normalizedLang =
         normalizeLang(
             lang
         );
 
     const profile =
         PROFILES[
-        language
+        normalizedLang
         ] ||
         PROFILES[
         "en-GB"
@@ -632,14 +471,25 @@ async function generate(
             )
         );
 
-    postStatus(
+    sendStatus(
+        "voice-loading",
+        {
+            voice,
+            lang
+        }
+    );
+
+    /*
+     * A primeira chamada pode baixar o arquivo .bin da voz.
+     */
+
+    sendStatus(
         "generating",
         {
             id:
                 message.id,
 
             voice,
-
             lang
         }
     );
@@ -654,35 +504,51 @@ async function generate(
                 }
             );
 
+    if (
+        !audio ||
+        typeof audio.toBlob !==
+        "function"
+    ) {
+        throw new Error(
+            "O Kokoro não retornou um objeto de áudio válido."
+        );
+    }
+
     const blob =
         audio.toBlob();
 
     if (
-        !(blob instanceof Blob) ||
+        !blob ||
         blob.size ===
         0
     ) {
         throw new Error(
-            "O Kokoro retornou um áudio vazio."
+            "O Kokoro gerou um áudio vazio."
         );
     }
 
     return {
         blob,
+
         voice,
+
         lang,
 
-        runtime:
-            runtime
-                ? {
-                    ...runtime
-                }
-                : null
+        runtime: {
+            device:
+                RUNTIME.device,
+
+            dtype:
+                RUNTIME.dtype,
+
+            reason:
+                "wasm-q8"
+        }
     };
 }
 
 /* ==========================================================================
-   MENSAGENS
+   MESSAGES
    ========================================================================== */
 
 self.addEventListener(
@@ -703,7 +569,16 @@ self.addEventListener(
                     type:
                         "init-complete",
 
-                    runtime
+                    runtime: {
+                        device:
+                            RUNTIME.device,
+
+                        dtype:
+                            RUNTIME.dtype,
+
+                        reason:
+                            "wasm-q8"
+                    }
                 });
             } catch (error) {
                 self.postMessage({
@@ -772,5 +647,20 @@ self.addEventListener(
                     String(error)
             });
         }
+    }
+);
+
+/* ==========================================================================
+   READY
+   ========================================================================== */
+
+sendStatus(
+    "worker-ready",
+    {
+        model:
+            MODEL_ID,
+
+        runtime:
+            "wasm-q8"
     }
 );
