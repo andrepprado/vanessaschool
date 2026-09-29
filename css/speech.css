@@ -1,48 +1,68 @@
 /* ==========================================================================
    ENGLISH IN YOUR TIME
    SPEECH / PRONUNCIATION UI
+   Arquivo: css/speech.css
+
+   Compatível com:
+   .eyt-speech-button
+   .eyt-question-speech
+   .eyt-answer-shell
+   .eyt-answer-speech
+   .eyt-word-shell
+   .eyt-word-speech
+   .eyt-feedback-speech
+   .eyt-audio-coach
+
+   Este arquivo deve ser carregado DEPOIS de css/style.css.
    ========================================================================== */
+
 
 /* ==========================================================================
-   1. RESET LOCAL
-   Impede regras globais de button/svg/img de quebrarem o componente.
+   1. VARIÁVEIS LOCAIS
    ========================================================================== */
 
-.speech-button,
-.speech-button *,
-.lesson-audio-coach,
-.lesson-audio-coach * {
+:root {
+    --speech-navy: var(--navy, #0B1F3F);
+    --speech-navy-deep: var(--navy-deep, #071229);
+    --speech-magenta: var(--magenta, #E91E8C);
+    --speech-magenta-deep: var(--magenta-deep, #C2127A);
+    --speech-green: var(--green, #2F8A62);
+    --speech-green-dark: var(--green-dark, #236C4C);
+    --speech-red: var(--red, #C41230);
+    --speech-red-dark: var(--red-dark, #9E0E26);
+    --speech-white: #FFFFFF;
+    --speech-cream: var(--cream, #F7F3EA);
+    --speech-cream-light: var(--cream-light, #FBF9F4);
+    --speech-ink: var(--ink, #1C1F2A);
+    --speech-ink-soft: var(--ink-soft, #4A4F5E);
+    --speech-line: rgba(11, 31, 63, .12);
+    --speech-shadow: 0 7px 20px rgba(11, 31, 63, .09);
+    --speech-transition: 180ms cubic-bezier(.2, .7, .3, 1);
+}
+
+
+/* ==========================================================================
+   2. RESET DOS COMPONENTES DE ÁUDIO
+   ========================================================================== */
+
+.eyt-speech-button,
+.eyt-speech-button *,
+.eyt-audio-coach,
+.eyt-audio-coach *,
+.eyt-answer-shell,
+.eyt-answer-shell *,
+.eyt-word-shell,
+.eyt-word-shell *,
+.eyt-feedback-content,
+.eyt-feedback-content * {
     box-sizing: border-box;
 }
 
-button.speech-button {
+button.eyt-speech-button {
     position: relative;
     appearance: none;
     -webkit-appearance: none;
-    flex: 0 0 auto;
-    margin: 0;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    overflow: visible;
-    font: inherit;
-    line-height: 1;
-    text-align: center;
-    text-decoration: none;
-    vertical-align: middle;
-    cursor: pointer;
-    border-style: solid;
-    border-width: 1px;
-    border-radius: 999px;
-    -webkit-tap-highlight-color: transparent;
-}
 
-/* ==========================================================================
-   2. BOTÃO DE ÁUDIO BASE
-   ========================================================================== */
-
-button.speech-button {
     width: 42px;
     min-width: 42px;
     max-width: 42px;
@@ -51,55 +71,81 @@ button.speech-button {
     min-height: 42px;
     max-height: 42px;
 
-    color: var(--navy, #0b1f3f);
-    background: #ffffff;
-    border-color: rgba(11, 31, 63, 0.12);
+    margin: 0;
+    padding: 0;
 
-    box-shadow:
-        0 3px 10px rgba(11, 31, 63, 0.06);
+    flex: 0 0 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: visible;
+
+    color: var(--speech-navy);
+    background: var(--speech-white);
+
+    border: 1px solid var(--speech-line);
+    border-radius: 50%;
+
+    box-shadow: 0 3px 10px rgba(11, 31, 63, .055);
+
+    font: inherit;
+    line-height: 1;
+
+    cursor: pointer;
+
+    transform: none;
 
     transition:
-        color 0.18s ease,
-        background 0.18s ease,
-        border-color 0.18s ease,
-        box-shadow 0.18s ease,
-        transform 0.18s ease;
+        color var(--speech-transition),
+        background var(--speech-transition),
+        border-color var(--speech-transition),
+        box-shadow var(--speech-transition),
+        transform var(--speech-transition);
+
+    -webkit-tap-highlight-color: transparent;
 }
 
-button.speech-button:hover {
-    color: var(--magenta-deep, #c2127a);
-    background: rgba(233, 30, 140, 0.06);
-    border-color: rgba(233, 30, 140, 0.28);
+button.eyt-speech-button:hover {
+    color: var(--speech-magenta-deep);
+    background: rgba(233, 30, 140, .065);
+    border-color: rgba(233, 30, 140, .26);
 
     box-shadow:
-        0 6px 18px rgba(11, 31, 63, 0.09);
+        0 7px 18px rgba(11, 31, 63, .09);
 
     transform: translateY(-1px);
 }
 
-button.speech-button:active {
-    transform: scale(0.95);
+button.eyt-speech-button:active {
+    transform: scale(.94);
 }
 
-button.speech-button:focus {
+button.eyt-speech-button:focus {
     outline: none;
 }
 
-button.speech-button:focus-visible {
-    outline: 3px solid rgba(233, 30, 140, 0.18);
+button.eyt-speech-button:focus-visible {
+    outline: 3px solid rgba(233, 30, 140, .16);
     outline-offset: 3px;
 }
 
+button.eyt-speech-button:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+
 /* ==========================================================================
-   3. ÍCONE
+   3. ÍCONE SVG
    ========================================================================== */
 
-button.speech-button .speech-button-icon {
+.eyt-speech-button .eyt-speech-icon {
     position: relative !important;
     inset: auto !important;
-    z-index: 2;
 
-    flex: 0 0 20px;
+    z-index: 2;
 
     width: 20px !important;
     min-width: 20px !important;
@@ -112,11 +158,15 @@ button.speech-button .speech-button-icon {
     margin: 0 !important;
     padding: 0 !important;
 
+    flex: 0 0 20px;
+
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
 
-    overflow: hidden;
+    overflow: visible;
+
+    color: inherit;
 
     line-height: 0;
 
@@ -125,11 +175,9 @@ button.speech-button .speech-button-icon {
     transform: none !important;
 }
 
-button.speech-button .speech-button-icon svg {
+.eyt-speech-button .eyt-speaker-svg {
     position: static !important;
     inset: auto !important;
-
-    flex: 0 0 20px;
 
     width: 20px !important;
     min-width: 20px !important;
@@ -144,46 +192,56 @@ button.speech-button .speech-button-icon svg {
 
     display: block !important;
 
-    overflow: hidden;
+    overflow: visible;
 
-    transform: none !important;
+    color: inherit;
 
     pointer-events: none;
+
+    transform: none !important;
 }
 
+
 /* ==========================================================================
-   4. PULSO
+   4. ANEL DO BOTÃO
    ========================================================================== */
 
-button.speech-button .speech-button-pulse {
+.eyt-speech-button .eyt-speech-ring {
     position: absolute;
+
+    z-index: 1;
 
     top: -1px;
     right: -1px;
     bottom: -1px;
     left: -1px;
 
-    z-index: 1;
-
     display: block;
 
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: 50%;
 
     pointer-events: none;
 }
 
-button.speech-button.is-speaking {
-    color: #ffffff;
-    background: var(--magenta, #e91e8c);
-    border-color: var(--magenta, #e91e8c);
+
+/* ==========================================================================
+   5. ESTADO REPRODUZINDO
+   ========================================================================== */
+
+button.eyt-speech-button.is-speaking {
+    color: var(--speech-white);
+    background: var(--speech-magenta);
+    border-color: var(--speech-magenta);
 
     box-shadow:
-        0 7px 22px rgba(233, 30, 140, 0.24);
+        0 7px 22px rgba(233, 30, 140, .24);
+
+    transform: none;
 }
 
-button.speech-button.is-speaking .speech-button-pulse {
-    border-color: rgba(233, 30, 140, 0.38);
+button.eyt-speech-button.is-speaking .eyt-speech-ring {
+    border-color: rgba(233, 30, 140, .38);
 
     animation:
         eytSpeechPulse 1.35s ease-out infinite;
@@ -191,61 +249,75 @@ button.speech-button.is-speaking .speech-button-pulse {
 
 @keyframes eytSpeechPulse {
     0% {
-        opacity: 0.85;
-        transform: scale(0.92);
+        opacity: .85;
+        transform: scale(.92);
     }
 
     70% {
         opacity: 0;
-        transform: scale(1.45);
+        transform: scale(1.48);
     }
 
     100% {
         opacity: 0;
-        transform: scale(1.45);
+        transform: scale(1.48);
     }
 }
 
+
 /* ==========================================================================
-   5. LINHA DA PERGUNTA
+   6. ÁREA PRINCIPAL DO EXERCÍCIO
    ========================================================================== */
 
-.exercise-area .exercise-question-row {
+.lesson-page .exercise-area {
+    width: 100%;
+}
+
+.lesson-page .exercise-type {
+    margin-bottom: 13px;
+}
+
+
+/* ==========================================================================
+   7. PERGUNTA + BOTÃO DE ÁUDIO
+   ========================================================================== */
+
+.lesson-page .eyt-question-row {
     position: relative;
 
     width: 100%;
 
-    margin:
-        0 0 28px;
+    margin: 0 0 28px;
 
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 52px;
     align-items: center;
-    justify-content: space-between;
 
-    gap: 20px;
+    gap: 18px;
 }
 
-.exercise-area .exercise-question-row .exercise-question {
-    flex: 1 1 auto;
-
+.lesson-page .eyt-question-row .exercise-question {
     min-width: 0;
 
     margin: 0;
+
+    color: var(--speech-navy);
+
+    overflow-wrap: break-word;
 }
 
+
 /* ==========================================================================
-   6. BOTÃO DA PERGUNTA
+   8. BOTÃO DA PERGUNTA
    ========================================================================== */
 
-.exercise-area button.question-speech {
+.lesson-page button.eyt-question-speech {
     position: relative !important;
 
     top: auto !important;
     right: auto !important;
     bottom: auto !important;
     left: auto !important;
-
-    flex: 0 0 50px;
 
     width: 50px;
     min-width: 50px;
@@ -255,237 +327,83 @@ button.speech-button.is-speaking .speech-button-pulse {
     min-height: 50px;
     max-height: 50px;
 
+    flex: 0 0 50px;
+
     margin: 0;
 
-    color: var(--magenta-deep, #c2127a);
+    color: var(--speech-magenta-deep);
 
     background:
-        rgba(233, 30, 140, 0.065);
+        rgba(233, 30, 140, .07);
 
     border-color:
-        rgba(233, 30, 140, 0.18);
+        rgba(233, 30, 140, .18);
 
     box-shadow:
-        0 5px 16px rgba(11, 31, 63, 0.06);
+        0 5px 16px rgba(11, 31, 63, .06);
 
     transform: none;
 }
 
-.exercise-area button.question-speech:hover {
-    color: #ffffff;
+.lesson-page button.eyt-question-speech:hover {
+    color: var(--speech-white);
 
     background:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     border-color:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     box-shadow:
-        0 8px 22px rgba(233, 30, 140, 0.20);
+        0 9px 23px rgba(233, 30, 140, .22);
 
     transform:
         translateY(-1px);
 }
 
-.exercise-area button.question-speech:active {
+.lesson-page button.eyt-question-speech:active {
     transform:
-        scale(0.95);
+        scale(.95);
 }
 
-.exercise-area button.question-speech .speech-button-icon {
-    flex-basis: 22px;
-
-    width: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
-
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
-}
-
-.exercise-area button.question-speech .speech-button-icon svg {
-    width: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
-
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
-}
-
-/* ==========================================================================
-   7. DICA DE INATIVIDADE
-   ========================================================================== */
-
-.exercise-area .lesson-audio-coach {
-    position: relative;
-
-    width: auto;
-    max-width: 460px;
-
-    max-height: 0;
-
-    margin:
-        -16px 0 0;
-
-    padding:
-        0 16px;
-
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-
-    overflow: hidden;
-
-    color:
-        var(--navy, #0b1f3f);
+.lesson-page button.eyt-question-speech.is-speaking {
+    color: var(--speech-white);
 
     background:
-        rgba(233, 30, 140, 0.055);
-
-    border:
-        1px solid transparent;
-
-    border-radius: 14px;
-
-    opacity: 0;
-
-    pointer-events: none;
-
-    transform:
-        translateY(-5px);
-
-    transition:
-        max-height 0.26s ease,
-        margin 0.26s ease,
-        padding 0.26s ease,
-        opacity 0.20s ease,
-        transform 0.26s ease,
-        border-color 0.26s ease;
-}
-
-.exercise-area .lesson-audio-coach.is-visible {
-    max-height: 100px;
-
-    margin:
-        -10px 0 24px;
-
-    padding:
-        12px 15px;
-
-    opacity: 1;
+        var(--speech-magenta);
 
     border-color:
-        rgba(233, 30, 140, 0.14);
+        var(--speech-magenta);
 
-    transform:
-        translateY(0);
+    transform: none;
 }
 
+.lesson-page button.eyt-question-speech .eyt-speech-icon,
+.lesson-page button.eyt-question-speech .eyt-speaker-svg {
+    width: 23px !important;
+    min-width: 23px !important;
+    max-width: 23px !important;
+
+    height: 23px !important;
+    min-height: 23px !important;
+    max-height: 23px !important;
+
+    flex-basis: 23px;
+}
+
+
 /* ==========================================================================
-   8. ÍCONE DA DICA
+   9. CHAMADA DE ATENÇÃO DO BOTÃO DA PERGUNTA
    ========================================================================== */
 
-.exercise-area .lesson-audio-coach-icon {
-    position: relative;
-
-    flex:
-        0 0 34px;
-
-    width: 34px;
-    min-width: 34px;
-    max-width: 34px;
-
-    height: 34px;
-    min-height: 34px;
-    max-height: 34px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    overflow: hidden;
-
-    color:
-        var(--magenta, #e91e8c);
+.lesson-page button.eyt-question-speech.needs-attention {
+    color: var(--speech-white);
 
     background:
-        #ffffff;
-
-    border-radius:
-        999px;
-
-    box-shadow:
-        0 3px 10px rgba(11, 31, 63, 0.07);
-}
-
-.exercise-area .lesson-audio-coach-icon svg {
-    position: static !important;
-
-    width: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-
-    height: 18px !important;
-    min-height: 18px !important;
-    max-height: 18px !important;
-
-    display: block !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-
-    transform: none !important;
-}
-
-/* ==========================================================================
-   9. TEXTO DA DICA
-   ========================================================================== */
-
-.exercise-area .lesson-audio-coach-text {
-    min-width: 0;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 2px;
-}
-
-.exercise-area .lesson-audio-coach-text strong {
-    margin: 0;
-
-    color:
-        var(--navy, #0b1f3f);
-
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-.exercise-area .lesson-audio-coach-text span {
-    margin: 0;
-
-    color:
-        var(--ink-soft, #4a4f5e);
-
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-/* ==========================================================================
-   10. CHAMADA DE ATENÇÃO
-   ========================================================================== */
-
-.exercise-area button.question-speech.needs-attention {
-    color: #ffffff;
-
-    background:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     border-color:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     animation:
         eytSpeechAttention 1.55s ease-in-out infinite;
@@ -499,36 +417,205 @@ button.speech-button.is-speaking .speech-button-pulse {
             translateY(0) scale(1);
 
         box-shadow:
-            0 0 0 0 rgba(233, 30, 140, 0.30);
+            0 0 0 0 rgba(233, 30, 140, .28);
     }
 
     50% {
         transform:
-            translateY(-2px) scale(1.04);
+            translateY(-1px) scale(1.035);
 
         box-shadow:
             0 0 0 10px rgba(233, 30, 140, 0);
     }
 }
 
+
 /* ==========================================================================
-   11. LISTA DE ALTERNATIVAS
+   10. DICA DE ÁUDIO
    ========================================================================== */
 
-.exercise-area .answer-options {
+.lesson-page .eyt-audio-coach {
+    position: relative;
+
+    width: 100%;
+    max-width: 510px;
+
+    max-height: 0;
+
+    margin:
+        -14px 0 0;
+
+    padding:
+        0 15px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    overflow: hidden;
+
+    color:
+        var(--speech-navy);
+
+    background:
+        rgba(233, 30, 140, .05);
+
+    border:
+        1px solid transparent;
+
+    border-radius: 13px;
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transform:
+        translateY(-5px);
+
+    transition:
+        max-height .26s ease,
+        margin .26s ease,
+        padding .26s ease,
+        opacity .20s ease,
+        transform .26s ease,
+        border-color .26s ease;
+}
+
+.lesson-page .eyt-audio-coach.is-visible {
+    max-height: 100px;
+
+    margin:
+        -12px 0 25px;
+
+    padding:
+        11px 14px;
+
+    opacity: 1;
+
+    border-color:
+        rgba(233, 30, 140, .13);
+
+    transform:
+        translateY(0);
+}
+
+
+/* ==========================================================================
+   11. ÍCONE DA DICA
+   ========================================================================== */
+
+.lesson-page .eyt-audio-coach-icon {
+    position: relative;
+
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+
+    flex: 0 0 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    color:
+        var(--speech-magenta);
+
+    background:
+        var(--speech-white);
+
+    border:
+        1px solid rgba(233, 30, 140, .1);
+
+    border-radius:
+        50%;
+
+    box-shadow:
+        0 3px 10px rgba(11, 31, 63, .065);
+}
+
+.lesson-page .eyt-audio-coach-icon svg {
+    position: static !important;
+
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    display: block !important;
+
+    color: inherit;
+
+    transform: none !important;
+}
+
+
+/* ==========================================================================
+   12. TEXTO DA DICA
+   ========================================================================== */
+
+.lesson-page .eyt-audio-coach-copy {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 1px;
+}
+
+.lesson-page .eyt-audio-coach-copy strong {
+    margin: 0;
+
+    color:
+        var(--speech-navy);
+
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.lesson-page .eyt-audio-coach-copy span {
+    margin: 0;
+
+    color:
+        var(--speech-ink-soft);
+
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+
+/* ==========================================================================
+   13. LISTA DE ALTERNATIVAS
+   ========================================================================== */
+
+.lesson-page .answer-options {
     width: 100%;
 
     display: flex;
     flex-direction: column;
 
-    gap: 12px;
+    gap: 11px;
 }
 
+
 /* ==========================================================================
-   12. CONTAINER DA ALTERNATIVA
+   14. SHELL DA ALTERNATIVA
    ========================================================================== */
 
-.exercise-area .answer-option-container {
+.lesson-page .eyt-answer-shell {
     position: relative;
 
     width: 100%;
@@ -538,13 +625,16 @@ button.speech-button.is-speaking .speech-button-pulse {
     padding: 0;
 
     display: block;
+
+    border-radius: 12px;
 }
 
+
 /* ==========================================================================
-   13. BOTÃO PRINCIPAL DA ALTERNATIVA
+   15. ALTERNATIVA PRINCIPAL
    ========================================================================== */
 
-.exercise-area .answer-option-container>.answer-option {
+.lesson-page .eyt-answer-shell>.answer-option {
     position: relative;
 
     width: 100%;
@@ -553,36 +643,143 @@ button.speech-button.is-speaking .speech-button-pulse {
 
     margin: 0;
 
+    /*
+     * Espaço à direita reservado ao alto-falante.
+     */
+
     padding:
-        15px 68px 15px 17px;
+        14px 66px 14px 17px;
 
     display: flex;
     align-items: center;
 
+    color:
+        var(--speech-ink);
+
+    background:
+        var(--speech-white);
+
+    border:
+        1px solid var(--speech-line);
+
+    border-radius:
+        12px;
+
     text-align: left;
 
-    box-sizing: border-box;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+
+    cursor: pointer;
+
+    box-shadow: none;
+
+    transform: none;
+
+    transition:
+        color var(--speech-transition),
+        background var(--speech-transition),
+        border-color var(--speech-transition),
+        box-shadow var(--speech-transition),
+        transform var(--speech-transition);
 }
 
+.lesson-page .eyt-answer-shell>.answer-option:hover {
+    color:
+        var(--speech-navy);
+
+    background:
+        #FFFFFF;
+
+    border-color:
+        rgba(11, 31, 63, .24);
+
+    box-shadow:
+        0 4px 12px rgba(11, 31, 63, .055);
+
+    transform:
+        translateY(-1px);
+}
+
+
 /* ==========================================================================
-   14. TEXTO DA ALTERNATIVA
+   16. TEXTO DA ALTERNATIVA
    ========================================================================== */
 
-.exercise-area .answer-option-text {
-    display: block;
-
+.lesson-page .eyt-answer-text {
     min-width: 0;
+
+    display: block;
 
     overflow-wrap: break-word;
 
     pointer-events: none;
 }
 
+
 /* ==========================================================================
-   15. ÁUDIO DA ALTERNATIVA
+   17. ALTERNATIVA SELECIONADA
    ========================================================================== */
 
-.exercise-area button.answer-option-speech {
+.lesson-page .eyt-answer-shell>.answer-option.selected {
+    color:
+        var(--speech-magenta-deep);
+
+    background:
+        rgba(233, 30, 140, .075);
+
+    border-color:
+        var(--speech-magenta);
+
+    box-shadow:
+        0 0 0 1px rgba(233, 30, 140, .035);
+
+    transform: none;
+}
+
+
+/* ==========================================================================
+   18. ALTERNATIVA CORRETA
+   ========================================================================== */
+
+.lesson-page .eyt-answer-shell>.answer-option.correct {
+    color:
+        var(--speech-green-dark);
+
+    background:
+        var(--green-soft, #EDF7F2);
+
+    border-color:
+        var(--speech-green);
+
+    box-shadow: none;
+}
+
+
+/* ==========================================================================
+   19. ALTERNATIVA INCORRETA
+   ========================================================================== */
+
+.lesson-page .eyt-answer-shell>.answer-option.incorrect {
+    color:
+        var(--speech-red-dark);
+
+    background:
+        var(--danger-soft, #FFF0F2);
+
+    border-color:
+        var(--speech-red);
+
+    box-shadow: none;
+}
+
+
+/* ==========================================================================
+   20. BOTÃO DE ÁUDIO DA ALTERNATIVA
+   ========================================================================== */
+
+.lesson-page button.eyt-answer-speech {
     position: absolute !important;
 
     z-index: 5;
@@ -600,173 +797,262 @@ button.speech-button.is-speaking .speech-button-pulse {
     min-height: 38px;
     max-height: 38px;
 
+    flex: 0 0 38px;
+
     margin: 0;
 
     color:
-        var(--navy, #0b1f3f);
+        var(--speech-navy);
 
     background:
-        rgba(247, 243, 234, 0.86);
+        rgba(247, 243, 234, .78);
 
     border-color:
-        rgba(11, 31, 63, 0.10);
+        rgba(11, 31, 63, .09);
 
-    box-shadow: none;
+    box-shadow:
+        none;
 
     transform:
         translateY(-50%);
 }
 
-.exercise-area button.answer-option-speech:hover {
+.lesson-page button.eyt-answer-speech:hover {
     color:
-        var(--magenta-deep, #c2127a);
+        var(--speech-magenta-deep);
 
     background:
-        rgba(233, 30, 140, 0.08);
+        rgba(233, 30, 140, .09);
 
     border-color:
-        rgba(233, 30, 140, 0.22);
+        rgba(233, 30, 140, .21);
 
-    box-shadow: none;
+    box-shadow:
+        none;
 
     transform:
         translateY(-50%) scale(1.04);
 }
 
-.exercise-area button.answer-option-speech:active {
+.lesson-page button.eyt-answer-speech:active {
     transform:
-        translateY(-50%) scale(0.94);
+        translateY(-50%) scale(.94);
 }
 
-.exercise-area button.answer-option-speech.is-speaking {
-    color: #ffffff;
-
-    background:
-        var(--magenta, #e91e8c);
-
-    border-color:
-        var(--magenta, #e91e8c);
-}
-
-/* ==========================================================================
-   16. ALTERNATIVA SELECIONADA
-   ========================================================================== */
-
-.exercise-area .answer-option-container:has(.answer-option.selected) button.answer-option-speech {
+.lesson-page button.eyt-answer-speech.is-speaking {
     color:
-        var(--magenta-deep, #c2127a);
+        var(--speech-white);
 
     background:
-        rgba(255, 255, 255, 0.78);
+        var(--speech-magenta);
 
     border-color:
-        rgba(233, 30, 140, 0.22);
+        var(--speech-magenta);
+
+    box-shadow:
+        0 5px 15px rgba(233, 30, 140, .20);
+
+    transform:
+        translateY(-50%);
 }
 
-.exercise-area .answer-option-container:has(.answer-option.selected) button.answer-option-speech.is-speaking {
-    color: #ffffff;
+.lesson-page button.eyt-answer-speech .eyt-speech-icon,
+.lesson-page button.eyt-answer-speech .eyt-speaker-svg {
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
 
-    background:
-        var(--magenta, #e91e8c);
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
 
-    border-color:
-        var(--magenta, #e91e8c);
+    flex-basis: 18px;
 }
+
 
 /* ==========================================================================
-   17. ALTERNATIVA CORRETA
+   21. ÁUDIO DA ALTERNATIVA SELECIONADA
    ========================================================================== */
 
-.exercise-area .answer-option-container:has(.answer-option.correct) button.answer-option-speech {
+.lesson-page .eyt-answer-shell:has(.answer-option.selected) button.eyt-answer-speech {
     color:
-        var(--green-dark, #1f6f50);
+        var(--speech-magenta-deep);
 
     background:
-        rgba(255, 255, 255, 0.80);
+        rgba(255, 255, 255, .86);
 
     border-color:
-        rgba(47, 138, 98, 0.22);
+        rgba(233, 30, 140, .22);
 }
 
-/* ==========================================================================
-   18. ALTERNATIVA INCORRETA
-   ========================================================================== */
-
-.exercise-area .answer-option-container:has(.answer-option.incorrect) button.answer-option-speech {
+.lesson-page .eyt-answer-shell:has(.answer-option.selected) button.eyt-answer-speech.is-speaking {
     color:
-        var(--red-dark, #9f0e28);
+        var(--speech-white);
 
     background:
-        rgba(255, 255, 255, 0.80);
+        var(--speech-magenta);
 
     border-color:
-        rgba(196, 18, 48, 0.20);
+        var(--speech-magenta);
 }
 
+
 /* ==========================================================================
-   19. GARANTIA DO ÁUDIO DURANTE SPEAKING
+   22. ÁUDIO DA ALTERNATIVA CORRETA
    ========================================================================== */
 
-.exercise-area .answer-option-container:has(.answer-option.correct) button.answer-option-speech.is-speaking,
-.exercise-area .answer-option-container:has(.answer-option.incorrect) button.answer-option-speech.is-speaking {
-    color: #ffffff;
+.lesson-page .eyt-answer-shell:has(.answer-option.correct) button.eyt-answer-speech {
+    color:
+        var(--speech-green-dark);
 
     background:
-        var(--magenta, #e91e8c);
+        rgba(255, 255, 255, .82);
 
     border-color:
-        var(--magenta, #e91e8c);
+        rgba(47, 138, 98, .22);
 }
 
+.lesson-page .eyt-answer-shell:has(.answer-option.correct) button.eyt-answer-speech.is-speaking {
+    color:
+        var(--speech-white);
+
+    background:
+        var(--speech-magenta);
+
+    border-color:
+        var(--speech-magenta);
+}
+
+
 /* ==========================================================================
-   20. WORD BANK
+   23. ÁUDIO DA ALTERNATIVA INCORRETA
    ========================================================================== */
 
-.exercise-area .word-bank {
+.lesson-page .eyt-answer-shell:has(.answer-option.incorrect) button.eyt-answer-speech {
+    color:
+        var(--speech-red-dark);
+
+    background:
+        rgba(255, 255, 255, .82);
+
+    border-color:
+        rgba(196, 18, 48, .20);
+}
+
+.lesson-page .eyt-answer-shell:has(.answer-option.incorrect) button.eyt-answer-speech.is-speaking {
+    color:
+        var(--speech-white);
+
+    background:
+        var(--speech-magenta);
+
+    border-color:
+        var(--speech-magenta);
+}
+
+
+/* ==========================================================================
+   24. WORD BANK
+   ========================================================================== */
+
+.lesson-page .ordering-area {
     width: 100%;
-    max-width: 100%;
+}
+
+.lesson-page .word-bank {
+    width: 100%;
 
     display: flex;
     flex-wrap: wrap;
 
-    gap: 10px;
+    align-items: center;
+
+    gap: 9px;
 }
 
+
 /* ==========================================================================
-   21. CONTAINER DA PALAVRA
+   25. SHELL DO WORD CHIP
    ========================================================================== */
 
-.exercise-area .word-chip-container {
+.lesson-page .eyt-word-shell {
     position: relative;
+
+    max-width: 100%;
 
     display: inline-flex;
     align-items: center;
 
-    max-width: 100%;
+    margin: 0;
 }
 
+
 /* ==========================================================================
-   22. WORD CHIP
+   26. WORD CHIP
    ========================================================================== */
 
-.exercise-area .word-chip-container>.word-chip {
+.lesson-page .eyt-word-shell>.word-chip {
+    position: relative;
+
+    min-height: 42px;
+
     margin: 0;
 
-    padding-right:
-        39px;
+    padding:
+        10px 42px 10px 14px;
+
+    display: inline-flex;
+    align-items: center;
+
+    color:
+        var(--speech-navy);
+
+    background:
+        var(--speech-white);
+
+    border:
+        1px solid var(--speech-line);
+
+    border-radius:
+        10px;
+
+    box-shadow:
+        0 2px 0 var(--gray-300, #DDDAD3);
+
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+
+    transform: none;
+
+    transition:
+        color var(--speech-transition),
+        background var(--speech-transition),
+        border-color var(--speech-transition),
+        box-shadow var(--speech-transition),
+        transform var(--speech-transition);
 }
 
+.lesson-page .eyt-word-shell>.word-chip:hover {
+    border-color:
+        rgba(11, 31, 63, .25);
+
+    transform:
+        translateY(-1px);
+}
+
+
 /* ==========================================================================
-   23. ÁUDIO DO WORD CHIP
+   27. ÁUDIO DO WORD CHIP
    ========================================================================== */
 
-.exercise-area button.word-chip-speech {
+.lesson-page button.eyt-word-speech {
     position: absolute !important;
 
-    z-index: 3;
+    z-index: 4;
 
     top: 50% !important;
-    right: 4px !important;
+    right: 5px !important;
     bottom: auto !important;
     left: auto !important;
 
@@ -778,10 +1064,12 @@ button.speech-button.is-speaking .speech-button-pulse {
     min-height: 30px;
     max-height: 30px;
 
+    flex: 0 0 30px;
+
     margin: 0;
 
     color:
-        var(--navy, #0b1f3f);
+        var(--speech-navy);
 
     background:
         transparent;
@@ -796,34 +1084,12 @@ button.speech-button.is-speaking .speech-button-pulse {
         translateY(-50%);
 }
 
-.exercise-area button.word-chip-speech .speech-button-icon {
-    flex-basis: 16px;
-
-    width: 16px !important;
-    min-width: 16px !important;
-    max-width: 16px !important;
-
-    height: 16px !important;
-    min-height: 16px !important;
-    max-height: 16px !important;
-}
-
-.exercise-area button.word-chip-speech .speech-button-icon svg {
-    width: 16px !important;
-    min-width: 16px !important;
-    max-width: 16px !important;
-
-    height: 16px !important;
-    min-height: 16px !important;
-    max-height: 16px !important;
-}
-
-.exercise-area button.word-chip-speech:hover {
+.lesson-page button.eyt-word-speech:hover {
     color:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     background:
-        rgba(233, 30, 140, 0.07);
+        rgba(233, 30, 140, .075);
 
     border-color:
         transparent;
@@ -835,110 +1101,155 @@ button.speech-button.is-speaking .speech-button-pulse {
         translateY(-50%);
 }
 
-.exercise-area button.word-chip-speech:active {
+.lesson-page button.eyt-word-speech:active {
     transform:
-        translateY(-50%) scale(0.92);
+        translateY(-50%) scale(.92);
 }
 
-.exercise-area button.word-chip-speech.is-speaking {
-    color: #ffffff;
+.lesson-page button.eyt-word-speech.is-speaking {
+    color:
+        var(--speech-white);
 
     background:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     border-color:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
+
+    transform:
+        translateY(-50%);
 }
+
+.lesson-page button.eyt-word-speech .eyt-speech-icon,
+.lesson-page button.eyt-word-speech .eyt-speaker-svg {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+
+    flex-basis: 16px;
+}
+
 
 /* ==========================================================================
-   24. WORD CHIP USADO
+   28. WORD CHIP UTILIZADO
    ========================================================================== */
 
-.exercise-area .word-chip-container:has(.word-chip.used) {
-    opacity: 0.32;
+.lesson-page .eyt-word-shell:has(.word-chip.used) {
+    opacity: .34;
 }
 
-.exercise-area .word-chip-container:has(.word-chip.used) button.word-chip-speech {
+.lesson-page .eyt-word-shell:has(.word-chip.used) button.eyt-word-speech {
     pointer-events: auto;
 }
 
-.exercise-area .word-chip-container:has(.word-chip.used)>.word-chip {
+.lesson-page .eyt-word-shell:has(.word-chip.used)>.word-chip {
     opacity: 1;
 }
 
+
 /* ==========================================================================
-   25. RESPOSTA ORDENADA
+   29. RESPOSTA ORDENADA
    ========================================================================== */
 
-.exercise-area .ordered-answer {
+.lesson-page .ordered-answer {
     width: 100%;
     max-width: 100%;
 }
 
-.exercise-area .ordered-answer .selected-word-chip {
-    padding-right:
-        inherit;
+.lesson-page .ordered-answer .selected-word-chip {
+    padding-right: 15px;
 }
+
 
 /* ==========================================================================
-   26. INPUT
+   30. INPUT DE RESPOSTA
    ========================================================================== */
 
-.exercise-area .text-answer-input.answer-correct {
+.lesson-page .text-answer-input.answer-correct {
     color:
-        var(--green-dark, #1f6f50);
+        var(--speech-green-dark);
 
     background:
-        var(--green-soft, #edf8f3);
+        var(--green-soft, #EDF7F2);
 
     border-color:
-        var(--green, #2f8a62);
+        var(--speech-green);
 }
 
-.exercise-area .text-answer-input.answer-incorrect {
+.lesson-page .text-answer-input.answer-incorrect {
     color:
-        var(--red-dark, #9f0e28);
+        var(--speech-red-dark);
 
     background:
-        var(--danger-soft, #fff0f3);
+        var(--danger-soft, #FFF0F2);
 
     border-color:
-        var(--red, #c41230);
+        var(--speech-red);
 }
+
 
 /* ==========================================================================
-   27. FEEDBACK
+   31. FEEDBACK
    ========================================================================== */
 
-.lesson-answer-footer .lesson-feedback-content {
+.lesson-page .eyt-feedback-content {
     width: 100%;
 
     display: flex;
     align-items: center;
 
-    gap: 16px;
+    gap: 15px;
 }
 
-.lesson-answer-footer .lesson-feedback-content>div {
+.lesson-page .eyt-feedback-copy {
     flex: 1 1 auto;
 
     min-width: 0;
 }
 
+.lesson-page .eyt-feedback-copy strong {
+    display: block;
+
+    margin: 0;
+
+    color:
+        var(--speech-navy);
+
+    font-family:
+        "Fraunces",
+        serif;
+
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.lesson-page .eyt-feedback-copy p {
+    margin-top: 3px;
+
+    color:
+        var(--speech-ink-soft);
+
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+
 /* ==========================================================================
-   28. ÁUDIO DO FEEDBACK
+   32. BOTÃO DE ÁUDIO DO FEEDBACK
    ========================================================================== */
 
-.lesson-answer-footer button.feedback-speech {
+.lesson-page button.eyt-feedback-speech {
     position: relative !important;
 
     top: auto !important;
     right: auto !important;
     bottom: auto !important;
     left: auto !important;
-
-    flex:
-        0 0 42px;
 
     width: 42px;
     min-width: 42px;
@@ -948,6 +1259,8 @@ button.speech-button.is-speaking .speech-button-pulse {
     min-height: 42px;
     max-height: 42px;
 
+    flex: 0 0 42px;
+
     margin: 0;
 
     box-shadow:
@@ -957,67 +1270,97 @@ button.speech-button.is-speaking .speech-button-pulse {
         none;
 }
 
-.lesson-answer-footer.correct button.feedback-speech {
+.lesson-page .lesson-answer-footer.correct button.eyt-feedback-speech {
     color:
-        var(--green-dark, #1f6f50);
+        var(--speech-green-dark);
 
     background:
-        rgba(255, 255, 255, 0.72);
+        rgba(255, 255, 255, .76);
 
     border-color:
-        rgba(47, 138, 98, 0.22);
+        rgba(47, 138, 98, .22);
 }
 
-.lesson-answer-footer.incorrect button.feedback-speech {
+.lesson-page .lesson-answer-footer.incorrect button.eyt-feedback-speech {
     color:
-        var(--red-dark, #9f0e28);
+        var(--speech-red-dark);
 
     background:
-        rgba(255, 255, 255, 0.72);
+        rgba(255, 255, 255, .76);
 
     border-color:
-        rgba(196, 18, 48, 0.20);
+        rgba(196, 18, 48, .20);
 }
 
-.lesson-answer-footer.correct button.feedback-speech.is-speaking,
-.lesson-answer-footer.incorrect button.feedback-speech.is-speaking {
-    color: #ffffff;
+.lesson-page .lesson-answer-footer.correct button.eyt-feedback-speech.is-speaking,
+.lesson-page .lesson-answer-footer.incorrect button.eyt-feedback-speech.is-speaking {
+    color:
+        var(--speech-white);
 
     background:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 
     border-color:
-        var(--magenta, #e91e8c);
+        var(--speech-magenta);
 }
+
 
 /* ==========================================================================
-   29. DESABILITADOS
+   33. BOTÕES DESABILITADOS
    ========================================================================== */
 
-.exercise-area .answer-option:disabled,
-.exercise-area .word-chip:disabled {
+.lesson-page .answer-option:disabled,
+.lesson-page .word-chip:disabled {
     cursor: default;
 }
 
-.exercise-area .answer-option:disabled:hover,
-.exercise-area .word-chip:disabled:hover {
-    transform:
-        none;
+.lesson-page .answer-option:disabled:hover,
+.lesson-page .word-chip:disabled:hover {
+    transform: none;
 }
 
-button.speech-button:disabled {
-    cursor: default;
-
-    opacity:
-        0.45;
-}
 
 /* ==========================================================================
-   30. PROTEÇÃO ABSOLUTA CONTRA SVG GLOBAL
+   34. NOTA DE REVISÃO DA LIÇÃO
    ========================================================================== */
 
-html body button.speech-button>span.speech-button-icon {
+.lesson-page .eyt-review-note {
+    width: min(100%, 530px);
+
+    margin:
+        -10px auto 24px;
+
+    padding:
+        12px 15px;
+
+    color:
+        var(--speech-ink-soft);
+
+    background:
+        rgba(201, 162, 39, .08);
+
+    border:
+        1px solid rgba(201, 162, 39, .16);
+
+    border-radius:
+        11px;
+
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+
+/* ==========================================================================
+   35. PROTEÇÃO CONTRA REGRAS GLOBAIS DE SVG
+   ========================================================================== */
+
+html body.lesson-page button.eyt-speech-button>span.eyt-speech-icon {
     position: relative !important;
+
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
 
     width: 20px !important;
     min-width: 20px !important;
@@ -1031,13 +1374,15 @@ html body button.speech-button>span.speech-button-icon {
     padding: 0 !important;
 
     display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 
-    overflow: hidden !important;
+    overflow: visible !important;
 
     transform: none !important;
 }
 
-html body button.speech-button>span.speech-button-icon>svg {
+html body.lesson-page button.eyt-speech-button>span.eyt-speech-icon>svg.eyt-speaker-svg {
     position: static !important;
 
     top: auto !important;
@@ -1058,26 +1403,50 @@ html body button.speech-button>span.speech-button-icon>svg {
 
     display: block !important;
 
+    overflow: visible !important;
+
     transform: none !important;
 }
 
-/* Pergunta */
 
-html body button.question-speech>span.speech-button-icon,
-html body button.question-speech>span.speech-button-icon>svg {
-    width: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
+/* ==========================================================================
+   36. PROTEÇÃO ESPECÍFICA DO BOTÃO DA PERGUNTA
+   ========================================================================== */
 
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
+html body.lesson-page button.eyt-question-speech>span.eyt-speech-icon,
+html body.lesson-page button.eyt-question-speech>span.eyt-speech-icon>svg.eyt-speaker-svg {
+    width: 23px !important;
+    min-width: 23px !important;
+    max-width: 23px !important;
+
+    height: 23px !important;
+    min-height: 23px !important;
+    max-height: 23px !important;
 }
 
-/* Word chip */
 
-html body button.word-chip-speech>span.speech-button-icon,
-html body button.word-chip-speech>span.speech-button-icon>svg {
+/* ==========================================================================
+   37. PROTEÇÃO ESPECÍFICA DAS ALTERNATIVAS
+   ========================================================================== */
+
+html body.lesson-page button.eyt-answer-speech>span.eyt-speech-icon,
+html body.lesson-page button.eyt-answer-speech>span.eyt-speech-icon>svg.eyt-speaker-svg {
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+}
+
+
+/* ==========================================================================
+   38. PROTEÇÃO ESPECÍFICA DOS WORD CHIPS
+   ========================================================================== */
+
+html body.lesson-page button.eyt-word-speech>span.eyt-speech-icon,
+html body.lesson-page button.eyt-word-speech>span.eyt-speech-icon>svg.eyt-speaker-svg {
     width: 16px !important;
     min-width: 16px !important;
     max-width: 16px !important;
@@ -1087,22 +1456,40 @@ html body button.word-chip-speech>span.speech-button-icon>svg {
     max-height: 16px !important;
 }
 
+
 /* ==========================================================================
-   31. TABLET
+   39. GARANTIA CONTRA ESTILOS ANTIGOS DO SPEECH
+   ========================================================================== */
+
+.lesson-page .speech-button,
+.lesson-page .question-speech,
+.lesson-page .answer-option-speech,
+.lesson-page .word-chip-speech,
+.lesson-page .feedback-speech {
+    /*
+     * Classes antigas não são mais utilizadas pelo licao.js novo.
+     * Esta regra existe apenas para impedir resíduos visuais caso
+     * algum HTML antigo permaneça no cache durante um deploy.
+     */
+}
+
+
+/* ==========================================================================
+   40. TABLET
    ========================================================================== */
 
 @media (max-width: 760px) {
 
-    .exercise-area .exercise-question-row {
+    .lesson-page .eyt-question-row {
+        grid-template-columns:
+            minmax(0, 1fr) 46px;
+
         gap: 12px;
 
-        margin-bottom:
-            24px;
+        margin-bottom: 24px;
     }
 
-    .exercise-area button.question-speech {
-        flex-basis: 44px;
-
+    .lesson-page button.eyt-question-speech {
         width: 44px;
         min-width: 44px;
         max-width: 44px;
@@ -1110,315 +1497,388 @@ html body button.word-chip-speech>span.speech-button-icon>svg {
         height: 44px;
         min-height: 44px;
         max-height: 44px;
+
+        flex-basis: 44px;
     }
 
-    .exercise-area .lesson-audio-coach {
-        max-width:
-            100%;
+    .lesson-page button.eyt-question-speech .eyt-speech-icon,
+    .lesson-page button.eyt-question-speech .eyt-speaker-svg {
+        width: 20px !important;
+        min-width: 20px !important;
+        max-width: 20px !important;
+
+        height: 20px !important;
+        min-height: 20px !important;
+        max-height: 20px !important;
     }
 
-    .exercise-area .answer-option-container>.answer-option {
-        min-height:
-            58px;
+    html body.lesson-page button.eyt-question-speech>span.eyt-speech-icon,
+    html body.lesson-page button.eyt-question-speech>span.eyt-speech-icon>svg.eyt-speaker-svg {
+        width: 20px !important;
+        min-width: 20px !important;
+        max-width: 20px !important;
+
+        height: 20px !important;
+        min-height: 20px !important;
+        max-height: 20px !important;
+    }
+
+    .lesson-page .eyt-audio-coach {
+        max-width: 100%;
+    }
+
+    .lesson-page .eyt-answer-shell>.answer-option {
+        min-height: 58px;
 
         padding:
-            14px 62px 14px 15px;
+            13px 61px 13px 15px;
     }
 
-    .exercise-area button.answer-option-speech {
-        right:
-            9px !important;
+    .lesson-page button.eyt-answer-speech {
+        right: 10px !important;
 
-        width:
-            38px;
+        width: 36px;
+        min-width: 36px;
+        max-width: 36px;
 
-        min-width:
-            38px;
+        height: 36px;
+        min-height: 36px;
+        max-height: 36px;
 
-        max-width:
-            38px;
-
-        height:
-            38px;
-
-        min-height:
-            38px;
-
-        max-height:
-            38px;
+        flex-basis: 36px;
     }
 
-    .lesson-answer-footer .lesson-feedback-content {
-        justify-content:
-            space-between;
-    }
 }
 
+
 /* ==========================================================================
-   32. MOBILE
+   41. CELULAR
    ========================================================================== */
 
-@media (max-width: 520px) {
+@media (max-width: 560px) {
 
-    .exercise-area .exercise-question-row {
-        align-items:
-            flex-start;
+    .lesson-page .eyt-question-row {
+        grid-template-columns:
+            minmax(0, 1fr) 44px;
 
-        gap:
-            10px;
+        align-items: start;
+
+        gap: 10px;
+
+        margin-bottom: 22px;
     }
 
-    .exercise-area button.question-speech {
-        flex-basis:
-            42px;
+    .lesson-page button.eyt-question-speech {
+        width: 42px;
+        min-width: 42px;
+        max-width: 42px;
 
-        width:
-            42px;
+        height: 42px;
+        min-height: 42px;
+        max-height: 42px;
 
-        min-width:
-            42px;
+        flex-basis: 42px;
 
-        max-width:
-            42px;
-
-        height:
-            42px;
-
-        min-height:
-            42px;
-
-        max-height:
-            42px;
-
-        margin-top:
-            2px;
+        margin-top: 1px;
     }
 
-    html body button.question-speech>span.speech-button-icon,
-    html body button.question-speech>span.speech-button-icon>svg {
-        width:
-            19px !important;
-
-        min-width:
-            19px !important;
-
-        max-width:
-            19px !important;
-
-        height:
-            19px !important;
-
-        min-height:
-            19px !important;
-
-        max-height:
-            19px !important;
-    }
-
-    .exercise-area .lesson-audio-coach.is-visible {
+    .lesson-page .eyt-audio-coach.is-visible {
         margin:
-            -9px 0 20px;
+            -8px 0 20px;
 
         padding:
-            11px 12px;
+            10px 12px;
     }
 
-    .exercise-area .lesson-audio-coach-icon {
-        flex-basis:
-            30px;
+    .lesson-page .eyt-audio-coach-icon {
+        width: 32px;
+        min-width: 32px;
+        max-width: 32px;
 
-        width:
-            30px;
+        height: 32px;
+        min-height: 32px;
+        max-height: 32px;
 
-        min-width:
-            30px;
-
-        max-width:
-            30px;
-
-        height:
-            30px;
-
-        min-height:
-            30px;
-
-        max-height:
-            30px;
+        flex-basis: 32px;
     }
 
-    .exercise-area .lesson-audio-coach-icon svg {
-        width:
-            16px !important;
-
-        min-width:
-            16px !important;
-
-        max-width:
-            16px !important;
-
-        height:
-            16px !important;
-
-        min-height:
-            16px !important;
-
-        max-height:
-            16px !important;
+    .lesson-page .eyt-audio-coach-copy strong {
+        font-size: 11px;
     }
 
-    .exercise-area .answer-options {
-        gap:
-            10px;
+    .lesson-page .eyt-audio-coach-copy span {
+        font-size: 10px;
     }
 
-    .exercise-area .answer-option-container>.answer-option {
-        min-height:
-            56px;
+    .lesson-page .answer-options {
+        gap: 9px;
+    }
+
+    .lesson-page .eyt-answer-shell>.answer-option {
+        min-height: 56px;
 
         padding:
-            13px 58px 13px 14px;
+            12px 57px 12px 14px;
+
+        font-size: 12px;
     }
 
-    .exercise-area button.answer-option-speech {
-        right:
-            8px !important;
+    .lesson-page button.eyt-answer-speech {
+        right: 9px !important;
 
-        width:
-            36px;
+        width: 34px;
+        min-width: 34px;
+        max-width: 34px;
 
-        min-width:
-            36px;
+        height: 34px;
+        min-height: 34px;
+        max-height: 34px;
 
-        max-width:
-            36px;
-
-        height:
-            36px;
-
-        min-height:
-            36px;
-
-        max-height:
-            36px;
+        flex-basis: 34px;
     }
 
-    .exercise-area button.answer-option-speech .speech-button-icon,
-    .exercise-area button.answer-option-speech .speech-button-icon svg {
-        width:
-            18px !important;
+    .lesson-page button.eyt-answer-speech .eyt-speech-icon,
+    .lesson-page button.eyt-answer-speech .eyt-speaker-svg {
+        width: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
 
-        min-width:
-            18px !important;
-
-        max-width:
-            18px !important;
-
-        height:
-            18px !important;
-
-        min-height:
-            18px !important;
-
-        max-height:
-            18px !important;
+        height: 16px !important;
+        min-height: 16px !important;
+        max-height: 16px !important;
     }
+
+    html body.lesson-page button.eyt-answer-speech>span.eyt-speech-icon,
+    html body.lesson-page button.eyt-answer-speech>span.eyt-speech-icon>svg.eyt-speaker-svg {
+        width: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+
+        height: 16px !important;
+        min-height: 16px !important;
+        max-height: 16px !important;
+    }
+
+    .lesson-page .word-bank {
+        gap: 8px;
+    }
+
+    .lesson-page .eyt-word-shell>.word-chip {
+        min-height: 40px;
+
+        padding:
+            9px 39px 9px 12px;
+
+        font-size: 11px;
+    }
+
+    .lesson-page button.eyt-word-speech {
+        right: 4px !important;
+
+        width: 28px;
+        min-width: 28px;
+        max-width: 28px;
+
+        height: 28px;
+        min-height: 28px;
+        max-height: 28px;
+
+        flex-basis: 28px;
+    }
+
+    .lesson-page .eyt-feedback-content {
+        gap: 10px;
+    }
+
+    .lesson-page button.eyt-feedback-speech {
+        width: 38px;
+        min-width: 38px;
+        max-width: 38px;
+
+        height: 38px;
+        min-height: 38px;
+        max-height: 38px;
+
+        flex-basis: 38px;
+    }
+
 }
 
+
 /* ==========================================================================
-   33. MOBILE PEQUENO
+   42. CELULARES PEQUENOS
    ========================================================================== */
 
 @media (max-width: 390px) {
 
-    .exercise-area .exercise-question-row {
-        gap:
-            8px;
+    .lesson-page .eyt-question-row {
+        grid-template-columns:
+            minmax(0, 1fr) 40px;
+
+        gap: 8px;
     }
 
-    .exercise-area button.question-speech {
-        flex-basis:
-            40px;
+    .lesson-page button.eyt-question-speech {
+        width: 40px;
+        min-width: 40px;
+        max-width: 40px;
 
-        width:
-            40px;
+        height: 40px;
+        min-height: 40px;
+        max-height: 40px;
 
-        min-width:
-            40px;
-
-        max-width:
-            40px;
-
-        height:
-            40px;
-
-        min-height:
-            40px;
-
-        max-height:
-            40px;
+        flex-basis: 40px;
     }
 
-    .exercise-area .lesson-audio-coach-text strong {
-        font-size:
-            12px;
+    .lesson-page .eyt-answer-shell>.answer-option {
+        padding-right: 53px;
     }
 
-    .exercise-area .lesson-audio-coach-text span {
-        font-size:
-            11px;
+    .lesson-page button.eyt-answer-speech {
+        right: 8px !important;
+
+        width: 32px;
+        min-width: 32px;
+        max-width: 32px;
+
+        height: 32px;
+        min-height: 32px;
+        max-height: 32px;
+
+        flex-basis: 32px;
     }
 
-    .exercise-area .answer-option-container>.answer-option {
-        padding-right:
-            56px;
-    }
-
-    .exercise-area button.answer-option-speech {
-        width:
-            34px;
-
-        min-width:
-            34px;
-
-        max-width:
-            34px;
-
-        height:
-            34px;
-
-        min-height:
-            34px;
-
-        max-height:
-            34px;
-    }
 }
 
+
 /* ==========================================================================
-   34. REDUÇÃO DE MOVIMENTO
+   43. HOVER APENAS EM DISPOSITIVOS QUE POSSUEM HOVER
+   ========================================================================== */
+
+@media (hover: none) {
+
+    button.eyt-speech-button:hover {
+        transform: none;
+    }
+
+    .lesson-page .eyt-answer-shell>.answer-option:hover {
+        transform: none;
+    }
+
+    .lesson-page .eyt-word-shell>.word-chip:hover {
+        transform: none;
+    }
+
+}
+
+
+/* ==========================================================================
+   44. REDUÇÃO DE MOVIMENTO
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
 
-    button.speech-button,
-    .exercise-area .lesson-audio-coach {
-        transition:
-            none;
+    button.eyt-speech-button,
+    .lesson-page .eyt-answer-shell>.answer-option,
+    .lesson-page .eyt-word-shell>.word-chip,
+    .lesson-page .eyt-audio-coach {
+        transition: none !important;
     }
 
-    button.speech-button.is-speaking .speech-button-pulse {
-        animation:
-            none;
+    button.eyt-speech-button.is-speaking .eyt-speech-ring {
+        animation: none !important;
     }
 
-    .exercise-area button.question-speech.needs-attention {
-        animation:
-            none;
-
-        outline:
-            3px solid rgba(233, 30, 140, 0.20);
-
-        outline-offset:
-            3px;
+    .lesson-page button.eyt-question-speech.needs-attention {
+        animation: none !important;
     }
+
+}
+
+
+/* ==========================================================================
+   45. GARANTIA FINAL DE LAYOUT
+
+   Essas regras ficam por último propositalmente para impedir que alguma
+   declaração antiga de style.css ou cache visual reposicione os botões.
+   ========================================================================== */
+
+html body.lesson-page .exercise-area .eyt-question-row>button.eyt-question-speech {
+    position: relative !important;
+
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+html body.lesson-page .exercise-area .eyt-answer-shell>button.eyt-answer-speech {
+    position: absolute !important;
+
+    top: 50% !important;
+    right: 11px !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    transform:
+        translateY(-50%) !important;
+}
+
+html body.lesson-page .exercise-area .eyt-answer-shell>button.eyt-answer-speech:hover {
+    transform:
+        translateY(-50%) scale(1.04) !important;
+}
+
+html body.lesson-page .exercise-area .eyt-answer-shell>button.eyt-answer-speech:active {
+    transform:
+        translateY(-50%) scale(.94) !important;
+}
+
+html body.lesson-page .exercise-area .eyt-answer-shell>button.eyt-answer-speech.is-speaking {
+    transform:
+        translateY(-50%) !important;
+}
+
+html body.lesson-page .exercise-area .eyt-word-shell>button.eyt-word-speech {
+    position: absolute !important;
+
+    top: 50% !important;
+    right: 5px !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    transform:
+        translateY(-50%) !important;
+}
+
+html body.lesson-page .exercise-area .eyt-word-shell>button.eyt-word-speech:active {
+    transform:
+        translateY(-50%) scale(.92) !important;
+}
+
+html body.lesson-page .lesson-answer-footer button.eyt-feedback-speech {
+    position: relative !important;
+
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    transform: none !important;
 }
