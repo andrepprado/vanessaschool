@@ -2,7 +2,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!EYTApp.requireUser()) return;
 
     const params =
-        new URLSearchParams(location.search);
+        new URLSearchParams(
+            location.search
+        );
 
     const id =
         params.get("id") ||
@@ -11,39 +13,101 @@ document.addEventListener("DOMContentLoaded", () => {
     const lesson =
         EYTApp
             .getAllLessons()
-            .find(item => item.id === id);
+            .find(
+                item =>
+                    item.id === id
+            );
 
     if (
         !lesson ||
         !EYTApp.isLessonUnlocked(id)
     ) {
-        location.href = "curso.html";
+        location.href =
+            "curso.html";
+
         return;
     }
 
     const content =
-        document.getElementById("lessonContent");
+        document.getElementById(
+            "lessonContent"
+        );
 
     const footer =
-        document.getElementById("lessonFooter");
+        document.getElementById(
+            "lessonFooter"
+        );
 
     const action =
-        document.getElementById("lessonAction");
+        document.getElementById(
+            "lessonAction"
+        );
 
     const feedback =
-        document.getElementById("lessonFeedback");
+        document.getElementById(
+            "lessonFeedback"
+        );
 
     const bar =
-        document.getElementById("lessonProgressBar");
+        document.getElementById(
+            "lessonProgressBar"
+        );
 
     const closeLesson =
-        document.getElementById("closeLesson");
+        document.getElementById(
+            "closeLesson"
+        );
+
+    /* =========================================================
+       CONFIGURAÇÕES DA LIÇÃO
+    ========================================================= */
+
+    const LESSON_CONFIG = {
+        /*
+         * Primeira dica aparece mais rapidamente.
+         */
+        firstHintDelay: 12000,
+
+        /*
+         * Nas demais questões damos um pouco mais de tempo.
+         */
+        nextHintDelay: 18000,
+
+        /*
+         * Tempo que o balão permanece visível.
+         */
+        hintVisibleTime: 8500,
+
+        /*
+         * Caso o aluno interaja, o relógio recomeça.
+         */
+        restartHintOnInteraction: true,
+
+        /*
+         * Reproduz automaticamente a alternativa
+         * quando o aluno selecioná-la.
+         */
+        autoPlaySelectedAnswer: true
+    };
+
+    /* =========================================================
+       ESTADO
+    ========================================================= */
 
     let index = 0;
     let selected = null;
     let checked = false;
     let earned = 0;
     let ordered = [];
+
+    let inactivityTimer = null;
+    let hintHideTimer = null;
+
+    let hintShownForExercise =
+        false;
+
+    let audioUsedForExercise =
+        false;
 
     /* =========================================================
        HELPERS
@@ -52,63 +116,73 @@ document.addEventListener("DOMContentLoaded", () => {
     const escapeAttribute = value => {
         return EYTApp
             .escapeHTML(
-                String(value ?? "")
+                String(
+                    value ?? ""
+                )
             )
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
     };
 
     const stopSpeech = () => {
         if (
-            typeof EYTSpeech !== "undefined" &&
+            typeof EYTSpeech !==
+            "undefined" &&
             EYTSpeech.isSupported()
         ) {
             EYTSpeech.stop();
         }
     };
 
-    /*
-     * As perguntas atuais misturam instruções em português
-     * e conteúdo em inglês.
-     *
-     * Esta função tenta identificar quando a pergunta é
-     * predominantemente uma instrução em português.
-     *
-     * As alternativas, palavras e respostas são sempre
-     * pronunciadas em inglês.
-     */
-    const detectQuestionLanguage = text => {
-        const value =
-            String(text || "")
-                .toLowerCase();
+    /* =========================================================
+       DETECÇÃO DO IDIOMA DA PERGUNTA
+    ========================================================= */
 
-        const portugueseSignals = [
-            "como ",
-            "qual ",
-            "traduza",
-            "complete",
-            "organize",
-            "você",
-            " inglês",
-            "significa",
-            "se diz",
-            "para o inglês",
-            "frase",
-            "número",
-            "dia vem",
-            "depois de"
-        ];
+    const detectQuestionLanguage =
+        text => {
+            const value =
+                String(text || "")
+                    .toLowerCase();
 
-        const isPortuguese =
-            portugueseSignals.some(
-                signal =>
-                    value.includes(signal)
-            );
+            const portugueseSignals = [
+                "como ",
+                "qual ",
+                "traduza",
+                "complete",
+                "organize",
+                "você",
+                " inglês",
+                "significa",
+                "se diz",
+                "para o inglês",
+                "frase",
+                "número",
+                "dia vem",
+                "depois de"
+            ];
 
-        return isPortuguese
-            ? "pt-BR"
-            : "en-US";
-    };
+            const isPortuguese =
+                portugueseSignals.some(
+                    signal =>
+                        value.includes(
+                            signal
+                        )
+                );
+
+            return isPortuguese
+                ? "pt-BR"
+                : "en-US";
+        };
+
+    /* =========================================================
+       ÍCONE
+    ========================================================= */
 
     const getSpeakerSVG = () => {
         return `
@@ -141,12 +215,17 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     };
 
+    /* =========================================================
+       BOTÃO DE ÁUDIO
+    ========================================================= */
+
     const createSpeechButton = (
         text,
         options = {}
     ) => {
         if (
-            typeof EYTSpeech === "undefined" ||
+            typeof EYTSpeech ===
+            "undefined" ||
             !EYTSpeech.isSupported()
         ) {
             return "";
@@ -182,9 +261,304 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     };
 
+    /* =========================================================
+       DICA DE INATIVIDADE
+    ========================================================= */
+
+    const clearInactivityTimer = () => {
+        if (
+            inactivityTimer !== null
+        ) {
+            clearTimeout(
+                inactivityTimer
+            );
+
+            inactivityTimer =
+                null;
+        }
+    };
+
+    const clearHintHideTimer = () => {
+        if (
+            hintHideTimer !== null
+        ) {
+            clearTimeout(
+                hintHideTimer
+            );
+
+            hintHideTimer =
+                null;
+        }
+    };
+
+    const getCoachHint = () => {
+        return document.getElementById(
+            "lessonAudioCoach"
+        );
+    };
+
+    const getQuestionSpeechButton = () => {
+        return document.querySelector(
+            ".question-speech"
+        );
+    };
+
+    const hideAudioHint = () => {
+        const coach =
+            getCoachHint();
+
+        const speechButton =
+            getQuestionSpeechButton();
+
+        if (coach) {
+            coach.classList.remove(
+                "is-visible"
+            );
+
+            coach.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+        }
+
+        if (speechButton) {
+            speechButton.classList.remove(
+                "needs-attention"
+            );
+        }
+
+        clearHintHideTimer();
+    };
+
+    const showAudioHint = () => {
+        if (
+            checked ||
+            hintShownForExercise ||
+            audioUsedForExercise
+        ) {
+            return;
+        }
+
+        if (
+            typeof EYTSpeech ===
+            "undefined" ||
+            !EYTSpeech.isSupported()
+        ) {
+            return;
+        }
+
+        /*
+         * Não interrompe o aluno se algum áudio
+         * já estiver sendo reproduzido.
+         */
+        if (
+            EYTSpeech.isSpeaking()
+        ) {
+            scheduleInactivityHint(
+                5000
+            );
+
+            return;
+        }
+
+        const coach =
+            getCoachHint();
+
+        const speechButton =
+            getQuestionSpeechButton();
+
+        if (
+            !coach ||
+            !speechButton
+        ) {
+            return;
+        }
+
+        hintShownForExercise =
+            true;
+
+        coach.classList.add(
+            "is-visible"
+        );
+
+        coach.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        speechButton.classList.add(
+            "needs-attention"
+        );
+
+        clearHintHideTimer();
+
+        hintHideTimer =
+            setTimeout(
+                hideAudioHint,
+                LESSON_CONFIG
+                    .hintVisibleTime
+            );
+    };
+
+    const scheduleInactivityHint = (
+        customDelay = null
+    ) => {
+        clearInactivityTimer();
+
+        if (
+            checked ||
+            hintShownForExercise ||
+            audioUsedForExercise
+        ) {
+            return;
+        }
+
+        const delay =
+            customDelay ??
+            (
+                index === 0
+                    ? LESSON_CONFIG
+                        .firstHintDelay
+                    : LESSON_CONFIG
+                        .nextHintDelay
+            );
+
+        inactivityTimer =
+            setTimeout(
+                showAudioHint,
+                delay
+            );
+    };
+
+    const registerInteraction = (
+        options = {}
+    ) => {
+        const isSpeech =
+            options.speech === true;
+
+        if (isSpeech) {
+            audioUsedForExercise =
+                true;
+
+            hideAudioHint();
+
+            clearInactivityTimer();
+
+            return;
+        }
+
+        if (
+            getCoachHint()
+                ?.classList
+                .contains(
+                    "is-visible"
+                )
+        ) {
+            hideAudioHint();
+        }
+
+        if (
+            LESSON_CONFIG
+                .restartHintOnInteraction &&
+            !hintShownForExercise &&
+            !audioUsedForExercise &&
+            !checked
+        ) {
+            scheduleInactivityHint();
+        }
+    };
+
+    const createAudioCoach = () => {
+        if (
+            typeof EYTSpeech ===
+            "undefined" ||
+            !EYTSpeech.isSupported()
+        ) {
+            return "";
+        }
+
+        return `
+            <div
+                id="lessonAudioCoach"
+                class="lesson-audio-coach"
+                aria-hidden="true"
+            >
+                <div class="lesson-audio-coach-icon">
+                    ${getSpeakerSVG()}
+                </div>
+
+                <div class="lesson-audio-coach-text">
+                    <strong>
+                        Ficou em dúvida?
+                    </strong>
+
+                    <span>
+                        Toque no alto-falante para ouvir a frase.
+                    </span>
+                </div>
+            </div>
+        `;
+    };
+
+    /* =========================================================
+       REPRODUÇÃO AUTOMÁTICA DA ALTERNATIVA
+    ========================================================= */
+
+    const speakSelectedAnswer = (
+        text
+    ) => {
+        if (
+            !LESSON_CONFIG
+                .autoPlaySelectedAnswer
+        ) {
+            return;
+        }
+
+        if (
+            typeof EYTSpeech ===
+            "undefined" ||
+            !EYTSpeech.isSupported()
+        ) {
+            return;
+        }
+
+        const value =
+            String(
+                text || ""
+            ).trim();
+
+        if (!value) {
+            return;
+        }
+
+        /*
+         * Selecionar uma alternativa já conta como
+         * utilização do recurso de áudio.
+         *
+         * Assim a dica de inatividade não aparece
+         * desnecessariamente depois da seleção.
+         */
+        registerInteraction({
+            speech: true
+        });
+
+        /*
+         * speakEnglish() cancela automaticamente qualquer
+         * fala anterior antes de iniciar a nova.
+         */
+        EYTSpeech.speakEnglish(
+            value
+        );
+    };
+
+    /* =========================================================
+       EVENTOS DOS BOTÕES DE ÁUDIO
+    ========================================================= */
+
     const bindSpeechButtons = root => {
         if (
-            typeof EYTSpeech === "undefined" ||
+            typeof EYTSpeech ===
+            "undefined" ||
             !EYTSpeech.isSupported()
         ) {
             return;
@@ -195,16 +569,20 @@ document.addEventListener("DOMContentLoaded", () => {
             document;
 
         container
-            .querySelectorAll("[data-speech]")
+            .querySelectorAll(
+                "[data-speech]"
+            )
             .forEach(button => {
                 if (
-                    button.dataset.speechBound ===
+                    button.dataset
+                        .speechBound ===
                     "true"
                 ) {
                     return;
                 }
 
-                button.dataset.speechBound =
+                button.dataset
+                    .speechBound =
                     "true";
 
                 button.addEventListener(
@@ -213,11 +591,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         event.preventDefault();
                         event.stopPropagation();
 
+                        registerInteraction({
+                            speech: true
+                        });
+
                         const text =
-                            button.dataset.speech;
+                            button.dataset
+                                .speech;
 
                         const lang =
-                            button.dataset.speechLang ||
+                            button.dataset
+                                .speechLang ||
                             "en-US";
 
                         EYTSpeech.toggle(
@@ -232,24 +616,35 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     };
 
+    /* =========================================================
+       RESPOSTA ORDENADA
+    ========================================================= */
+
     const renderOrderedAnswer = () => {
         const orderedAnswer =
             document.getElementById(
                 "orderedAnswer"
             );
 
-        if (!orderedAnswer) return;
+        if (!orderedAnswer) {
+            return;
+        }
 
         orderedAnswer.innerHTML =
             ordered
                 .map(
-                    (item, position) => `
+                    (
+                        item,
+                        position
+                    ) => `
                         <button
                             type="button"
                             class="word-chip selected-word-chip"
                             data-remove="${position}"
                         >
-                            ${EYTApp.escapeHTML(item.word)}
+                            ${EYTApp.escapeHTML(
+                        item.word
+                    )}
                         </button>
                     `
                 )
@@ -263,6 +658,9 @@ document.addEventListener("DOMContentLoaded", () => {
     ========================================================= */
 
     closeLesson.onclick = () => {
+        clearInactivityTimer();
+        clearHintHideTimer();
+
         stopSpeech();
 
         location.href =
@@ -274,6 +672,9 @@ document.addEventListener("DOMContentLoaded", () => {
     ========================================================= */
 
     const renderIntro = () => {
+        clearInactivityTimer();
+        clearHintHideTimer();
+
         stopSpeech();
 
         footer.classList.add(
@@ -339,7 +740,9 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         document
-            .getElementById("startLesson")
+            .getElementById(
+                "startLesson"
+            )
             .onclick = () => {
                 footer.classList.remove(
                     "hidden"
@@ -354,16 +757,26 @@ document.addEventListener("DOMContentLoaded", () => {
     ========================================================= */
 
     const renderExercise = () => {
+        clearInactivityTimer();
+        clearHintHideTimer();
+
         stopSpeech();
 
         checked = false;
         selected = null;
         ordered = [];
 
+        hintShownForExercise =
+            false;
+
+        audioUsedForExercise =
+            false;
+
         footer.className =
             "lesson-answer-footer";
 
-        feedback.innerHTML = "";
+        feedback.innerHTML =
+            "";
 
         action.textContent =
             "Verificar";
@@ -372,7 +785,9 @@ document.addEventListener("DOMContentLoaded", () => {
             false;
 
         const ex =
-            lesson.exercises[index];
+            lesson.exercises[
+            index
+            ];
 
         const pct =
             Math.round(
@@ -395,7 +810,10 @@ document.addEventListener("DOMContentLoaded", () => {
            MÚLTIPLA ESCOLHA
         ===================================================== */
 
-        if (ex.type === "multiple") {
+        if (
+            ex.type ===
+            "multiple"
+        ) {
             answer = `
                 <div class="answer-options">
 
@@ -410,16 +828,21 @@ document.addEventListener("DOMContentLoaded", () => {
                                         data-value="${escapeAttribute(option)}"
                                     >
                                         <span class="answer-option-text">
-                                            ${EYTApp.escapeHTML(option)}
+                                            ${EYTApp.escapeHTML(
+                            option
+                        )}
                                         </span>
                                     </button>
 
                                     ${createSpeechButton(
                             option,
                             {
-                                lang: "en-US",
-                                className: "answer-option-speech",
-                                label: `Ouvir: ${option}`
+                                lang:
+                                    "en-US",
+                                className:
+                                    "answer-option-speech",
+                                label:
+                                    `Ouvir: ${option}`
                             }
                         )}
 
@@ -437,8 +860,10 @@ document.addEventListener("DOMContentLoaded", () => {
         ===================================================== */
 
         if (
-            ex.type === "translation" ||
-            ex.type === "fill"
+            ex.type ===
+            "translation" ||
+            ex.type ===
+            "fill"
         ) {
             answer = `
                 <input
@@ -457,7 +882,10 @@ document.addEventListener("DOMContentLoaded", () => {
            ORDENAÇÃO
         ===================================================== */
 
-        if (ex.type === "order") {
+        if (
+            ex.type ===
+            "order"
+        ) {
             answer = `
                 <div class="ordering-area">
 
@@ -470,24 +898,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         ${ex.words
                     .map(
-                        (word, wordIndex) => `
+                        (
+                            word,
+                            wordIndex
+                        ) => `
                                     <div class="word-chip-container">
 
                                         <button
                                             type="button"
                                             class="word-chip"
                                             data-index="${wordIndex}"
-                                            data-word="${escapeAttribute(word)}"
+                                            data-word="${escapeAttribute(
+                            word
+                        )}"
                                         >
-                                            ${EYTApp.escapeHTML(word)}
+                                            ${EYTApp.escapeHTML(
+                            word
+                        )}
                                         </button>
 
                                         ${createSpeechButton(
                             word,
                             {
-                                lang: "en-US",
-                                className: "word-chip-speech",
-                                label: `Ouvir: ${word}`
+                                lang:
+                                    "en-US",
+                                className:
+                                    "word-chip-speech",
+                                label:
+                                    `Ouvir: ${word}`
                             }
                         )}
 
@@ -503,7 +941,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         /* =====================================================
-           HTML PRINCIPAL
+           HTML
         ===================================================== */
 
         content.innerHTML = `
@@ -514,9 +952,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     /
                     ${lesson.exercises.length}
                     •
-                    ${ex.type === "multiple"
+                    ${ex.type ===
+                "multiple"
                 ? "Escolha a resposta"
-                : ex.type === "order"
+                : ex.type ===
+                    "order"
                     ? "Organize a frase"
                     : "Escreva a resposta"
             }
@@ -533,13 +973,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     ${createSpeechButton(
                 ex.question,
                 {
-                    lang: questionLanguage,
-                    className: "question-speech",
-                    label: "Ouvir pergunta"
+                    lang:
+                        questionLanguage,
+                    className:
+                        "question-speech",
+                    label:
+                        "Ouvir pergunta"
                 }
             )}
 
                 </div>
+
+                ${createAudioCoach()}
 
                 ${answer}
 
@@ -547,7 +992,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         /* =====================================================
-           EVENTOS DAS ALTERNATIVAS
+           ALTERNATIVAS
         ===================================================== */
 
         document
@@ -556,17 +1001,23 @@ document.addEventListener("DOMContentLoaded", () => {
             )
             .forEach(btn => {
                 btn.onclick = () => {
-                    if (checked) return;
+                    if (checked) {
+                        return;
+                    }
 
                     document
                         .querySelectorAll(
                             ".answer-option"
                         )
-                        .forEach(button => {
-                            button.classList.remove(
-                                "selected"
-                            );
-                        });
+                        .forEach(
+                            button => {
+                                button
+                                    .classList
+                                    .remove(
+                                        "selected"
+                                    );
+                            }
+                        );
 
                     btn.classList.add(
                         "selected"
@@ -574,11 +1025,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     selected =
                         btn.dataset.value;
+
+                    /*
+                     * A seleção da alternativa reproduz
+                     * automaticamente sua pronúncia.
+                     */
+                    speakSelectedAnswer(
+                        selected
+                    );
                 };
             });
 
         /* =====================================================
-           EVENTOS DAS PALAVRAS
+           WORD BANK
         ===================================================== */
 
         document
@@ -587,15 +1046,20 @@ document.addEventListener("DOMContentLoaded", () => {
             )
             .forEach(btn => {
                 btn.onclick = () => {
-                    if (checked) return;
+                    if (checked) {
+                        return;
+                    }
 
                     if (
-                        btn.classList.contains(
-                            "used"
-                        )
+                        btn.classList
+                            .contains(
+                                "used"
+                            )
                     ) {
                         return;
                     }
+
+                    registerInteraction();
 
                     btn.classList.add(
                         "used"
@@ -603,9 +1067,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     ordered.push({
                         index:
-                            btn.dataset.index,
+                            btn.dataset
+                                .index,
+
                         word:
-                            btn.dataset.word
+                            btn.dataset
+                                .word
                     });
 
                     selected =
@@ -620,9 +1087,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             });
 
+        /* =====================================================
+           SPEECH
+        ===================================================== */
+
         bindSpeechButtons(
             content
         );
+
+        /* =====================================================
+           INPUT
+        ===================================================== */
 
         const input =
             document.getElementById(
@@ -633,10 +1108,20 @@ document.addEventListener("DOMContentLoaded", () => {
             input.focus();
 
             input.addEventListener(
+                "input",
+                () => {
+                    registerInteraction();
+                }
+            );
+
+            input.addEventListener(
                 "keydown",
                 event => {
+                    registerInteraction();
+
                     if (
-                        event.key === "Enter" &&
+                        event.key ===
+                        "Enter" &&
                         !checked
                     ) {
                         event.preventDefault();
@@ -646,10 +1131,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             );
         }
+
+        /* =====================================================
+           MONITORAMENTO DE INATIVIDADE
+        ===================================================== */
+
+        scheduleInactivityHint();
     };
 
     /* =========================================================
-       REMOVER PALAVRA DA ORDENAÇÃO
+       REMOVER PALAVRA
     ========================================================= */
 
     const bindRemove = () => {
@@ -659,11 +1150,16 @@ document.addEventListener("DOMContentLoaded", () => {
             )
             .forEach(btn => {
                 btn.onclick = () => {
-                    if (checked) return;
+                    if (checked) {
+                        return;
+                    }
+
+                    registerInteraction();
 
                     const position =
                         Number(
-                            btn.dataset.remove
+                            btn.dataset
+                                .remove
                         );
 
                     const removed =
@@ -672,7 +1168,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             1
                         )[0];
 
-                    if (!removed) return;
+                    if (!removed) {
+                        return;
+                    }
 
                     const source =
                         document.querySelector(
@@ -680,9 +1178,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
 
                     if (source) {
-                        source.classList.remove(
-                            "used"
-                        );
+                        source
+                            .classList
+                            .remove(
+                                "used"
+                            );
                     }
 
                     selected =
@@ -699,7 +1199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* =========================================================
-       MARCAR RESPOSTA VISUALMENTE
+       MARCAÇÃO VISUAL
     ========================================================= */
 
     const markMultipleAnswer = (
@@ -707,7 +1207,10 @@ document.addEventListener("DOMContentLoaded", () => {
         value,
         correct
     ) => {
-        if (ex.type !== "multiple") {
+        if (
+            ex.type !==
+            "multiple"
+        ) {
             return;
         }
 
@@ -716,7 +1219,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 ".answer-option"
             )
             .forEach(btn => {
-                btn.disabled = true;
+                btn.disabled =
+                    true;
 
                 const buttonValue =
                     EYTApp.normalizeText(
@@ -739,7 +1243,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (
                     !correct &&
-                    EYTApp.normalizeText(value) ===
+                    EYTApp.normalizeText(
+                        value
+                    ) ===
                     buttonValue
                 ) {
                     btn.classList.add(
@@ -750,92 +1256,116 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* =========================================================
-       FEEDBACK
+       FEEDBACK CORRETO
     ========================================================= */
 
-    const renderCorrectFeedback = ex => {
-        feedback.innerHTML = `
-            <div class="lesson-feedback-content">
+    const renderCorrectFeedback =
+        ex => {
+            feedback.innerHTML = `
+                <div class="lesson-feedback-content">
 
-                <div>
-                    <strong>
-                        Excellent!
-                    </strong>
+                    <div>
+                        <strong>
+                            Excellent!
+                        </strong>
 
-                    <p>
-                        Resposta correta. Continue assim.
-                    </p>
+                        <p>
+                            Resposta correta.
+                            Continue assim.
+                        </p>
+                    </div>
+
+                    ${createSpeechButton(
+                ex.answer,
+                {
+                    lang:
+                        "en-US",
+                    className:
+                        "feedback-speech",
+                    label:
+                        "Ouvir resposta correta"
+                }
+            )}
+
                 </div>
+            `;
 
-                ${createSpeechButton(
-            ex.answer,
-            {
-                lang: "en-US",
-                className: "feedback-speech",
-                label: "Ouvir resposta correta"
-            }
-        )}
-
-            </div>
-        `;
-
-        bindSpeechButtons(
-            feedback
-        );
-    };
-
-    const renderIncorrectFeedback = ex => {
-        feedback.innerHTML = `
-            <div class="lesson-feedback-content">
-
-                <div>
-                    <strong>
-                        Quase!
-                    </strong>
-
-                    <p>
-                        Resposta correta:
-                        <b>
-                            ${EYTApp.escapeHTML(
-            ex.answer
-        )}
-                        </b>
-                    </p>
-                </div>
-
-                ${createSpeechButton(
-            ex.answer,
-            {
-                lang: "en-US",
-                className: "feedback-speech",
-                label: "Ouvir resposta correta"
-            }
-        )}
-
-            </div>
-        `;
-
-        bindSpeechButtons(
-            feedback
-        );
-    };
+            bindSpeechButtons(
+                feedback
+            );
+        };
 
     /* =========================================================
-       VERIFICAR RESPOSTA
+       FEEDBACK INCORRETO
+    ========================================================= */
+
+    const renderIncorrectFeedback =
+        ex => {
+            feedback.innerHTML = `
+                <div class="lesson-feedback-content">
+
+                    <div>
+                        <strong>
+                            Quase!
+                        </strong>
+
+                        <p>
+                            Resposta correta:
+                            <b>
+                                ${EYTApp.escapeHTML(
+                ex.answer
+            )}
+                            </b>
+                        </p>
+                    </div>
+
+                    ${createSpeechButton(
+                ex.answer,
+                {
+                    lang:
+                        "en-US",
+                    className:
+                        "feedback-speech",
+                    label:
+                        "Ouvir resposta correta"
+                }
+            )}
+
+                </div>
+            `;
+
+            bindSpeechButtons(
+                feedback
+            );
+        };
+
+    /* =========================================================
+       VERIFICAR
     ========================================================= */
 
     const verify = () => {
-        if (checked) return;
+        if (checked) {
+            return;
+        }
+
+        clearInactivityTimer();
+        clearHintHideTimer();
+
+        hideAudioHint();
 
         const ex =
-            lesson.exercises[index];
+            lesson.exercises[
+            index
+            ];
 
         let value =
             selected;
 
         if (
-            ex.type === "translation" ||
-            ex.type === "fill"
+            ex.type ===
+            "translation" ||
+            ex.type ===
+            "fill"
         ) {
             const input =
                 document.getElementById(
@@ -853,6 +1383,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 value || ""
             ).trim()
         ) {
+            scheduleInactivityHint(
+                7000
+            );
+
             return;
         }
 
@@ -886,7 +1420,8 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
         if (textInput) {
-            textInput.disabled = true;
+            textInput.disabled =
+                true;
 
             textInput.classList.add(
                 correct
@@ -900,17 +1435,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 ".word-chip"
             )
             .forEach(button => {
-                button.disabled = true;
+                button.disabled =
+                    true;
             });
 
         if (correct) {
-            earned += Math.max(
-                5,
-                Math.round(
-                    lesson.xp /
-                    lesson.exercises.length
-                )
-            );
+            earned +=
+                Math.max(
+                    5,
+                    Math.round(
+                        lesson.xp /
+                        lesson.exercises
+                            .length
+                    )
+                );
 
             EYTStorage.removeMistake(
                 lesson.id,
@@ -928,10 +1466,13 @@ document.addEventListener("DOMContentLoaded", () => {
             EYTStorage.addMistake({
                 lessonId:
                     lesson.id,
+
                 exerciseId:
                     ex.id,
+
                 question:
                     ex.question,
+
                 answer:
                     ex.answer
             });
@@ -945,11 +1486,14 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
 
-        checked = true;
+        checked =
+            true;
 
         action.textContent =
             index ===
-                lesson.exercises.length - 1
+                lesson.exercises
+                    .length -
+                1
                 ? "Finalizar"
                 : "Continuar";
 
@@ -961,10 +1505,13 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* =========================================================
-       FINALIZAR LIÇÃO
+       FINALIZAR
     ========================================================= */
 
     const finish = () => {
+        clearInactivityTimer();
+        clearHintHideTimer();
+
         stopSpeech();
 
         EYTStorage.completeLesson(
@@ -1063,6 +1610,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ========================================================= */
 
     action.onclick = () => {
+        registerInteraction();
+
         if (!checked) {
             verify();
             return;
@@ -1070,7 +1619,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (
             index >=
-            lesson.exercises.length - 1
+            lesson.exercises
+                .length -
+            1
         ) {
             finish();
             return;
@@ -1080,6 +1631,67 @@ document.addEventListener("DOMContentLoaded", () => {
 
         renderExercise();
     };
+
+    /* =========================================================
+       EVENTOS GERAIS DE INTERAÇÃO
+    ========================================================= */
+
+    content.addEventListener(
+        "pointerdown",
+        event => {
+            /*
+             * O clique no botão de áudio possui
+             * tratamento próprio.
+             */
+            if (
+                event.target.closest(
+                    "[data-speech]"
+                )
+            ) {
+                return;
+            }
+
+            /*
+             * A própria alternativa também possui
+             * tratamento específico porque dispara
+             * reprodução automática.
+             */
+            if (
+                event.target.closest(
+                    ".answer-option"
+                )
+            ) {
+                return;
+            }
+
+            registerInteraction();
+        }
+    );
+
+    /* =========================================================
+       EVENTOS DO SPEECH
+    ========================================================= */
+
+    window.addEventListener(
+        "eyt:speech-start",
+        () => {
+            hideAudioHint();
+
+            clearInactivityTimer();
+        }
+    );
+
+    /* =========================================================
+       LIMPEZA
+    ========================================================= */
+
+    window.addEventListener(
+        "pagehide",
+        () => {
+            clearInactivityTimer();
+            clearHintHideTimer();
+        }
+    );
 
     /* =========================================================
        INICIAR
