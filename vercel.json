@@ -1,6 +1,12 @@
 {
     "cleanUrls": true,
     "trailingSlash": false,
+    "rewrites": [
+        {
+            "source": "/hf/:path*",
+            "destination": "https://huggingface.co/:path*"
+        }
+    ],
     "headers": [
         {
             "source": "/(.*)",

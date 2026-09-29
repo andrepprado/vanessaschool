@@ -6,7 +6,7 @@ const EYTSpeech = (() => {
             "/js/tts/kokoro-worker.js",
 
         cacheName:
-            "eyt-kokoro-audio-v1",
+            "eyt-kokoro-audio-v3",
 
         englishLang:
             "en-GB",
@@ -30,7 +30,10 @@ const EYTSpeech = (() => {
             true,
 
         debug:
-            false
+            false,
+
+        errorBannerDuration:
+            12000
     };
 
     let worker =
@@ -57,11 +60,20 @@ const EYTSpeech = (() => {
     let currentButton =
         null;
 
-    let currentAudio =
+    let currentSource =
+        null;
+
+    let currentAudioElement =
         null;
 
     let currentObjectUrl =
         null;
+
+    let audioContext =
+        null;
+
+    let audioUnlocked =
+        false;
 
     const pending =
         new Map();
@@ -70,15 +82,14 @@ const EYTSpeech = (() => {
         new Map();
 
     /* ==========================================================================
-       UTILITÁRIOS
+       HELPERS
        ========================================================================== */
 
     function cleanText(
         value
     ) {
         return String(
-            value ??
-            ""
+            value ?? ""
         )
             .replace(
                 /\u00a0/g,
@@ -148,10 +159,6 @@ const EYTSpeech = (() => {
             : fallback;
     }
 
-    /* ==========================================================================
-       SUPORTE
-       ========================================================================== */
-
     function isSupported() {
         return (
             typeof Worker !==
@@ -167,10 +174,6 @@ const EYTSpeech = (() => {
             "function"
         );
     }
-
-    /* ==========================================================================
-       EVENTOS
-       ========================================================================== */
 
     function dispatch(
         name,
@@ -204,6 +207,511 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
+       ERROS VISÍVEIS
+
+       Útil principalmente no celular, onde normalmente não temos console.
+       ========================================================================== */
+
+    function humanError(
+        error
+    ) {
+        const text =
+            String(
+                error?.message ||
+                error ||
+                "Falha desconhecida no áudio."
+            );
+
+        if (
+            /Failed to fetch|fetch|CORS/i
+                .test(
+                    text
+                )
+        ) {
+            return "Não foi possível baixar os arquivos do motor de voz. Verifique a conexão e tente novamente.";
+        }
+
+        if (
+            /memory|out of memory/i
+                .test(
+                    text
+                )
+        ) {
+            return "O dispositivo não possui memória suficiente para carregar a voz neural. Feche outras abas e tente novamente.";
+        }
+
+        if (
+            /backend|wasm|webgpu/i
+                .test(
+                    text
+                )
+        ) {
+            return "O motor de voz não conseguiu iniciar neste dispositivo. O sistema tentou WebGPU/WASM automaticamente.";
+        }
+
+        if (
+            /play|NotAllowedError|gesture/i
+                .test(
+                    text
+                )
+        ) {
+            return "O navegador bloqueou a reprodução automática. Toque novamente no alto-falante para liberar o áudio.";
+        }
+
+        return text;
+    }
+
+    function showErrorBanner(
+        message
+    ) {
+        let banner =
+            document
+                .getElementById(
+                    "eytSpeechErrorBanner"
+                );
+
+        if (
+            !banner
+        ) {
+            banner =
+                document
+                    .createElement(
+                        "div"
+                    );
+
+            banner.id =
+                "eytSpeechErrorBanner";
+
+            banner
+                .setAttribute(
+                    "role",
+                    "alert"
+                );
+
+            Object.assign(
+                banner.style,
+                {
+                    position:
+                        "fixed",
+
+                    left:
+                        "12px",
+
+                    right:
+                        "12px",
+
+                    bottom:
+                        "12px",
+
+                    zIndex:
+                        "99999",
+
+                    padding:
+                        "12px 14px",
+
+                    borderRadius:
+                        "12px",
+
+                    background:
+                        "#B00020",
+
+                    color:
+                        "#fff",
+
+                    font:
+                        "600 14px/1.35 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+
+                    boxShadow:
+                        "0 8px 24px rgba(0,0,0,.25)",
+
+                    textAlign:
+                        "center"
+                }
+            );
+
+            document.body
+                .appendChild(
+                    banner
+                );
+        }
+
+        banner.textContent =
+            `Áudio: ${message}`;
+
+        banner.hidden =
+            false;
+
+        clearTimeout(
+            showErrorBanner.timer
+        );
+
+        showErrorBanner.timer =
+            setTimeout(
+                () => {
+                    if (
+                        banner
+                    ) {
+                        banner.hidden =
+                            true;
+                    }
+                },
+                CONFIG
+                    .errorBannerDuration
+            );
+    }
+
+    function hideErrorBanner() {
+        const banner =
+            document
+                .getElementById(
+                    "eytSpeechErrorBanner"
+                );
+
+        if (
+            banner
+        ) {
+            banner.hidden =
+                true;
+        }
+    }
+
+    /* ==========================================================================
+       AUDIO CONTEXT
+
+       A saída de áudio utilizada é a saída padrão do sistema operacional.
+
+       Exemplo:
+       - Bluetooth
+       - P2
+       - USB
+       - alto-falante
+
+       Não tentamos selecionar manualmente o dispositivo.
+       ========================================================================== */
+
+    function getAudioContext() {
+        if (
+            audioContext
+        ) {
+            return audioContext;
+        }
+
+        const AudioContextClass =
+            window.AudioContext ||
+            window.webkitAudioContext;
+
+        if (
+            !AudioContextClass
+        ) {
+            return null;
+        }
+
+        audioContext =
+            new AudioContextClass({
+                latencyHint:
+                    "interactive"
+            });
+
+        return audioContext;
+    }
+
+    function unlockAudio() {
+        const context =
+            getAudioContext();
+
+        if (
+            !context
+        ) {
+            return Promise.resolve(
+                false
+            );
+        }
+
+        try {
+            const resumePromise =
+                context.state ===
+                    "suspended"
+                    ? context.resume()
+                    : Promise.resolve();
+
+            /*
+             * Reprodução silenciosa mínima.
+             *
+             * Isso registra o gesto do usuário no AudioContext.
+             * É especialmente importante no Safari/iOS.
+             */
+
+            const buffer =
+                context.createBuffer(
+                    1,
+                    1,
+                    22050
+                );
+
+            const source =
+                context
+                    .createBufferSource();
+
+            source.buffer =
+                buffer;
+
+            source.connect(
+                context.destination
+            );
+
+            source.start(
+                0
+            );
+
+            return Promise
+                .resolve(
+                    resumePromise
+                )
+                .then(
+                    () => {
+                        audioUnlocked =
+                            context.state ===
+                            "running";
+
+                        return audioUnlocked;
+                    }
+                )
+                .catch(
+                    () =>
+                        false
+                );
+        } catch (_) {
+            return Promise.resolve(
+                false
+            );
+        }
+    }
+
+    /* ==========================================================================
+       OBJECT URL
+       ========================================================================== */
+
+    function releaseObjectUrl() {
+        if (
+            !currentObjectUrl
+        ) {
+            return;
+        }
+
+        try {
+            URL
+                .revokeObjectURL(
+                    currentObjectUrl
+                );
+        } catch (_) {
+        }
+
+        currentObjectUrl =
+            null;
+    }
+
+    /* ==========================================================================
+       STOP PLAYBACK
+       ========================================================================== */
+
+    function stopPlaybackOnly() {
+        if (
+            currentSource
+        ) {
+            try {
+                currentSource
+                    .stop(
+                        0
+                    );
+            } catch (_) {
+            }
+
+            try {
+                currentSource
+                    .disconnect();
+            } catch (_) {
+            }
+
+            currentSource =
+                null;
+        }
+
+        if (
+            currentAudioElement
+        ) {
+            try {
+                currentAudioElement
+                    .pause();
+
+                currentAudioElement
+                    .currentTime =
+                    0;
+            } catch (_) {
+            }
+
+            currentAudioElement =
+                null;
+        }
+
+        releaseObjectUrl();
+    }
+
+    /* ==========================================================================
+       BOTÃO
+       ========================================================================== */
+
+    function rememberButton(
+        button
+    ) {
+        if (
+            !button
+        ) {
+            return;
+        }
+
+        if (
+            !button
+                .dataset
+                .eytOriginalLabel
+        ) {
+            button
+                .dataset
+                .eytOriginalLabel =
+                button
+                    .getAttribute(
+                        "aria-label"
+                    ) ||
+                button
+                    .getAttribute(
+                        "title"
+                    ) ||
+                "Ouvir pronúncia";
+        }
+    }
+
+    function activateButton(
+        button
+    ) {
+        if (
+            !button
+        ) {
+            return;
+        }
+
+        rememberButton(
+            button
+        );
+
+        if (
+            currentButton &&
+            currentButton !==
+            button
+        ) {
+            resetButton(
+                currentButton
+            );
+        }
+
+        currentButton =
+            button;
+
+        button
+            .classList
+            .add(
+                "is-speaking"
+            );
+
+        button
+            .setAttribute(
+                "aria-pressed",
+                "true"
+            );
+
+        button
+            .setAttribute(
+                "aria-label",
+                "Preparando áudio"
+            );
+
+        button
+            .setAttribute(
+                "title",
+                "Preparando áudio"
+            );
+    }
+
+    function setButtonPlaying(
+        button
+    ) {
+        if (
+            !button
+        ) {
+            return;
+        }
+
+        button
+            .setAttribute(
+                "aria-label",
+                "Parar áudio"
+            );
+
+        button
+            .setAttribute(
+                "title",
+                "Parar áudio"
+            );
+    }
+
+    function resetButton(
+        button =
+            currentButton
+    ) {
+        if (
+            !button
+        ) {
+            return;
+        }
+
+        button
+            .classList
+            .remove(
+                "is-speaking"
+            );
+
+        button
+            .setAttribute(
+                "aria-pressed",
+                "false"
+            );
+
+        const label =
+            button
+                .dataset
+                .eytOriginalLabel ||
+            "Ouvir pronúncia";
+
+        button
+            .setAttribute(
+                "aria-label",
+                label
+            );
+
+        button
+            .setAttribute(
+                "title",
+                label
+            );
+
+        if (
+            button ===
+            currentButton
+        ) {
+            currentButton =
+                null;
+        }
+    }
+
+    /* ==========================================================================
        HASH
        ========================================================================== */
 
@@ -220,8 +728,7 @@ const EYTSpeech = (() => {
 
         for (
             let i = 0, ch;
-            i <
-            value.length;
+            i < value.length;
             i += 1
         ) {
             ch =
@@ -304,8 +811,8 @@ const EYTSpeech = (() => {
     ) {
         return hashString(
             JSON.stringify({
-                version:
-                    1,
+                v:
+                    3,
 
                 text:
                     segment.text,
@@ -338,12 +845,10 @@ const EYTSpeech = (() => {
 
     function trimMemoryCache() {
         while (
-            memoryCache
-                .size >
-            CONFIG
-                .maxMemoryEntries
+            memoryCache.size >
+            CONFIG.maxMemoryEntries
         ) {
-            const firstKey =
+            const first =
                 memoryCache
                     .keys()
                     .next()
@@ -351,7 +856,7 @@ const EYTSpeech = (() => {
 
             memoryCache
                 .delete(
-                    firstKey
+                    first
                 );
         }
     }
@@ -464,7 +969,6 @@ const EYTSpeech = (() => {
                     cacheRequest(
                         key
                     ),
-
                     new Response(
                         blob,
                         {
@@ -484,184 +988,6 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       BOTÃO
-       ========================================================================== */
-
-    function rememberButton(
-        button
-    ) {
-        if (
-            !button
-        ) {
-            return;
-        }
-
-        if (
-            !button
-                .dataset
-                .eytOriginalLabel
-        ) {
-            button
-                .dataset
-                .eytOriginalLabel =
-                button
-                    .getAttribute(
-                        "aria-label"
-                    ) ||
-                button
-                    .getAttribute(
-                        "title"
-                    ) ||
-                "Ouvir pronúncia";
-        }
-    }
-
-    function activateButton(
-        button
-    ) {
-        if (
-            !button
-        ) {
-            return;
-        }
-
-        rememberButton(
-            button
-        );
-
-        if (
-            currentButton &&
-            currentButton !==
-            button
-        ) {
-            resetButton(
-                currentButton
-            );
-        }
-
-        currentButton =
-            button;
-
-        button
-            .classList
-            .add(
-                "is-speaking"
-            );
-
-        button
-            .setAttribute(
-                "aria-pressed",
-                "true"
-            );
-
-        button
-            .setAttribute(
-                "aria-label",
-                "Carregando áudio"
-            );
-
-        button
-            .setAttribute(
-                "title",
-                "Carregando áudio"
-            );
-    }
-
-    function setButtonPlaying(
-        button
-    ) {
-        if (
-            !button
-        ) {
-            return;
-        }
-
-        button
-            .setAttribute(
-                "aria-label",
-                "Parar áudio"
-            );
-
-        button
-            .setAttribute(
-                "title",
-                "Parar áudio"
-            );
-    }
-
-    function resetButton(
-        button =
-            currentButton
-    ) {
-        if (
-            !button
-        ) {
-            return;
-        }
-
-        button
-            .classList
-            .remove(
-                "is-speaking"
-            );
-
-        button
-            .setAttribute(
-                "aria-pressed",
-                "false"
-            );
-
-        const label =
-            button
-                .dataset
-                .eytOriginalLabel ||
-            "Ouvir pronúncia";
-
-        button
-            .setAttribute(
-                "aria-label",
-                label
-            );
-
-        button
-            .setAttribute(
-                "title",
-                label
-            );
-
-        if (
-            button ===
-            currentButton
-        ) {
-            currentButton =
-                null;
-        }
-    }
-
-    /* ==========================================================================
-       OBJECT URL
-       ========================================================================== */
-
-    function releaseObjectUrl() {
-        if (
-            !currentObjectUrl
-        ) {
-            return;
-        }
-
-        try {
-            URL
-                .revokeObjectURL(
-                    currentObjectUrl
-                );
-        } catch (_) {
-        }
-
-        currentObjectUrl =
-            null;
-    }
-
-    /* ==========================================================================
        WORKER
        ========================================================================== */
 
@@ -676,16 +1002,21 @@ const EYTSpeech = (() => {
             message.type ===
             "engine-status"
         ) {
-            workerRuntime =
+            if (
                 message.device
-                    ? {
-                        device:
-                            message.device,
+            ) {
+                workerRuntime = {
+                    device:
+                        message.device,
 
-                        dtype:
-                            message.dtype
-                    }
-                    : workerRuntime;
+                    dtype:
+                        message.dtype,
+
+                    reason:
+                        message.reason ||
+                        null
+                };
+            }
 
             dispatch(
                 "eyt:speech-engine-status",
@@ -810,8 +1141,7 @@ const EYTSpeech = (() => {
     ) {
         const error =
             new Error(
-                event
-                    ?.message ||
+                event?.message ||
                 "Falha no motor Kokoro."
             );
 
@@ -844,6 +1174,12 @@ const EYTSpeech = (() => {
                     error.message
             }
         );
+
+        showErrorBanner(
+            humanError(
+                error
+            )
+        );
     }
 
     function createWorker() {
@@ -855,8 +1191,7 @@ const EYTSpeech = (() => {
 
         worker =
             new Worker(
-                CONFIG
-                    .workerPath,
+                CONFIG.workerPath,
                 {
                     type:
                         "module",
@@ -1075,7 +1410,10 @@ const EYTSpeech = (() => {
                 source:
                     "audio-cache",
 
-                key
+                key,
+
+                lang:
+                    segment.lang
             };
         }
 
@@ -1097,12 +1435,15 @@ const EYTSpeech = (() => {
             source:
                 "kokoro",
 
-            key
+            key,
+
+            lang:
+                segment.lang
         };
     }
 
     /* ==========================================================================
-       DETECÇÃO DE TRECHOS EM INGLÊS
+       DETECÇÃO INGLÊS
        ========================================================================== */
 
     function isLikelyEnglishFragment(
@@ -1133,7 +1474,7 @@ const EYTSpeech = (() => {
                 value
             );
 
-        const englishSignals = [
+        const signals = [
             "hello",
             "hi",
             "good morning",
@@ -1183,7 +1524,7 @@ const EYTSpeech = (() => {
         ];
 
         if (
-            englishSignals
+            signals
                 .some(
                     signal =>
                         normalized
@@ -1202,7 +1543,7 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       PERGUNTAS MISTAS PT-BR / EN-GB
+       IDIOMA MISTO
        ========================================================================== */
 
     function splitMixedLanguage(
@@ -1227,8 +1568,7 @@ const EYTSpeech = (() => {
 
         if (
             baseLang !==
-            CONFIG
-                .portugueseLang
+            CONFIG.portugueseLang
         ) {
             return [
                 {
@@ -1357,11 +1697,8 @@ const EYTSpeech = (() => {
 
         const patterns = [
             /(\bn[uú]mero\s+)([A-Za-z][A-Za-z'-]*)/i,
-
             /(\bdepois de\s+)([A-Za-z][A-Za-z'-]*)/i,
-
             /(\bantes de\s+)([A-Za-z][A-Za-z'-]*)/i,
-
             /(\bpalavra\s+)([A-Za-z][A-Za-z'-]*)/i
         ];
 
@@ -1381,7 +1718,7 @@ const EYTSpeech = (() => {
                     matchPattern[2]
                 )
             ) {
-                const englishStart =
+                const start =
                     matchPattern.index +
                     matchPattern[1]
                         .length;
@@ -1390,7 +1727,7 @@ const EYTSpeech = (() => {
                     source
                         .slice(
                             0,
-                            englishStart
+                            start
                         ),
 
                     CONFIG
@@ -1407,7 +1744,7 @@ const EYTSpeech = (() => {
                 push(
                     source
                         .slice(
-                            englishStart +
+                            start +
                             matchPattern[2]
                                 .length
                         ),
@@ -1432,10 +1769,6 @@ const EYTSpeech = (() => {
         ];
     }
 
-    /* ==========================================================================
-       PERSONA
-       ========================================================================== */
-
     function getPersona(
         options,
         segmentLang
@@ -1453,20 +1786,8 @@ const EYTSpeech = (() => {
             return "teacherMale";
         }
 
-        if (
-            segmentLang ===
-            CONFIG
-                .portugueseLang
-        ) {
-            return "teacher";
-        }
-
         return "teacher";
     }
-
-    /* ==========================================================================
-       SEGMENTOS
-       ========================================================================== */
 
     function buildSegments(
         text,
@@ -1538,35 +1859,327 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       ÁUDIO
+       REPRODUÇÃO WEB AUDIO
+
+       Principal método mobile.
+
+       AudioContext.destination utiliza automaticamente
+       a saída padrão definida pelo sistema.
        ========================================================================== */
 
-    function stopAudioOnly() {
+    async function playWithWebAudio(
+        blob,
+        session,
+        metadata
+    ) {
+        const context =
+            getAudioContext();
+
         if (
-            currentAudio
+            !context
+        ) {
+            throw new Error(
+                "AudioContext indisponível."
+            );
+        }
+
+        if (
+            context.state ===
+            "suspended"
         ) {
             try {
-                currentAudio
-                    .pause();
-
-                currentAudio
-                    .currentTime =
-                    0;
+                await context
+                    .resume();
             } catch (_) {
             }
         }
 
-        currentAudio =
-            null;
+        if (
+            context.state !==
+            "running" &&
+            !audioUnlocked
+        ) {
+            throw new Error(
+                "NotAllowedError: contexto de áudio ainda bloqueado pelo navegador."
+            );
+        }
 
-        releaseObjectUrl();
+        const arrayBuffer =
+            await blob
+                .arrayBuffer();
+
+        const audioBuffer =
+            await context
+                .decodeAudioData(
+                    arrayBuffer
+                        .slice(
+                            0
+                        )
+                );
+
+        if (
+            !currentSession ||
+            currentSession.id !==
+            session.id
+        ) {
+            return false;
+        }
+
+        const source =
+            context
+                .createBufferSource();
+
+        source.buffer =
+            audioBuffer;
+
+        source.connect(
+            context.destination
+        );
+
+        currentSource =
+            source;
+
+        session.loading =
+            false;
+
+        setButtonPlaying(
+            session.button
+        );
+
+        dispatch(
+            "eyt:speech-start",
+            {
+                text:
+                    session.text,
+
+                lang:
+                    metadata.lang,
+
+                voice:
+                    metadata.voice ||
+                    null,
+
+                source:
+                    metadata.source,
+
+                engine:
+                    "kokoro",
+
+                runtime:
+                    metadata.runtime ||
+                    workerRuntime
+            }
+        );
+
+        return new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+                source.onended =
+                    () => {
+                        if (
+                            currentSource ===
+                            source
+                        ) {
+                            currentSource =
+                                null;
+                        }
+
+                        try {
+                            source
+                                .disconnect();
+                        } catch (_) {
+                        }
+
+                        resolve(
+                            true
+                        );
+                    };
+
+                try {
+                    source.start(
+                        0
+                    );
+                } catch (error) {
+                    reject(
+                        error
+                    );
+                }
+            }
+        );
     }
+
+    /* ==========================================================================
+       FALLBACK HTML AUDIO
+       ========================================================================== */
+
+    async function playWithHtmlAudio(
+        blob,
+        session,
+        metadata
+    ) {
+        releaseObjectUrl();
+
+        const objectUrl =
+            URL
+                .createObjectURL(
+                    blob
+                );
+
+        currentObjectUrl =
+            objectUrl;
+
+        const audio =
+            new Audio(
+                objectUrl
+            );
+
+        audio.preload =
+            "auto";
+
+        audio.volume =
+            1;
+
+        audio.playsInline =
+            true;
+
+        currentAudioElement =
+            audio;
+
+        session.loading =
+            false;
+
+        setButtonPlaying(
+            session.button
+        );
+
+        return new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+                audio.onplay =
+                    () =>
+                        dispatch(
+                            "eyt:speech-start",
+                            {
+                                text:
+                                    session.text,
+
+                                lang:
+                                    metadata.lang,
+
+                                voice:
+                                    metadata.voice ||
+                                    null,
+
+                                source:
+                                    metadata.source,
+
+                                engine:
+                                    "kokoro",
+
+                                runtime:
+                                    metadata.runtime ||
+                                    workerRuntime
+                            }
+                        );
+
+                audio.onended =
+                    () => {
+                        if (
+                            currentAudioElement ===
+                            audio
+                        ) {
+                            currentAudioElement =
+                                null;
+                        }
+
+                        releaseObjectUrl();
+
+                        resolve(
+                            true
+                        );
+                    };
+
+                audio.onerror =
+                    () =>
+                        reject(
+                            new Error(
+                                "Não foi possível reproduzir o áudio gerado."
+                            )
+                        );
+
+                const playPromise =
+                    audio.play();
+
+                if (
+                    playPromise &&
+                    typeof playPromise
+                        .catch ===
+                    "function"
+                ) {
+                    playPromise
+                        .catch(
+                            reject
+                        );
+                }
+            }
+        );
+    }
+
+    async function playBlob(
+        blob,
+        session,
+        metadata
+    ) {
+        if (
+            !currentSession ||
+            currentSession.id !==
+            session.id
+        ) {
+            return false;
+        }
+
+        stopPlaybackOnly();
+
+        try {
+            return await playWithWebAudio(
+                blob,
+                session,
+                metadata
+            );
+        } catch (firstError) {
+            log(
+                "WebAudio fallback",
+                firstError
+            );
+
+            try {
+                return await playWithHtmlAudio(
+                    blob,
+                    session,
+                    metadata
+                );
+            } catch (secondError) {
+                throw (
+                    secondError ||
+                    firstError
+                );
+            }
+        }
+    }
+
+    /* ==========================================================================
+       STOP
+       ========================================================================== */
 
     function stop() {
         playSessionId +=
             1;
 
-        stopAudioOnly();
+        stopPlaybackOnly();
 
         if (
             currentButton
@@ -1592,141 +2205,16 @@ const EYTSpeech = (() => {
                 currentSession
                     .loading ||
 
+                currentSource ||
+
                 (
-                    currentAudio &&
-                    !currentAudio
+                    currentAudioElement &&
+                    !currentAudioElement
                         .paused &&
-                    !currentAudio
+                    !currentAudioElement
                         .ended
                 )
             )
-        );
-    }
-
-    function playBlob(
-        blob,
-        session,
-        metadata
-    ) {
-        return new Promise(
-            (
-                resolve,
-                reject
-            ) => {
-                if (
-                    !currentSession ||
-                    currentSession
-                        .id !==
-                    session.id
-                ) {
-                    resolve(
-                        false
-                    );
-
-                    return;
-                }
-
-                stopAudioOnly();
-
-                const objectUrl =
-                    URL
-                        .createObjectURL(
-                            blob
-                        );
-
-                currentObjectUrl =
-                    objectUrl;
-
-                const audio =
-                    new Audio(
-                        objectUrl
-                    );
-
-                audio.preload =
-                    "auto";
-
-                audio.volume =
-                    1;
-
-                currentAudio =
-                    audio;
-
-                session.loading =
-                    false;
-
-                setButtonPlaying(
-                    session.button
-                );
-
-                audio.onplay =
-                    () => {
-                        dispatch(
-                            "eyt:speech-start",
-                            {
-                                text:
-                                    session.text,
-
-                                lang:
-                                    metadata.lang,
-
-                                voice:
-                                    metadata.voice ||
-                                    null,
-
-                                source:
-                                    metadata.source,
-
-                                engine:
-                                    "kokoro",
-
-                                runtime:
-                                    metadata.runtime ||
-                                    workerRuntime
-                            }
-                        );
-                    };
-
-                audio.onended =
-                    () => {
-                        currentAudio =
-                            null;
-
-                        releaseObjectUrl();
-
-                        resolve(
-                            true
-                        );
-                    };
-
-                audio.onerror =
-                    () => {
-                        currentAudio =
-                            null;
-
-                        releaseObjectUrl();
-
-                        reject(
-                            new Error(
-                                "O navegador não conseguiu reproduzir o áudio gerado."
-                            )
-                        );
-                    };
-
-                const playPromise =
-                    audio.play();
-
-                if (
-                    playPromise &&
-                    typeof playPromise
-                        .catch ===
-                    "function"
-                ) {
-                    playPromise
-                        .catch(
-                            reject
-                        );
-                }
-            }
         );
     }
 
@@ -1749,6 +2237,20 @@ const EYTSpeech = (() => {
         ) {
             return false;
         }
+
+        hideErrorBanner();
+
+        /*
+         * IMPORTANTE:
+         *
+         * Chamado antes do primeiro await.
+         *
+         * Quando speak() é chamado dentro de um clique,
+         * o navegador ainda considera que estamos dentro
+         * do gesto do usuário.
+         */
+
+        void unlockAudio();
 
         stop();
 
@@ -1801,8 +2303,7 @@ const EYTSpeech = (() => {
             ) {
                 if (
                     !currentSession ||
-                    currentSession
-                        .id !==
+                    currentSession.id !==
                     id
                 ) {
                     return false;
@@ -1815,8 +2316,7 @@ const EYTSpeech = (() => {
 
                 if (
                     !currentSession ||
-                    currentSession
-                        .id !==
+                    currentSession.id !==
                     id
                 ) {
                     return false;
@@ -1839,8 +2339,7 @@ const EYTSpeech = (() => {
                 if (
                     !played ||
                     !currentSession ||
-                    currentSession
-                        .id !==
+                    currentSession.id !==
                     id
                 ) {
                     return false;
@@ -1852,8 +2351,7 @@ const EYTSpeech = (() => {
 
             if (
                 currentSession &&
-                currentSession
-                    .id ===
+                currentSession.id ===
                 id
             ) {
                 if (
@@ -1880,16 +2378,13 @@ const EYTSpeech = (() => {
             }
 
             return true;
-        } catch (
-        error
-        ) {
+        } catch (error) {
             if (
                 currentSession &&
-                currentSession
-                    .id ===
+                currentSession.id ===
                 id
             ) {
-                stopAudioOnly();
+                stopPlaybackOnly();
 
                 if (
                     currentButton
@@ -1903,6 +2398,15 @@ const EYTSpeech = (() => {
                     null;
             }
 
+            const message =
+                humanError(
+                    error
+                );
+
+            showErrorBanner(
+                message
+            );
+
             dispatch(
                 "eyt:speech-error",
                 {
@@ -1910,22 +2414,18 @@ const EYTSpeech = (() => {
                         value,
 
                     error:
-                        error
-                            ?.message ||
-                        String(
-                            error
-                        )
+                        error?.message ||
+                        String(error),
+
+                    friendlyMessage:
+                        message
                 }
             );
 
-            if (
-                CONFIG.debug
-            ) {
-                console.error(
-                    "[EYTSpeech]",
-                    error
-                );
-            }
+            log(
+                "speech error",
+                error
+            );
 
             return false;
         }
@@ -1952,6 +2452,12 @@ const EYTSpeech = (() => {
             return false;
         }
 
+        /*
+         * Executado SINCRONAMENTE no clique.
+         */
+
+        void unlockAudio();
+
         if (
             currentSession &&
             currentButton ===
@@ -1967,7 +2473,6 @@ const EYTSpeech = (() => {
             value,
             {
                 ...options,
-
                 button
             }
         );
@@ -1976,7 +2481,7 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       INGLÊS
+       API IDIOMAS
        ========================================================================== */
 
     function speakEnglish(
@@ -2014,6 +2519,22 @@ const EYTSpeech = (() => {
         );
     }
 
+    function speakPortuguese(
+        text,
+        options = {}
+    ) {
+        return speak(
+            text,
+            {
+                ...options,
+
+                lang:
+                    CONFIG
+                        .portugueseLang
+            }
+        );
+    }
+
     function toggleEnglish(
         text,
         button,
@@ -2028,26 +2549,6 @@ const EYTSpeech = (() => {
                 lang:
                     CONFIG
                         .englishLang
-            }
-        );
-    }
-
-    /* ==========================================================================
-       PORTUGUÊS
-       ========================================================================== */
-
-    function speakPortuguese(
-        text,
-        options = {}
-    ) {
-        return speak(
-            text,
-            {
-                ...options,
-
-                lang:
-                    CONFIG
-                        .portugueseLang
             }
         );
     }
@@ -2107,7 +2608,12 @@ const EYTSpeech = (() => {
             }
 
             return true;
-        } catch (_) {
+        } catch (error) {
+            log(
+                "preload",
+                error
+            );
+
             return false;
         }
     }
@@ -2127,24 +2633,27 @@ const EYTSpeech = (() => {
             await ensureWorker();
 
             return true;
-        } catch (
-        error
-        ) {
-            if (
-                CONFIG.debug
-            ) {
-                console.error(
-                    "[EYTSpeech] warmup",
+        } catch (error) {
+            const message =
+                humanError(
                     error
                 );
-            }
+
+            showErrorBanner(
+                message
+            );
+
+            log(
+                "warmup",
+                error
+            );
 
             return false;
         }
     }
 
     /* ==========================================================================
-       LIMPEZA DE CACHE
+       CACHE
        ========================================================================== */
 
     async function clearCache() {
@@ -2167,7 +2676,7 @@ const EYTSpeech = (() => {
     }
 
     /* ==========================================================================
-       INFORMAÇÕES
+       DEBUG / STATUS
        ========================================================================== */
 
     function getRuntime() {
@@ -2184,6 +2693,59 @@ const EYTSpeech = (() => {
         };
     }
 
+    function getAudioState() {
+        return {
+            contextState:
+                audioContext?.state ||
+                "not-created",
+
+            unlocked:
+                audioUnlocked,
+
+            output:
+                "system-default",
+
+            runtime:
+                getRuntime()
+        };
+    }
+
+    /* ==========================================================================
+       MOBILE AUDIO UNLOCK
+
+       Capturamos o primeiro gesto do usuário no documento inteiro.
+       ========================================================================== */
+
+    window
+        .addEventListener(
+            "pointerdown",
+            () => {
+                void unlockAudio();
+            },
+            {
+                capture:
+                    true,
+
+                passive:
+                    true
+            }
+        );
+
+    window
+        .addEventListener(
+            "touchstart",
+            () => {
+                void unlockAudio();
+            },
+            {
+                capture:
+                    true,
+
+                passive:
+                    true
+            }
+        );
+
     /* ==========================================================================
        CICLO DE VIDA
        ========================================================================== */
@@ -2194,13 +2756,33 @@ const EYTSpeech = (() => {
             stop
         );
 
+    document
+        .addEventListener(
+            "visibilitychange",
+            () => {
+                if (
+                    document
+                        .visibilityState ===
+                    "visible" &&
+                    audioContext?.state ===
+                    "suspended"
+                ) {
+                    audioContext
+                        .resume()
+                        .catch(
+                            () => {
+                            }
+                        );
+                }
+            }
+        );
+
     /* ==========================================================================
-       PRÉ-CARREGAMENTO AUTOMÁTICO DO MODELO
+       WARMUP AUTOMÁTICO
        ========================================================================== */
 
     if (
-        CONFIG
-            .autoWarmup &&
+        CONFIG.autoWarmup &&
         isSupported()
     ) {
         const schedule =
@@ -2213,18 +2795,16 @@ const EYTSpeech = (() => {
                         .requestIdleCallback(
                             () =>
                                 void warmup(),
-
                             {
                                 timeout:
-                                    1800
+                                    2500
                             }
                         );
                 } else {
                     setTimeout(
                         () =>
                             void warmup(),
-
-                        900
+                        1200
                     );
                 }
             };
@@ -2281,6 +2861,10 @@ const EYTSpeech = (() => {
 
         getRuntime,
 
-        getConfig
+        getConfig,
+
+        getAudioState,
+
+        unlockAudio
     };
 })();
