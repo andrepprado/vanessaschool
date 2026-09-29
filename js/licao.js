@@ -357,10 +357,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 lang
             );
 
-        const preferRecorded =
-            options.preferRecorded !==
-            false;
-
         return `
             <button
                 type="button"
@@ -368,7 +364,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 data-speech="${escapeAttribute(text)}"
                 data-speech-lang="${escapeAttribute(lang)}"
                 data-speech-rate="${escapeAttribute(rate)}"
-                data-speech-recorded="${preferRecorded ? "true" : "false"}"
+                data-speech-persona="${escapeAttribute(options.persona || "teacher")}"
                 aria-label="${escapeAttribute(label)}"
                 title="${escapeAttribute(label)}"
             >
@@ -692,10 +688,10 @@ document.addEventListener("DOMContentLoaded", () => {
                                         lang
                                     );
 
-                            const preferRecorded =
+                            const persona =
                                 button.dataset
-                                    .speechRecorded !==
-                                "false";
+                                    .speechPersona ||
+                                "teacher";
 
                             EYTSpeech.toggle(
                                 text,
@@ -703,7 +699,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 {
                                     lang,
                                     rate,
-                                    preferRecorded
+                                    persona
                                 }
                             );
                         }
@@ -749,8 +745,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         CONFIG
                             .answerSpeechRate,
 
-                    preferRecorded:
-                        true
+                    persona:
+                        "teacherMale"
                 }
             );
     }
@@ -788,8 +784,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         CONFIG
                             .wordSpeechRate,
 
-                    preferRecorded:
-                        true
+                    persona:
+                        "teacher"
                 }
             );
     }
@@ -829,8 +825,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 CONFIG
                                     .answerSpeechRate,
 
-                            preferRecorded:
-                                true,
+                            persona:
+                                "teacherMale",
 
                             className:
                                 "eyt-answer-speech",
@@ -911,8 +907,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 CONFIG
                                     .wordSpeechRate,
 
-                            preferRecorded:
-                                true,
+                            persona:
+                                "teacher",
 
                             className:
                                 "eyt-word-speech",
@@ -1162,10 +1158,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 rate:
                     questionRate,
 
-                preferRecorded:
-                    questionLanguage ===
-                    CONFIG
-                        .questionEnglishLang,
+                persona:
+                    "teacher",
 
                 className:
                     "eyt-question-speech",
