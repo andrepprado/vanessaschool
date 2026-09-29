@@ -1459,7 +1459,7 @@ html body.lesson-page button.eyt-word-speech>span.eyt-speech-icon>svg.eyt-speake
 
 /* ==========================================================================
    39. GARANTIA CONTRA ESTILOS ANTIGOS DO SPEECH
-   ========================================================================== */
+   ========================================================================== 
 
 .lesson-page .speech-button,
 .lesson-page .question-speech,
@@ -1470,9 +1470,9 @@ html body.lesson-page button.eyt-word-speech>span.eyt-speech-icon>svg.eyt-speake
      * Classes antigas não são mais utilizadas pelo licao.js novo.
      * Esta regra existe apenas para impedir resíduos visuais caso
      * algum HTML antigo permaneça no cache durante um deploy.
-     */
+    
 }
-
+*/
 
 /* ==========================================================================
    40. TABLET
