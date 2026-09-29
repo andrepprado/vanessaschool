@@ -1,513 +1,224 @@
+import { KokoroTTS } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
+import { env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/+esm";
+
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
-const KOKORO_MODULE_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 
 const RUNTIME = {
     device: "wasm",
     dtype: "q8"
 };
 
-const PROFILES = {
+const VOICES = {
     "en-GB": {
         teacher: "bf_emma",
-        teacherMale: "bm_george",
-        female: "bf_emma",
-        male: "bm_george",
-        characterFemale: "bf_isabella",
-        characterMale: "bm_fable"
+        teacherMale: "bm_george"
     },
-
     "pt-BR": {
         teacher: "pf_dora",
-        teacherMale: "pm_alex",
-        female: "pf_dora",
-        male: "pm_alex",
-        characterFemale: "pf_dora",
-        characterMale: "pm_santa"
+        teacherMale: "pf_dora"
     }
 };
 
-let KokoroTTS = null;
 let tts = null;
 let initPromise = null;
 
-const originalFetch =
-    self.fetch.bind(self);
-
-let fetchPatched =
-    false;
-
 function cleanText(value) {
-    return String(
-        value ?? ""
-    )
-        .replace(
-            /\s+/g,
-            " "
-        )
+    return String(value ?? "")
+        .replace(/\s+/g, " ")
         .trim();
 }
 
 function normalizeLang(value) {
-    return String(
-        value || ""
-    )
+    return String(value || "")
         .toLowerCase()
         .startsWith("pt")
         ? "pt-BR"
         : "en-GB";
 }
 
-function clamp(
-    value,
-    min,
-    max,
-    fallback
-) {
-    const number =
-        Number(value);
+function clamp(value, min, max, fallback) {
+    const number = Number(value);
 
-    return Number.isFinite(
-        number
-    )
-        ? Math.min(
-            max,
-            Math.max(
-                min,
-                number
-            )
-        )
+    return Number.isFinite(number)
+        ? Math.min(max, Math.max(min, number))
         : fallback;
 }
 
-function sendStatus(
-    status,
-    extra = {}
-) {
+function sendStatus(status, extra = {}) {
     self.postMessage({
-        type:
-            "engine-status",
-
+        type: "engine-status",
         status,
-
-        device:
-            RUNTIME.device,
-
-        dtype:
-            RUNTIME.dtype,
-
+        device: RUNTIME.device,
+        dtype: RUNTIME.dtype,
         ...extra
     });
 }
 
-/* ==========================================================================
-   FETCH
+function configureEnvironment() {
+    /*
+     * PRODUÇÃO:
+     *
+     * Nenhum modelo é buscado fora do domínio Vanessa School.
+     */
 
-   Mantemos o Hugging Face passando pelo domínio da Vanessa School.
+    env.allowLocalModels = true;
+    env.allowRemoteModels = false;
 
-   huggingface.co/...
-   ↓
-   vanessaschool.vercel.app/hf/...
-   ========================================================================== */
+    /*
+     * MODEL_ID será adicionado automaticamente:
+     *
+     * /models/
+     * +
+     * onnx-community/Kokoro-82M-v1.0-ONNX
+     */
 
-function patchFetch() {
+    env.localModelPath = "/models/";
+
+    /*
+     * Cache do navegador permanece habilitado.
+     */
+
+    env.useBrowserCache = true;
+
+    /*
+     * ONNX Runtime WASM servido pelo próprio domínio.
+     */
+
     if (
-        fetchPatched
+        env.backends &&
+        env.backends.onnx &&
+        env.backends.onnx.wasm
     ) {
-        return;
+        env.backends.onnx.wasm.wasmPaths = "/wasm/";
     }
-
-    fetchPatched =
-        true;
-
-    self.fetch =
-        async (
-            input,
-            init
-        ) => {
-            let originalUrl =
-                "";
-
-            try {
-                originalUrl =
-                    typeof input ===
-                        "string"
-                        ? input
-                        : input instanceof URL
-                            ? input.href
-                            : input?.url ||
-                            "";
-
-                const url =
-                    new URL(
-                        originalUrl,
-                        self.location.origin
-                    );
-
-                /*
-                 * Arquivos normais do Hugging Face.
-                 */
-
-                if (
-                    url.hostname ===
-                    "huggingface.co"
-                ) {
-                    const proxyUrl =
-                        `${self.location.origin}/hf${url.pathname}${url.search}`;
-
-                    sendStatus(
-                        "download-request",
-                        {
-                            file:
-                                url.pathname
-                        }
-                    );
-
-                    if (
-                        input instanceof Request
-                    ) {
-                        const proxiedRequest =
-                            new Request(
-                                proxyUrl,
-                                input
-                            );
-
-                        return originalFetch(
-                            proxiedRequest,
-                            init
-                        );
-                    }
-
-                    return originalFetch(
-                        proxyUrl,
-                        init
-                    );
-                }
-
-                /*
-                 * Demais URLs, incluindo CDN/Xet após redirects.
-                 */
-
-                return originalFetch(
-                    input,
-                    init
-                );
-            } catch (error) {
-                sendStatus(
-                    "download-error",
-                    {
-                        url:
-                            originalUrl,
-
-                        message:
-                            error?.message ||
-                            String(error)
-                    }
-                );
-
-                throw error;
-            }
-        };
 }
-
-/* ==========================================================================
-   KOKORO LIBRARY
-   ========================================================================== */
-
-async function loadLibrary() {
-    if (
-        KokoroTTS
-    ) {
-        return KokoroTTS;
-    }
-
-    patchFetch();
-
-    sendStatus(
-        "library-loading"
-    );
-
-    const module =
-        await import(
-            KOKORO_MODULE_URL
-        );
-
-    if (
-        !module?.KokoroTTS
-    ) {
-        throw new Error(
-            "KokoroTTS não foi encontrado no módulo kokoro-js."
-        );
-    }
-
-    KokoroTTS =
-        module.KokoroTTS;
-
-    sendStatus(
-        "library-ready"
-    );
-
-    return KokoroTTS;
-}
-
-/* ==========================================================================
-   MODEL
-   ========================================================================== */
 
 async function loadModel() {
-    const TTS =
-        await loadLibrary();
+    configureEnvironment();
 
-    sendStatus(
-        "model-loading",
-        {
-            model:
-                MODEL_ID
-        }
-    );
+    sendStatus("model-loading", {
+        model: MODEL_ID
+    });
 
     const instance =
-        await TTS
-            .from_pretrained(
-                MODEL_ID,
-                {
-                    device:
-                        RUNTIME.device,
+        await KokoroTTS.from_pretrained(
+            MODEL_ID,
+            {
+                device: RUNTIME.device,
+                dtype: RUNTIME.dtype,
+                local_files_only: true
+            }
+        );
 
-                    dtype:
-                        RUNTIME.dtype,
-
-                    progress_callback:
-                        progress => {
-                            const status = {
-                                file:
-                                    progress?.file ||
-                                    null,
-
-                                progressStatus:
-                                    progress?.status ||
-                                    null
-                            };
-
-                            if (
-                                Number.isFinite(
-                                    progress?.progress
-                                )
-                            ) {
-                                status.progress =
-                                    progress.progress;
-                            }
-
-                            if (
-                                Number.isFinite(
-                                    progress?.loaded
-                                )
-                            ) {
-                                status.loaded =
-                                    progress.loaded;
-                            }
-
-                            if (
-                                Number.isFinite(
-                                    progress?.total
-                                )
-                            ) {
-                                status.total =
-                                    progress.total;
-                            }
-
-                            sendStatus(
-                                "model-progress",
-                                status
-                            );
-                        }
-                }
-            );
-
-    sendStatus(
-        "ready",
-        {
-            reason:
-                "wasm-q8"
-        }
-    );
+    sendStatus("ready", {
+        model: MODEL_ID,
+        source: "self-hosted",
+        runtime: "wasm-q8"
+    });
 
     return instance;
 }
 
 async function ensureTTS() {
-    if (
-        tts
-    ) {
+    if (tts) {
         return tts;
     }
 
-    if (
-        initPromise
-    ) {
+    if (initPromise) {
         return initPromise;
     }
 
     initPromise =
         loadModel()
-            .then(
-                instance => {
-                    tts =
-                        instance;
+            .then(instance => {
+                tts = instance;
 
-                    return tts;
-                }
-            )
-            .catch(
-                error => {
-                    tts =
-                        null;
+                return tts;
+            })
+            .catch(error => {
+                tts = null;
+                initPromise = null;
 
-                    initPromise =
-                        null;
+                sendStatus("error", {
+                    message:
+                        error?.message ||
+                        String(error)
+                });
 
-                    sendStatus(
-                        "error",
-                        {
-                            message:
-                                error?.message ||
-                                String(error)
-                        }
-                    );
-
-                    throw error;
-                }
-            );
+                throw error;
+            });
 
     return initPromise;
 }
 
-/* ==========================================================================
-   VOICE
-   ========================================================================== */
-
-function chooseVoice(
-    lang,
-    persona,
-    requestedVoice
-) {
-    if (
-        requestedVoice
-    ) {
-        return requestedVoice;
-    }
-
+function chooseVoice(lang, persona) {
     const normalizedLang =
-        normalizeLang(
-            lang
-        );
+        normalizeLang(lang);
 
     const profile =
-        PROFILES[
-        normalizedLang
-        ] ||
-        PROFILES[
-        "en-GB"
-        ];
+        VOICES[normalizedLang] ||
+        VOICES["en-GB"];
 
     return (
-        profile[
-        persona
-        ] ||
+        profile[persona] ||
         profile.teacher
     );
 }
 
-/* ==========================================================================
-   GENERATE
-   ========================================================================== */
-
-async function generate(
-    message
-) {
+async function generate(message) {
     const engine =
         await ensureTTS();
 
     const text =
-        cleanText(
-            message.text
-        );
+        cleanText(message.text);
 
-    if (
-        !text
-    ) {
+    if (!text) {
         throw new Error(
             "Texto vazio para geração de áudio."
         );
     }
 
     const lang =
-        normalizeLang(
-            message.lang
+        normalizeLang(message.lang);
+
+    const persona =
+        cleanText(message.persona) ||
+        "teacher";
+
+    const voice =
+        cleanText(message.voice) ||
+        chooseVoice(
+            lang,
+            persona
         );
 
     const speed =
         clamp(
             message.speed,
             0.65,
-            1.25,
-            lang ===
-                "pt-BR"
+            1.20,
+            lang === "pt-BR"
                 ? 0.97
                 : 0.90
         );
 
-    const persona =
-        cleanText(
-            message.persona
-        ) ||
-        "teacher";
-
-    const voice =
-        chooseVoice(
-            lang,
-            persona,
-            cleanText(
-                message.voice
-            )
-        );
-
-    sendStatus(
-        "voice-loading",
-        {
-            voice,
-            lang
-        }
-    );
-
-    /*
-     * A primeira chamada pode baixar o arquivo .bin da voz.
-     */
-
-    sendStatus(
-        "generating",
-        {
-            id:
-                message.id,
-
-            voice,
-            lang
-        }
-    );
+    sendStatus("generating", {
+        voice,
+        lang
+    });
 
     const audio =
-        await engine
-            .generate(
-                text,
-                {
-                    voice,
-                    speed
-                }
-            );
+        await engine.generate(
+            text,
+            {
+                voice,
+                speed
+            }
+        );
 
     if (
         !audio ||
-        typeof audio.toBlob !==
-        "function"
+        typeof audio.toBlob !== "function"
     ) {
         throw new Error(
             "O Kokoro não retornou um objeto de áudio válido."
@@ -519,8 +230,7 @@ async function generate(
 
     if (
         !blob ||
-        blob.size ===
-        0
+        blob.size === 0
     ) {
         throw new Error(
             "O Kokoro gerou um áudio vazio."
@@ -529,27 +239,15 @@ async function generate(
 
     return {
         blob,
-
         voice,
-
         lang,
-
         runtime: {
-            device:
-                RUNTIME.device,
-
-            dtype:
-                RUNTIME.dtype,
-
-            reason:
-                "wasm-q8"
+            device: RUNTIME.device,
+            dtype: RUNTIME.dtype,
+            source: "self-hosted"
         }
     };
 }
-
-/* ==========================================================================
-   MESSAGES
-   ========================================================================== */
 
 self.addEventListener(
     "message",
@@ -559,8 +257,7 @@ self.addEventListener(
             {};
 
         if (
-            message.type ===
-            "init"
+            message.type === "init"
         ) {
             try {
                 await ensureTTS();
@@ -576,8 +273,8 @@ self.addEventListener(
                         dtype:
                             RUNTIME.dtype,
 
-                        reason:
-                            "wasm-q8"
+                        source:
+                            "self-hosted"
                     }
                 });
             } catch (error) {
@@ -650,17 +347,10 @@ self.addEventListener(
     }
 );
 
-/* ==========================================================================
-   READY
-   ========================================================================== */
+configureEnvironment();
 
-sendStatus(
-    "worker-ready",
-    {
-        model:
-            MODEL_ID,
-
-        runtime:
-            "wasm-q8"
-    }
-);
+sendStatus("worker-ready", {
+    model: MODEL_ID,
+    source: "self-hosted",
+    runtime: "wasm-q8"
+});
