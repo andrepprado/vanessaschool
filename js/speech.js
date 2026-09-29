@@ -3,7 +3,7 @@ const EYTSpeech = (() => {
 
     const CONFIG = {
         workerPath:
-            "js/tts/kokoro-worker.js",
+            "/js/tts/kokoro-worker.js",
 
         cacheName:
             "eyt-kokoro-audio-v1",
