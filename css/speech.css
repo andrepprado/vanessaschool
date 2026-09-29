@@ -11,16 +11,25 @@
     position: relative;
     flex: 0 0 auto;
     width: 42px;
+    min-width: 42px;
+    max-width: 42px;
     height: 42px;
+    min-height: 42px;
+    max-height: 42px;
     padding: 0;
+    margin: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    overflow: visible;
     color: var(--navy);
     background: var(--white);
     border: 1px solid var(--line);
     border-radius: 50%;
     cursor: pointer;
+    box-sizing: border-box;
+    line-height: 1;
+    vertical-align: middle;
     box-shadow: 0 3px 10px rgba(11, 31, 63, .06);
     transition:
         color var(--transition),
@@ -28,6 +37,8 @@
         border-color var(--transition),
         box-shadow var(--transition),
         transform var(--transition);
+    -webkit-appearance: none;
+    appearance: none;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -52,21 +63,55 @@
    ÍCONE SVG
    ========================================================================== */
 
-.speech-button-icon {
+.speech-button .speech-button-icon {
     position: relative;
     z-index: 2;
-    width: 20px;
-    height: 20px;
-    display: flex;
+    flex: 0 0 20px;
+    width: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    line-height: 0;
     pointer-events: none;
 }
 
-.speech-button-icon svg {
-    width: 20px;
-    height: 20px;
-    display: block;
+.speech-button .speech-button-icon svg {
+    position: static !important;
+    flex: 0 0 20px;
+    width: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    object-fit: contain;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/*
+   Proteção contra regras globais como:
+   svg { width: 100%; height: auto; }
+   existentes em outros arquivos CSS.
+*/
+
+.exercise-area .speech-button svg,
+.lesson-answer-footer .speech-button svg,
+.lesson-audio-coach svg {
+    width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    max-height: 20px !important;
 }
 
 /* ==========================================================================
@@ -77,14 +122,14 @@
     color: var(--white);
     background: var(--magenta);
     border-color: var(--magenta);
-    box-shadow:
-        0 7px 20px rgba(233, 30, 140, .24);
+    box-shadow: 0 7px 20px rgba(233, 30, 140, .24);
 }
 
 .speech-button-pulse {
     position: absolute;
     inset: -1px;
     z-index: 1;
+    display: block;
     border: 1px solid transparent;
     border-radius: inherit;
     pointer-events: none;
@@ -117,56 +162,220 @@
    ========================================================================== */
 
 .exercise-question-row {
+    width: 100%;
     margin-bottom: 27px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 48px;
     align-items: center;
     gap: 16px;
 }
 
 .exercise-question-row .exercise-question {
+    min-width: 0;
     margin-bottom: 0;
 }
 
-.question-speech {
+.speech-button.question-speech {
+    position: relative;
     width: 48px;
+    min-width: 48px;
+    max-width: 48px;
     height: 48px;
+    min-height: 48px;
+    max-height: 48px;
     color: var(--magenta-deep);
     background: rgba(233, 30, 140, .07);
     border-color: rgba(233, 30, 140, .18);
 }
 
-.question-speech .speech-button-icon,
-.question-speech .speech-button-icon svg {
-    width: 22px;
-    height: 22px;
+.speech-button.question-speech .speech-button-icon {
+    flex-basis: 22px;
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+}
+
+.speech-button.question-speech .speech-button-icon svg,
+.exercise-area .speech-button.question-speech svg {
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+}
+
+.speech-button.question-speech:hover {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+}
+
+.speech-button.question-speech.is-speaking {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+}
+
+/* ==========================================================================
+   DESTAQUE DA PERGUNTA POR INATIVIDADE
+   ========================================================================== */
+
+.speech-button.question-speech.needs-attention {
+    color: var(--white);
+    background: var(--magenta);
+    border-color: var(--magenta);
+    box-shadow: 0 0 0 0 rgba(233, 30, 140, .36);
+    animation: eyt-audio-attention 1.6s ease-in-out infinite;
+}
+
+@keyframes eyt-audio-attention {
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 0 0 0 rgba(233, 30, 140, .28);
+    }
+
+    50% {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 0 0 10px rgba(233, 30, 140, 0);
+    }
+}
+
+/* ==========================================================================
+   COACH / DICA DE ÁUDIO
+   ========================================================================== */
+
+.lesson-audio-coach {
+    width: 100%;
+    max-height: 0;
+    margin: -14px 0 0;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: var(--navy);
+    background: rgba(233, 30, 140, .065);
+    border: 1px solid rgba(233, 30, 140, 0);
+    border-radius: 14px;
+    box-sizing: border-box;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(-5px);
+    transition:
+        max-height .28s ease,
+        margin .28s ease,
+        padding .28s ease,
+        opacity .22s ease,
+        transform .28s ease,
+        border-color .28s ease;
+}
+
+.lesson-audio-coach.is-visible {
+    max-height: 90px;
+    margin: -11px 0 22px;
+    padding: 12px 15px;
+    opacity: 1;
+    border-color: rgba(233, 30, 140, .14);
+    transform: translateY(0);
+}
+
+.lesson-audio-coach-icon {
+    position: relative;
+    flex: 0 0 30px;
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--magenta);
+    background: var(--white);
+    border-radius: 50%;
+    box-shadow: 0 2px 7px rgba(11, 31, 63, .07);
+}
+
+.lesson-audio-coach-icon svg,
+.exercise-area .lesson-audio-coach-icon svg {
+    position: static !important;
+    width: 17px !important;
+    min-width: 17px !important;
+    max-width: 17px !important;
+    height: 17px !important;
+    min-height: 17px !important;
+    max-height: 17px !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+}
+
+.lesson-audio-coach-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.lesson-audio-coach-text strong {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--navy);
+}
+
+.lesson-audio-coach-text span {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ink-soft);
 }
 
 /* ==========================================================================
    ALTERNATIVAS
    ========================================================================== */
 
-.answer-option-container {
-    position: relative;
+.answer-options {
     width: 100%;
 }
 
+.answer-option-container {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
 .answer-option-container .answer-option {
+    width: 100%;
     padding-right: 68px;
+    box-sizing: border-box;
 }
 
 .answer-option-text {
     display: block;
+    min-width: 0;
     pointer-events: none;
 }
 
-.answer-option-speech {
+.speech-button.answer-option-speech {
     position: absolute;
     z-index: 3;
     top: 50%;
     right: 10px;
     width: 40px;
+    min-width: 40px;
+    max-width: 40px;
     height: 40px;
+    min-height: 40px;
+    max-height: 40px;
     color: var(--navy);
     background: rgba(247, 243, 234, .92);
     border-color: rgba(11, 31, 63, .10);
@@ -174,16 +383,15 @@
     transform: translateY(-50%);
 }
 
-.answer-option-speech:hover {
+.speech-button.answer-option-speech:hover {
     transform: translateY(calc(-50% - 1px));
 }
 
-.answer-option-speech:active {
-    transform:
-        translateY(-50%) scale(.94);
+.speech-button.answer-option-speech:active {
+    transform: translateY(-50%) scale(.94);
 }
 
-.answer-option-speech.is-speaking {
+.speech-button.answer-option-speech.is-speaking {
     color: var(--white);
     background: var(--magenta);
     border-color: var(--magenta);
@@ -217,23 +425,32 @@
    WORD BANK
    ========================================================================== */
 
+.word-bank {
+    max-width: 100%;
+}
+
 .word-chip-container {
     position: relative;
     display: inline-flex;
     align-items: center;
+    max-width: 100%;
 }
 
 .word-chip-container>.word-chip {
     padding-right: 38px;
 }
 
-.word-chip-speech {
+.speech-button.word-chip-speech {
     position: absolute;
     z-index: 2;
     top: 50%;
     right: 4px;
     width: 30px;
+    min-width: 30px;
+    max-width: 30px;
     height: 30px;
+    min-height: 30px;
+    max-height: 30px;
     color: var(--navy);
     background: transparent;
     border: 0;
@@ -241,13 +458,27 @@
     transform: translateY(-50%);
 }
 
-.word-chip-speech .speech-button-icon,
-.word-chip-speech .speech-button-icon svg {
-    width: 16px;
-    height: 16px;
+.speech-button.word-chip-speech .speech-button-icon {
+    flex-basis: 16px;
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
 }
 
-.word-chip-speech:hover {
+.speech-button.word-chip-speech .speech-button-icon svg,
+.exercise-area .speech-button.word-chip-speech svg {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+}
+
+.speech-button.word-chip-speech:hover {
     color: var(--magenta);
     background: rgba(233, 30, 140, .07);
     border: 0;
@@ -255,12 +486,11 @@
     transform: translateY(-50%);
 }
 
-.word-chip-speech:active {
-    transform:
-        translateY(-50%) scale(.92);
+.speech-button.word-chip-speech:active {
+    transform: translateY(-50%) scale(.92);
 }
 
-.word-chip-speech.is-speaking {
+.speech-button.word-chip-speech.is-speaking {
     color: var(--white);
     background: var(--magenta);
 }
@@ -275,6 +505,18 @@
 
 .word-chip-container:has(.word-chip.used)>.word-chip {
     opacity: 1;
+}
+
+/* ==========================================================================
+   RESPOSTA ORDENADA
+   ========================================================================== */
+
+.ordered-answer {
+    max-width: 100%;
+}
+
+.ordered-answer .selected-word-chip {
+    padding-right: inherit;
 }
 
 /* ==========================================================================
@@ -298,6 +540,7 @@
    ========================================================================== */
 
 .lesson-feedback-content {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -305,11 +548,17 @@
 
 .lesson-feedback-content>div {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
-.feedback-speech {
+.speech-button.feedback-speech {
+    flex: 0 0 40px;
     width: 40px;
+    min-width: 40px;
+    max-width: 40px;
     height: 40px;
+    min-height: 40px;
+    max-height: 40px;
     box-shadow: none;
 }
 
@@ -346,7 +595,11 @@
     transform: none;
 }
 
-/* O áudio continua disponível depois da resposta ser verificada. */
+/*
+   O botão de áudio permanece disponível após a verificação.
+   Esta regra existe apenas caso algum botão speech seja
+   explicitamente desabilitado no futuro.
+*/
 
 .speech-button:disabled {
     cursor: default;
@@ -354,21 +607,77 @@
 }
 
 /* ==========================================================================
-   ACESSIBILIDADE
+   PROTEÇÃO CONTRA CSS GLOBAL DE SVG
    ========================================================================== */
 
-@media (prefers-reduced-motion: reduce) {
-    .speech-button {
-        transition: none;
-    }
+/*
+   Estas regras ficam propositalmente próximas do final do arquivo.
+   Dessa forma possuem maior prioridade dentro do speech.css e impedem
+   que regras genéricas de SVG façam o ícone ocupar a página inteira.
+*/
 
-    .speech-button.is-speaking .speech-button-pulse {
-        animation: none;
-    }
+button.speech-button>.speech-button-icon {
+    width: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+}
+
+button.speech-button>.speech-button-icon>svg {
+    position: static !important;
+    width: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    inset: auto !important;
+    transform: none !important;
+}
+
+button.speech-button.question-speech>.speech-button-icon {
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+}
+
+button.speech-button.question-speech>.speech-button-icon>svg {
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+}
+
+button.speech-button.word-chip-speech>.speech-button-icon {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+}
+
+button.speech-button.word-chip-speech>.speech-button-icon>svg {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
 }
 
 /* ==========================================================================
-   MOBILE
+   TABLET / MOBILE
    ========================================================================== */
 
 @media (max-width: 760px) {
@@ -379,25 +688,41 @@
         gap: 10px;
     }
 
-    .question-speech {
+    .speech-button.question-speech {
         width: 44px;
+        min-width: 44px;
+        max-width: 44px;
         height: 44px;
+        min-height: 44px;
+        max-height: 44px;
     }
 
     .answer-option-container .answer-option {
         padding-right: 62px;
     }
 
-    .answer-option-speech {
+    .speech-button.answer-option-speech {
         right: 9px;
         width: 38px;
+        min-width: 38px;
+        max-width: 38px;
         height: 38px;
+        min-height: 38px;
+        max-height: 38px;
     }
 
     .lesson-feedback-content {
         justify-content: space-between;
     }
+
+    .lesson-audio-coach.is-visible {
+        margin-bottom: 18px;
+    }
 }
+
+/* ==========================================================================
+   MOBILE PEQUENO
+   ========================================================================== */
 
 @media (max-width: 390px) {
     .exercise-question-row {
@@ -405,30 +730,115 @@
         gap: 8px;
     }
 
-    .question-speech {
+    .speech-button.question-speech {
         width: 40px;
+        min-width: 40px;
+        max-width: 40px;
         height: 40px;
+        min-height: 40px;
+        max-height: 40px;
     }
 
-    .question-speech .speech-button-icon,
-    .question-speech .speech-button-icon svg {
-        width: 19px;
-        height: 19px;
+    .speech-button.question-speech .speech-button-icon,
+    button.speech-button.question-speech>.speech-button-icon {
+        width: 19px !important;
+        min-width: 19px !important;
+        max-width: 19px !important;
+        height: 19px !important;
+        min-height: 19px !important;
+        max-height: 19px !important;
+    }
+
+    .speech-button.question-speech .speech-button-icon svg,
+    button.speech-button.question-speech>.speech-button-icon>svg {
+        width: 19px !important;
+        min-width: 19px !important;
+        max-width: 19px !important;
+        height: 19px !important;
+        min-height: 19px !important;
+        max-height: 19px !important;
     }
 
     .answer-option-container .answer-option {
         padding-right: 58px;
     }
 
-    .answer-option-speech {
+    .speech-button.answer-option-speech {
         right: 8px;
         width: 36px;
+        min-width: 36px;
+        max-width: 36px;
         height: 36px;
+        min-height: 36px;
+        max-height: 36px;
     }
 
-    .answer-option-speech .speech-button-icon,
-    .answer-option-speech .speech-button-icon svg {
-        width: 18px;
-        height: 18px;
+    .speech-button.answer-option-speech .speech-button-icon {
+        width: 18px !important;
+        min-width: 18px !important;
+        max-width: 18px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        max-height: 18px !important;
+    }
+
+    .speech-button.answer-option-speech .speech-button-icon svg {
+        width: 18px !important;
+        min-width: 18px !important;
+        max-width: 18px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        max-height: 18px !important;
+    }
+
+    .lesson-audio-coach {
+        padding-left: 11px;
+        padding-right: 11px;
+    }
+
+    .lesson-audio-coach.is-visible {
+        padding: 11px;
+    }
+
+    .lesson-audio-coach-icon {
+        flex-basis: 28px;
+        width: 28px;
+        min-width: 28px;
+        max-width: 28px;
+        height: 28px;
+        min-height: 28px;
+        max-height: 28px;
+    }
+
+    .lesson-audio-coach-icon svg,
+    .exercise-area .lesson-audio-coach-icon svg {
+        width: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+        height: 16px !important;
+        min-height: 16px !important;
+        max-height: 16px !important;
+    }
+}
+
+/* ==========================================================================
+   ACESSIBILIDADE — REDUÇÃO DE MOVIMENTO
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .speech-button,
+    .lesson-audio-coach {
+        transition: none;
+    }
+
+    .speech-button.is-speaking .speech-button-pulse {
+        animation: none;
+    }
+
+    .speech-button.question-speech.needs-attention {
+        animation: none;
+        outline: 3px solid rgba(233, 30, 140, .20);
+        outline-offset: 3px;
     }
 }
