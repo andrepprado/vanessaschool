@@ -1,18 +1,432 @@
-document.addEventListener("DOMContentLoaded", () => {
-    let user = EYTApp.requireUser(); if (!user) return;
-    EYTApp.evaluateAchievements();
-    const render = () => {
-        user = EYTStorage.getUser(); const p = EYTStorage.getProgress();
-        document.getElementById("profileName").textContent = user.nome;
-        document.getElementById("profileNameInput").value = user.nome;
-        document.getElementById("profileAvatar").textContent = user.nome.trim().charAt(0).toUpperCase() || "A";
-        document.getElementById("profileXp").textContent = p.xp;
-        document.getElementById("profileStreak").textContent = p.streak;
-        document.getElementById("profileLessons").textContent = p.licoesConcluidas.length;
-        document.getElementById("profileAccuracy").textContent = `${EYTApp.getAccuracy()}%`;
-    };
-    document.getElementById("profileForm").addEventListener("submit", e => { e.preventDefault(); const nome = document.getElementById("profileNameInput").value.trim(); if (!nome) return; EYTStorage.saveUser({ ...user, nome }); render() });
+document.addEventListener("DOMContentLoaded", async () => {
+    "use strict";
 
-    document.getElementById("resetButton").onclick = () => { if (!confirm("Deseja realmente apagar todo o seu progresso?")) return; EYTStorage.resetProgress(); render() };
+    const state = {
+        profile: null,
+        session: null,
+        legacyUser: null
+    };
+
+    function getLegacyProgress() {
+        try {
+            return EYTStorage.getProgress();
+        } catch (_) {
+            return {
+                xp: 0,
+                streak: 0,
+                licoesConcluidas: [],
+                respostasCorretas: 0,
+                respostasTotais: 0
+            };
+        }
+    }
+
+    function getLegacyUser() {
+        try {
+            return EYTStorage.getUser();
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function getDisplayName() {
+        return (
+            state.profile?.name ||
+            state.legacyUser?.nome ||
+            state.session?.user?.email?.split("@")[0] ||
+            "Aluno"
+        );
+    }
+
+    function render() {
+        const progress =
+            getLegacyProgress();
+
+        const name =
+            getDisplayName();
+
+        const completed =
+            Array.isArray(
+                progress.licoesConcluidas
+            )
+                ? progress.licoesConcluidas.length
+                : 0;
+
+        const totalAnswers =
+            Number(
+                progress.respostasTotais ||
+                0
+            );
+
+        const correctAnswers =
+            Number(
+                progress.respostasCorretas ||
+                0
+            );
+
+        const accuracy =
+            totalAnswers > 0
+                ? Math.round(
+                    correctAnswers /
+                    totalAnswers *
+                    100
+                )
+                : 0;
+
+        const profileName =
+            document.getElementById(
+                "profileName"
+            );
+
+        const profileNameInput =
+            document.getElementById(
+                "profileNameInput"
+            );
+
+        const profileAvatar =
+            document.getElementById(
+                "profileAvatar"
+            );
+
+        const profileXp =
+            document.getElementById(
+                "profileXp"
+            );
+
+        const profileStreak =
+            document.getElementById(
+                "profileStreak"
+            );
+
+        const profileLessons =
+            document.getElementById(
+                "profileLessons"
+            );
+
+        const profileAccuracy =
+            document.getElementById(
+                "profileAccuracy"
+            );
+
+        if (profileName) {
+            profileName.textContent =
+                name;
+        }
+
+        if (profileNameInput) {
+            profileNameInput.value =
+                name;
+        }
+
+        if (profileAvatar) {
+            profileAvatar.textContent =
+                name
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase() ||
+                "A";
+        }
+
+        if (profileXp) {
+            profileXp.textContent =
+                Number(
+                    progress.xp ||
+                    0
+                );
+        }
+
+        if (profileStreak) {
+            profileStreak.textContent =
+                Number(
+                    progress.streak ||
+                    0
+                );
+        }
+
+        if (profileLessons) {
+            profileLessons.textContent =
+                completed;
+        }
+
+        if (profileAccuracy) {
+            profileAccuracy.textContent =
+                `${accuracy}%`;
+        }
+    }
+
+    async function requireAuthenticatedSession() {
+        /*
+         * Supabase is the authoritative login state.
+         *
+         * DO NOT redirect based on EYTStorage anymore.
+         */
+        try {
+            if (
+                typeof EYTSupabase !==
+                    "undefined" &&
+                typeof EYTSupabase.getSession ===
+                    "function"
+            ) {
+                state.session =
+                    await EYTSupabase
+                        .getSession();
+
+                if (state.session) {
+                    try {
+                        state.profile =
+                            await EYTSupabase
+                                .getProfile();
+                    } catch (error) {
+                        console.warn(
+                            "[Perfil] Profile lookup failed:",
+                            error
+                        );
+                    }
+
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.warn(
+                "[Perfil] Supabase session check failed:",
+                error
+            );
+        }
+
+        /*
+         * Legacy fallback only for older local accounts.
+         */
+        state.legacyUser =
+            getLegacyUser();
+
+        if (state.legacyUser) {
+            return true;
+        }
+
+        /*
+         * No valid auth source exists.
+         * Redirect to login, NEVER to the public home page.
+         */
+        location.replace(
+            "acesso.html"
+        );
+
+        return false;
+    }
+
+    async function saveProfileName(
+        name
+    ) {
+        if (!name) {
+            return;
+        }
+
+        /*
+         * Update Supabase profile when authenticated there.
+         */
+        if (
+            state.session &&
+            typeof EYTSupabase !==
+                "undefined"
+        ) {
+            try {
+                const client =
+                    await EYTSupabase
+                        .getClient();
+
+                const {
+                    error
+                } =
+                    await client
+                        .from(
+                            "profiles"
+                        )
+                        .update({
+                            name
+                        })
+                        .eq(
+                            "id",
+                            state.session.user.id
+                        );
+
+                if (error) {
+                    throw error;
+                }
+
+                state.profile = {
+                    ...(state.profile || {}),
+                    name
+                };
+            } catch (error) {
+                console.warn(
+                    "[Perfil] Could not update Supabase profile:",
+                    error
+                );
+            }
+        }
+
+        /*
+         * Keep local compatibility too.
+         */
+        try {
+            const legacy =
+                getLegacyUser();
+
+            if (legacy) {
+                EYTStorage.saveUser({
+                    ...legacy,
+                    nome:
+                        name
+                });
+
+                state.legacyUser =
+                    {
+                        ...legacy,
+                        nome:
+                            name
+                    };
+            }
+        } catch (_) {
+        }
+
+        render();
+    }
+
+    const authenticated =
+        await requireAuthenticatedSession();
+
+    if (!authenticated) {
+        return;
+    }
+
+    state.legacyUser =
+        getLegacyUser();
+
+    try {
+        EYTApp.evaluateAchievements();
+    } catch (_) {
+    }
+
+    const form =
+        document.getElementById(
+            "profileForm"
+        );
+
+    if (form) {
+        form.addEventListener(
+            "submit",
+            async event => {
+                event.preventDefault();
+
+                const input =
+                    document.getElementById(
+                        "profileNameInput"
+                    );
+
+                const name =
+                    String(
+                        input?.value ||
+                        ""
+                    )
+                        .trim();
+
+                if (!name) {
+                    return;
+                }
+
+                await saveProfileName(
+                    name
+                );
+            }
+        );
+    }
+
+    const logoutButton =
+        document.getElementById(
+            "logoutButton"
+        );
+
+    if (logoutButton) {
+        logoutButton.onclick =
+            async () => {
+                logoutButton.disabled =
+                    true;
+
+                try {
+                    if (
+                        typeof EYTSupabase !==
+                            "undefined" &&
+                        typeof EYTSupabase.logout ===
+                            "function"
+                    ) {
+                        await EYTSupabase
+                            .logout();
+                    }
+                } catch (error) {
+                    console.warn(
+                        "[Perfil] Supabase logout:",
+                        error
+                    );
+                }
+
+                try {
+                    if (
+                        typeof EYTStorage !==
+                            "undefined" &&
+                        typeof EYTStorage.logout ===
+                            "function"
+                    ) {
+                        EYTStorage.logout();
+                    }
+                } catch (_) {
+                }
+
+                location.replace(
+                    "acesso.html"
+                );
+            };
+    }
+
+    const resetButton =
+        document.getElementById(
+            "resetButton"
+        );
+
+    if (resetButton) {
+        resetButton.onclick =
+            () => {
+                if (
+                    !confirm(
+                        "Deseja realmente apagar todo o seu progresso?"
+                    )
+                ) {
+                    return;
+                }
+
+                try {
+                    EYTStorage
+                        .resetProgress();
+                } catch (_) {
+                }
+
+                render();
+            };
+    }
+
     render();
+
+    console.info(
+        "[Perfil] Authenticated profile ready.",
+        {
+            supabase:
+                Boolean(
+                    state.session
+                ),
+
+            legacy:
+                Boolean(
+                    state.legacyUser
+                )
+        }
+    );
 });
