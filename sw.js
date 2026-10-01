@@ -1,7 +1,7 @@
 "use strict";
 
 const VERSION =
-    "eyt-static-audio-v1";
+    "eyt-static-audio-v2";
 
 const AUDIO_CACHE =
     `${VERSION}-audio`;
@@ -19,7 +19,10 @@ const APP_SHELL = [
     "/js/static-audio.js",
     "/js/tts-preload.js",
     "/js/offline-register.js",
-    "/audio/static/manifest.json"
+    "/audio/static/manifest.json",
+    "/audio/feedback/correct.wav",
+    "/audio/feedback/incorrect.wav",
+    "/audio/feedback/finish.mp3"
 ];
 
 self.addEventListener(
@@ -144,8 +147,13 @@ self.addEventListener(
         }
 
         if (
-            url.pathname.startsWith(
-                "/audio/static/"
+            (
+                url.pathname.startsWith(
+                    "/audio/static/"
+                ) ||
+                url.pathname.startsWith(
+                    "/audio/feedback/"
+                )
             )
         ) {
             event.respondWith(
