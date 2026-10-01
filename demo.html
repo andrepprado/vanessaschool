@@ -1,141 +1,498 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="theme-color" content="#0b1f3f">
-<title>Demonstração | English in Your Time</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-<link rel="stylesheet" href="css/style.css?v=20261001-db1">
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width,initial-scale=1.0">
+
+    <meta
+        name="theme-color"
+        content="#0b1f3f">
+
+    <title>
+        Demonstração | English in Your Time
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+    <link
+        rel="stylesheet"
+        href="css/style.css?v=20261001-demo-level-test-1">
 </head>
+
 <body class="demo-page-body">
-<header class="demo-topbar">
-<a href="/" class="demo-topbar-logo">
-<img src="img/logoFullMonoWhite.png" alt="English in Your Time">
-</a>
 
-<div class="demo-topbar-actions">
-<span class="demo-badge">
-<i class="bi bi-display"></i>
-AMBIENTE DEMONSTRATIVO
-</span>
+    <header class="demo-topbar">
 
-<a href="/acesso" class="btn btn-primary">
-Área do aluno
-<i class="bi bi-arrow-right"></i>
-</a>
-</div>
-</header>
+        <a
+            href="/"
+            class="demo-topbar-logo">
 
-<main class="demo-main">
-<section class="demo-hero">
-<div>
-<span class="eyebrow">PLATFORM PREVIEW</span>
+            <img
+                src="img/logoFullMonoWhite.png"
+                alt="English in Your Time">
 
-<h1>
-Conheça a experiência<br>
-English in Your Time.
-</h1>
+        </a>
 
-<p>
-Nesta demonstração você pode visualizar a estrutura
-pedagógica da plataforma. No ambiente real, cada aluno
-enxerga apenas os conteúdos e atividades destinados ao
-seu nível.
-</p>
+        <div class="demo-topbar-actions">
 
-<div class="demo-hero-actions">
-<a href="/acesso" class="btn btn-primary btn-large">
-Já sou aluno
-<i class="bi bi-arrow-right"></i>
-</a>
+            <span class="demo-badge">
 
-<a href="/" class="btn btn-secondary btn-large">
-Voltar ao site
-</a>
-</div>
-</div>
+                <i class="bi bi-display"></i>
 
-<div class="demo-preview-card">
-<span>EXEMPLO DE EXPERIÊNCIA</span>
+                AMBIENTE DEMONSTRATIVO
 
-<div class="demo-avatar">VG</div>
+            </span>
 
-<h3>Aluno demonstrativo</h3>
-<p>Nível A2</p>
+            <a
+                href="/acesso"
+                class="btn btn-primary">
 
-<div class="demo-preview-stats">
-<div>
-<strong>42%</strong>
-<span>Progresso</span>
-</div>
+                Área do aluno
 
-<div>
-<strong>280</strong>
-<span>XP</span>
-</div>
+                <i class="bi bi-arrow-right"></i>
 
-<div>
-<strong>4</strong>
-<span>Dias</span>
-</div>
-</div>
-</div>
-</section>
+            </a>
 
-<section class="demo-info-grid">
-<article>
-<i class="bi bi-person-check"></i>
-<h3>Login individual</h3>
-<p>
-Cada aluno possui credenciais e perfil próprios.
-</p>
-</article>
+        </div>
 
-<article>
-<i class="bi bi-bar-chart-steps"></i>
-<h3>Nível personalizado</h3>
-<p>
-A1, A2, B1, B2 ou C1.
-</p>
-</article>
+    </header>
 
-<article>
-<i class="bi bi-journal-check"></i>
-<h3>Conteúdo direcionado</h3>
-<p>
-Cada aluno recebe apenas o conteúdo definido para ele.
-</p>
-</article>
+    <main class="demo-main">
 
-<article>
-<i class="bi bi-graph-up-arrow"></i>
-<h3>Acompanhamento</h3>
-<p>
-Progresso e evolução podem ser gerenciados individualmente.
-</p>
-</article>
-</section>
+        <section class="demo-hero">
 
-<section class="demo-course-section">
-<div class="section-title">
-<div>
-<span class="eyebrow">COURSE PREVIEW</span>
+            <div>
 
-<h2>Estrutura demonstrativa do curso</h2>
+                <span class="eyebrow">
+                    EXPERIMENTE A PLATAFORMA
+                </span>
 
-<p>
-Esta área é pública e não registra qualquer progresso.
-</p>
-</div>
-</div>
+                <h1>
+                    Teste uma aula<br>
+                    no seu nível.
+                </h1>
 
-<div id="demoUnits" class="demo-units"></div>
-</section>
-</main>
+                <p>
+                    Escolha um nível e faça uma pequena
+                    demonstração com exercícios reais da
+                    plataforma English in Your Time.
+                </p>
 
-<script src="js/data.js?v=20261001-db1"></script>
-<script src="js/demo.js?v=20261001-db1"></script>
-    <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
+                <div class="demo-hero-actions">
+
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-large"
+                        id="demoStartButton">
+
+                        Começar demonstração
+
+                        <i class="bi bi-arrow-down"></i>
+
+                    </button>
+
+                    <a
+                        href="/acesso"
+                        class="btn btn-secondary btn-large">
+
+                        Já sou aluno
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            <div class="demo-preview-card">
+
+                <span>
+                    EXPERIÊNCIA DEMONSTRATIVA
+                </span>
+
+                <div class="demo-avatar">
+                    VS
+                </div>
+
+                <h3>
+                    Escolha seu nível
+                </h3>
+
+                <p>
+                    A1 · A2 · B1 · B2 · C1
+                </p>
+
+                <div class="demo-preview-stats">
+
+                    <div>
+                        <strong>5</strong>
+                        <span>Questões</span>
+                    </div>
+
+                    <div>
+                        <strong>100%</strong>
+                        <span>Interativo</span>
+                    </div>
+
+                    <div>
+                        <strong>0</strong>
+                        <span>Cadastro</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <section
+            class="demo-level-section"
+            id="demoLevelSection">
+
+            <div class="section-title">
+
+                <div>
+
+                    <span class="eyebrow">
+                        ESCOLHA SEU NÍVEL
+                    </span>
+
+                    <h2>
+                        Qual experiência você quer testar?
+                    </h2>
+
+                    <p>
+                        A demonstração utiliza exercícios reais
+                        daquele nível, mas não registra progresso.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div
+                class="demo-level-grid"
+                id="demoLevelGrid">
+
+                <button
+                    type="button"
+                    class="demo-level-card"
+                    data-demo-level="A1">
+
+                    <span>A1</span>
+
+                    <strong>
+                        Foundation
+                    </strong>
+
+                    <small>
+                        Fundamentos e comunicação básica
+                    </small>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="demo-level-card active"
+                    data-demo-level="A2">
+
+                    <span>A2</span>
+
+                    <strong>
+                        Elementary
+                    </strong>
+
+                    <small>
+                        Passado, comparações e planos
+                    </small>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="demo-level-card"
+                    data-demo-level="B1">
+
+                    <span>B1</span>
+
+                    <strong>
+                        Intermediate
+                    </strong>
+
+                    <small>
+                        Modais e estruturas intermediárias
+                    </small>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="demo-level-card"
+                    data-demo-level="B2">
+
+                    <span>B2</span>
+
+                    <strong>
+                        Upper-Intermediate
+                    </strong>
+
+                    <small>
+                        Conditionals, passive e verb patterns
+                    </small>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="demo-level-card"
+                    data-demo-level="C1">
+
+                    <span>C1</span>
+
+                    <strong>
+                        Advanced
+                    </strong>
+
+                    <small>
+                        Estruturas avançadas e fluência
+                    </small>
+
+                </button>
+
+            </div>
+
+            <div class="demo-level-action">
+
+                <div>
+
+                    <span>
+                        NÍVEL SELECIONADO
+                    </span>
+
+                    <strong id="demoSelectedLevel">
+                        A2
+                    </strong>
+
+                    <p id="demoSelectedDescription">
+                        Passado, comparações e planos futuros.
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="btn btn-primary btn-large"
+                    id="demoLaunchButton">
+
+                    Experimentar A2
+
+                    <i class="bi bi-play-fill"></i>
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <section
+            class="demo-exercise-section"
+            id="demoExerciseSection"
+            hidden>
+
+            <div class="demo-exercise-shell">
+
+                <div class="demo-exercise-top">
+
+                    <button
+                        type="button"
+                        class="demo-exercise-close"
+                        id="demoCloseExercise">
+
+                        <i class="bi bi-x-lg"></i>
+
+                    </button>
+
+                    <div class="demo-exercise-progress">
+
+                        <div class="demo-exercise-progress-info">
+
+                            <span id="demoExerciseLevel">
+                                A2
+                            </span>
+
+                            <span id="demoExerciseCounter">
+                                1 / 5
+                            </span>
+
+                        </div>
+
+                        <div class="demo-exercise-progress-track">
+
+                            <div
+                                class="demo-exercise-progress-bar"
+                                id="demoExerciseProgressBar">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="demo-exercise-content"
+                    id="demoExerciseContent">
+                </div>
+
+            </div>
+
+        </section>
+
+        <section
+            class="demo-result-section"
+            id="demoResultSection"
+            hidden>
+
+            <div class="demo-result-card">
+
+                <div class="demo-result-icon">
+                    <i class="bi bi-stars"></i>
+                </div>
+
+                <span class="eyebrow">
+                    DEMONSTRAÇÃO CONCLUÍDA
+                </span>
+
+                <h2>
+                    Você experimentou o nível
+                    <span id="demoResultLevel">A2</span>.
+                </h2>
+
+                <p id="demoResultText">
+                    Resultado demonstrativo.
+                </p>
+
+                <div class="demo-result-score">
+
+                    <strong id="demoResultScore">
+                        0/5
+                    </strong>
+
+                    <span>
+                        respostas corretas
+                    </span>
+
+                </div>
+
+                <div class="demo-result-actions">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-large"
+                        id="demoTryAgain">
+
+                        Testar outro nível
+
+                    </button>
+
+                    <a
+                        href="/acesso"
+                        class="btn btn-primary btn-large">
+
+                        Quero estudar aqui
+
+                        <i class="bi bi-arrow-right"></i>
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="demo-info-grid">
+
+            <article>
+
+                <i class="bi bi-person-check"></i>
+
+                <h3>
+                    Login individual
+                </h3>
+
+                <p>
+                    Cada aluno possui credenciais
+                    e perfil próprios.
+                </p>
+
+            </article>
+
+            <article>
+
+                <i class="bi bi-bar-chart-steps"></i>
+
+                <h3>
+                    Nível personalizado
+                </h3>
+
+                <p>
+                    A1, A2, B1, B2 ou C1.
+                </p>
+
+            </article>
+
+            <article>
+
+                <i class="bi bi-journal-check"></i>
+
+                <h3>
+                    Conteúdo direcionado
+                </h3>
+
+                <p>
+                    Cada aluno recebe atividades
+                    adequadas ao seu nível.
+                </p>
+
+            </article>
+
+            <article>
+
+                <i class="bi bi-graph-up-arrow"></i>
+
+                <h3>
+                    Acompanhamento
+                </h3>
+
+                <p>
+                    O ambiente real acompanha
+                    progresso e evolução.
+                </p>
+
+            </article>
+
+        </section>
+
+    </main>
+
+    <script
+        src="js/level-content.js?v=20261001-demo-level-test-1">
+    </script>
+
+    <script
+        src="js/demo.js?v=20261001-demo-level-test-1">
+    </script>
+
+    <script
+        src="js/offline-register.js?v=20261001-static-offline-2">
+    </script>
+
 </body>
+
 </html>
