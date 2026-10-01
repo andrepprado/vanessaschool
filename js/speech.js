@@ -2,29 +2,18 @@ const EYTSpeech = (() => {
     "use strict";
 
     const CONFIG = {
-        workerPath:
-            "/js/tts/kokoro-worker.js?v=20260930-natural-2",
-
-        englishLang:
-            "en-US",
-
-        portugueseLang:
-            "pt-BR",
-
-        englishRate:
-            1.00,
-
-        slowEnglishRate:
-            0.93,
-
-        portugueseRate:
-            1.00,
-
-        timeout:
-            180000,
-
-        maxCacheEntries:
-            100
+        workerPath: "/js/tts/kokoro-worker.js?v=20260930-natural-2",
+        englishLang: "en-GB",
+        portugueseLang: "pt-BR",
+        englishRate: 0.98,
+        slowEnglishRate: 0.93,
+        portugueseRate: 1.00,
+        timeout: 180000,
+        maxMemoryCacheEntries: 150,
+        dbName: "eyt-audio-cache",
+        dbVersion: 1,
+        storeName: "audio",
+        cacheNamespace: "kokoro-en-v4"
     };
 
     let worker = null;
@@ -38,12 +27,11 @@ const EYTSpeech = (() => {
 
     let audioContext = null;
     let runtime = null;
+    let databasePromise = null;
 
-    const pending =
-        new Map();
-
-    const cache =
-        new Map();
+    const pending = new Map();
+    const memoryCache = new Map();
+    const inflight = new Map();
 
     function cleanText(value) {
         return String(value ?? "")
@@ -53,30 +41,23 @@ const EYTSpeech = (() => {
     }
 
     function normalizeLang(value) {
-        const lang =
-            String(value || "")
-                .trim()
-                .toLowerCase();
+        const lang = String(value || "")
+            .trim()
+            .toLowerCase();
 
         if (lang.startsWith("pt")) {
             return CONFIG.portugueseLang;
         }
 
-        if (lang.startsWith("en-gb")) {
-            return "en-GB";
+        if (lang.startsWith("en-us")) {
+            return "en-US";
         }
 
         return CONFIG.englishLang;
     }
 
-    function clamp(
-        value,
-        min,
-        max,
-        fallback
-    ) {
-        const number =
-            Number(value);
+    function clamp(value, min, max, fallback) {
+        const number = Number(value);
 
         if (!Number.isFinite(number)) {
             return fallback;
@@ -84,29 +65,208 @@ const EYTSpeech = (() => {
 
         return Math.min(
             max,
-            Math.max(
-                min,
-                number
-            )
+            Math.max(min, number)
         );
     }
 
-    function dispatch(
-        name,
-        detail = {}
-    ) {
+    function dispatch(name, detail = {}) {
         try {
             window.dispatchEvent(
-                new CustomEvent(
-                    name,
-                    {
-                        detail
-                    }
-                )
+                new CustomEvent(name, {
+                    detail
+                })
             );
         } catch (_) {
         }
     }
+
+    /* ========================================================
+       INDEXEDDB
+       ======================================================== */
+
+    function openDatabase() {
+        if (databasePromise) {
+            return databasePromise;
+        }
+
+        if (!("indexedDB" in window)) {
+            return Promise.resolve(null);
+        }
+
+        databasePromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(
+                CONFIG.dbName,
+                CONFIG.dbVersion
+            );
+
+            request.onupgradeneeded = event => {
+                const db = event.target.result;
+
+                if (!db.objectStoreNames.contains(CONFIG.storeName)) {
+                    db.createObjectStore(CONFIG.storeName);
+                }
+            };
+
+            request.onsuccess = () => {
+                resolve(request.result);
+            };
+
+            request.onerror = () => {
+                console.warn(
+                    "[EYTSpeech] IndexedDB indisponível:",
+                    request.error
+                );
+
+                resolve(null);
+            };
+
+            request.onblocked = () => {
+                resolve(null);
+            };
+        });
+
+        return databasePromise;
+    }
+
+    async function persistentGet(key) {
+        try {
+            const db = await openDatabase();
+
+            if (!db) {
+                return null;
+            }
+
+            return await new Promise(resolve => {
+                const transaction = db.transaction(
+                    CONFIG.storeName,
+                    "readonly"
+                );
+
+                const store = transaction.objectStore(
+                    CONFIG.storeName
+                );
+
+                const request = store.get(key);
+
+                request.onsuccess = () => {
+                    const value = request.result;
+
+                    if (
+                        value &&
+                        value.blob instanceof Blob &&
+                        value.blob.size > 0
+                    ) {
+                        resolve(value.blob);
+                    } else {
+                        resolve(null);
+                    }
+                };
+
+                request.onerror = () => {
+                    resolve(null);
+                };
+            });
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async function persistentSet(key, blob) {
+        if (
+            !(blob instanceof Blob) ||
+            blob.size === 0
+        ) {
+            return false;
+        }
+
+        try {
+            const db = await openDatabase();
+
+            if (!db) {
+                return false;
+            }
+
+            return await new Promise(resolve => {
+                const transaction = db.transaction(
+                    CONFIG.storeName,
+                    "readwrite"
+                );
+
+                const store = transaction.objectStore(
+                    CONFIG.storeName
+                );
+
+                store.put(
+                    {
+                        blob,
+                        createdAt: Date.now()
+                    },
+                    key
+                );
+
+                transaction.oncomplete = () => {
+                    resolve(true);
+                };
+
+                transaction.onerror = () => {
+                    resolve(false);
+                };
+
+                transaction.onabort = () => {
+                    resolve(false);
+                };
+            });
+        } catch (error) {
+            console.warn(
+                "[EYTSpeech] Não foi possível persistir áudio:",
+                error
+            );
+
+            return false;
+        }
+    }
+
+    async function persistentClear() {
+        try {
+            const db = await openDatabase();
+
+            if (!db) {
+                return;
+            }
+
+            await new Promise(resolve => {
+                const transaction = db.transaction(
+                    CONFIG.storeName,
+                    "readwrite"
+                );
+
+                transaction
+                    .objectStore(CONFIG.storeName)
+                    .clear();
+
+                transaction.oncomplete = resolve;
+                transaction.onerror = resolve;
+                transaction.onabort = resolve;
+            });
+        } catch (_) {
+        }
+    }
+
+    async function requestPersistentStorage() {
+        try {
+            if (
+                navigator.storage &&
+                typeof navigator.storage.persist === "function"
+            ) {
+                await navigator.storage.persist();
+            }
+        } catch (_) {
+        }
+    }
+
+    /* ========================================================
+       AUDIO CONTEXT
+       ======================================================== */
 
     function getAudioContext() {
         if (audioContext) {
@@ -123,8 +283,7 @@ const EYTSpeech = (() => {
 
         audioContext =
             new AudioContextClass({
-                latencyHint:
-                    "interactive"
+                latencyHint: "interactive"
             });
 
         return audioContext;
@@ -154,8 +313,7 @@ const EYTSpeech = (() => {
                 );
 
             const source =
-                context
-                    .createBufferSource();
+                context.createBufferSource();
 
             source.buffer =
                 buffer;
@@ -171,6 +329,10 @@ const EYTSpeech = (() => {
             return false;
         }
     }
+
+    /* ========================================================
+       BOTÕES
+       ======================================================== */
 
     function rememberButton(button) {
         if (
@@ -197,9 +359,7 @@ const EYTSpeech = (() => {
             currentButton &&
             currentButton !== button
         ) {
-            resetButton(
-                currentButton
-            );
+            resetButton(currentButton);
         }
 
         currentButton =
@@ -278,6 +438,10 @@ const EYTSpeech = (() => {
         }
     }
 
+    /* ========================================================
+       STOP
+       ======================================================== */
+
     function stopSource() {
         if (!currentSource) {
             return;
@@ -301,7 +465,8 @@ const EYTSpeech = (() => {
             "speechSynthesis" in window
         ) {
             try {
-                window.speechSynthesis
+                window
+                    .speechSynthesis
                     .cancel();
             } catch (_) {
             }
@@ -330,9 +495,11 @@ const EYTSpeech = (() => {
         );
     }
 
-    function handleWorkerMessage(
-        event
-    ) {
+    /* ========================================================
+       WORKER
+       ======================================================== */
+
+    function handleWorkerMessage(event) {
         const message =
             event.data || {};
 
@@ -346,12 +513,9 @@ const EYTSpeech = (() => {
             ) {
                 runtime = {
                     engine: "kokoro",
-                    model:
-                        message.model,
-                    device:
-                        message.device,
-                    dtype:
-                        message.dtype
+                    model: message.model,
+                    device: message.device,
+                    dtype: message.dtype
                 };
 
                 console.info(
@@ -387,9 +551,7 @@ const EYTSpeech = (() => {
         }
 
         const request =
-            pending.get(
-                message.id
-            );
+            pending.get(message.id);
 
         if (!request) {
             return;
@@ -484,8 +646,7 @@ const EYTSpeech = (() => {
                 CONFIG.workerPath,
                 {
                     type: "module",
-                    name:
-                        "eyt-kokoro-neural"
+                    name: "eyt-kokoro-neural"
                 }
             );
 
@@ -502,64 +663,107 @@ const EYTSpeech = (() => {
         return worker;
     }
 
+    /* ========================================================
+       CACHE
+       ======================================================== */
+
     function cacheKey(
         text,
         options
     ) {
         return [
+            CONFIG.cacheNamespace,
             options.lang,
             options.persona,
             options.voice || "",
             options.rate.toFixed(2),
-            text
+            cleanText(text)
         ].join("|");
     }
 
-    function trimCache() {
+    function trimMemoryCache() {
         while (
-            cache.size >
-            CONFIG.maxCacheEntries
+            memoryCache.size >
+            CONFIG.maxMemoryCacheEntries
         ) {
             const first =
-                cache.keys()
+                memoryCache
+                    .keys()
                     .next()
                     .value;
 
             if (
-                first === undefined
+                first ===
+                undefined
             ) {
                 break;
             }
 
-            cache.delete(first);
+            memoryCache.delete(
+                first
+            );
         }
     }
 
-    function generateEnglish(
+    async function getCachedAudio(key) {
+        if (
+            memoryCache.has(key)
+        ) {
+            return {
+                blob:
+                    memoryCache.get(key),
+                source:
+                    "memory"
+            };
+        }
+
+        const persistent =
+            await persistentGet(key);
+
+        if (persistent) {
+            memoryCache.set(
+                key,
+                persistent
+            );
+
+            trimMemoryCache();
+
+            return {
+                blob:
+                    persistent,
+                source:
+                    "indexeddb"
+            };
+        }
+
+        return null;
+    }
+
+    async function storeAudio(
+        key,
+        blob
+    ) {
+        memoryCache.set(
+            key,
+            blob
+        );
+
+        trimMemoryCache();
+
+        await persistentSet(
+            key,
+            blob
+        );
+    }
+
+    /* ========================================================
+       GERAR INGLÊS
+       ======================================================== */
+
+    function requestGeneration(
         text,
         options
     ) {
-        const key =
-            cacheKey(
-                text,
-                options
-            );
-
-        if (cache.has(key)) {
-            return Promise.resolve({
-                blob:
-                    cache.get(key),
-                lang:
-                    options.lang,
-                voice:
-                    options.voice ||
-                    null,
-                runtime,
-                cached:
-                    true
-            });
-        }
-
         return new Promise(
             (
                 resolve,
@@ -577,7 +781,7 @@ const EYTSpeech = (() => {
 
                             reject(
                                 new Error(
-                                    "Tempo excedido ao gerar o áudio neural."
+                                    "Tempo excedido ao gerar áudio neural."
                                 )
                             );
                         },
@@ -588,47 +792,22 @@ const EYTSpeech = (() => {
                     id,
                     {
                         timer,
-
-                        resolve:
-                            result => {
-                                if (
-                                    result.blob instanceof Blob
-                                ) {
-                                    cache.set(
-                                        key,
-                                        result.blob
-                                    );
-
-                                    trimCache();
-                                }
-
-                                resolve(
-                                    result
-                                );
-                            },
-
+                        resolve,
                         reject
                     }
                 );
 
                 getWorker()
                     .postMessage({
-                        type:
-                            "generate",
-
+                        type: "generate",
                         id,
-
                         text,
-
                         lang:
                             options.lang,
-
                         speed:
                             options.rate,
-
                         persona:
                             options.persona,
-
                         voice:
                             options.voice ||
                             ""
@@ -636,6 +815,89 @@ const EYTSpeech = (() => {
             }
         );
     }
+
+    async function getEnglishAudio(
+        text,
+        options
+    ) {
+        const key =
+            cacheKey(
+                text,
+                options
+            );
+
+        const cached =
+            await getCachedAudio(
+                key
+            );
+
+        if (cached) {
+            return {
+                blob:
+                    cached.blob,
+                lang:
+                    options.lang,
+                voice:
+                    options.voice ||
+                    null,
+                runtime,
+                cached:
+                    cached.source
+            };
+        }
+
+        if (
+            inflight.has(key)
+        ) {
+            return inflight.get(key);
+        }
+
+        const promise =
+            (async () => {
+                const result =
+                    await requestGeneration(
+                        text,
+                        options
+                    );
+
+                if (
+                    !(result.blob instanceof Blob) ||
+                    result.blob.size === 0
+                ) {
+                    throw new Error(
+                        "Áudio neural vazio."
+                    );
+                }
+
+                await storeAudio(
+                    key,
+                    result.blob
+                );
+
+                return {
+                    ...result,
+                    cached:
+                        false
+                };
+            })();
+
+        inflight.set(
+            key,
+            promise
+        );
+
+        try {
+            return await promise;
+        } finally {
+            inflight.delete(
+                key
+            );
+        }
+    }
+
+    /* ========================================================
+       PLAY KOKORO
+       ======================================================== */
 
     async function playBlob(
         blob,
@@ -703,6 +965,8 @@ const EYTSpeech = (() => {
                     metadata.voice,
                 engine:
                     "kokoro",
+                cached:
+                    metadata.cached,
                 runtime:
                     metadata.runtime ||
                     runtime
@@ -741,6 +1005,10 @@ const EYTSpeech = (() => {
         );
     }
 
+    /* ========================================================
+       PORTUGUÊS
+       ======================================================== */
+
     function getPortugueseVoices() {
         if (
             !("speechSynthesis" in window)
@@ -754,8 +1022,7 @@ const EYTSpeech = (() => {
             .filter(
                 voice =>
                     String(
-                        voice.lang ||
-                        ""
+                        voice.lang || ""
                     )
                         .toLowerCase()
                         .startsWith("pt")
@@ -770,26 +1037,14 @@ const EYTSpeech = (() => {
             return null;
         }
 
-        const preferredNames = [
-            "francisca",
-            "maria",
-            "luciana",
-            "fernanda",
-            "brasil",
-            "brazil"
-        ];
-
         const ptBR =
             voices.filter(
                 voice =>
                     String(
-                        voice.lang ||
-                        ""
+                        voice.lang || ""
                     )
                         .toLowerCase()
-                        .startsWith(
-                            "pt-br"
-                        )
+                        .startsWith("pt-br")
             );
 
         const pool =
@@ -797,14 +1052,20 @@ const EYTSpeech = (() => {
                 ? ptBR
                 : voices;
 
+        const preferred = [
+            "francisca",
+            "maria",
+            "luciana",
+            "fernanda"
+        ];
+
         return (
             pool.find(
                 voice =>
-                    preferredNames.some(
+                    preferred.some(
                         name =>
                             String(
-                                voice.name ||
-                                ""
+                                voice.name || ""
                             )
                                 .toLowerCase()
                                 .includes(name)
@@ -820,16 +1081,13 @@ const EYTSpeech = (() => {
         session
     ) {
         if (
-            !(
-                "speechSynthesis" in
-                window
-            ) ||
+            !("speechSynthesis" in window) ||
             typeof SpeechSynthesisUtterance ===
                 "undefined"
         ) {
             return Promise.reject(
                 new Error(
-                    "Voz em português não disponível."
+                    "Voz em português indisponível."
                 )
             );
         }
@@ -849,13 +1107,16 @@ const EYTSpeech = (() => {
 
                 utterance.lang =
                     voice?.lang ||
-                    "pt-BR";
+                    CONFIG.portugueseLang;
 
                 utterance.rate =
                     options.rate;
 
-                utterance.pitch = 1;
-                utterance.volume = 1;
+                utterance.pitch =
+                    1;
+
+                utterance.volume =
+                    1;
 
                 if (voice) {
                     utterance.voice =
@@ -883,7 +1144,7 @@ const EYTSpeech = (() => {
                             {
                                 text,
                                 lang:
-                                    "pt-BR",
+                                    CONFIG.portugueseLang,
                                 voice:
                                     voice?.name ||
                                     null,
@@ -940,6 +1201,10 @@ const EYTSpeech = (() => {
         );
     }
 
+    /* ========================================================
+       OPTIONS
+       ======================================================== */
+
     function resolveOptions(
         options = {}
     ) {
@@ -975,7 +1240,7 @@ const EYTSpeech = (() => {
                     lang ===
                         CONFIG.portugueseLang
                         ? 0.85
-                        : 0.92,
+                        : 0.90,
                     1.08,
                     defaultRate
                 ),
@@ -996,6 +1261,10 @@ const EYTSpeech = (() => {
                 null
         };
     }
+
+    /* ========================================================
+       SPEAK
+       ======================================================== */
 
     async function speak(
         text,
@@ -1050,7 +1319,7 @@ const EYTSpeech = (() => {
                     );
             } else {
                 const generated =
-                    await generateEnglish(
+                    await getEnglishAudio(
                         value,
                         resolved
                     );
@@ -1128,6 +1397,228 @@ const EYTSpeech = (() => {
         }
     }
 
+    /* ========================================================
+       PRELOAD
+       ======================================================== */
+
+    async function preload(
+        text,
+        options = {}
+    ) {
+        const value =
+            cleanText(text);
+
+        if (!value) {
+            return false;
+        }
+
+        const resolved =
+            resolveOptions(
+                options
+            );
+
+        if (
+            resolved.lang ===
+            CONFIG.portugueseLang
+        ) {
+            return true;
+        }
+
+        try {
+            await getEnglishAudio(
+                value,
+                resolved
+            );
+
+            return true;
+        } catch (error) {
+            console.warn(
+                "[EYTSpeech] Falha no preload:",
+                value,
+                error
+            );
+
+            return false;
+        }
+    }
+
+    async function preloadMany(
+        items,
+        options = {}
+    ) {
+        const source =
+            Array.isArray(items)
+                ? items
+                : [];
+
+        const unique =
+            new Map();
+
+        for (
+            const item
+            of source
+        ) {
+            if (!item) {
+                continue;
+            }
+
+            const text =
+                cleanText(
+                    typeof item ===
+                        "string"
+                        ? item
+                        : item.text
+                );
+
+            if (!text) {
+                continue;
+            }
+
+            const resolved =
+                resolveOptions(
+                    typeof item ===
+                        "string"
+                        ? {}
+                        : item
+                );
+
+            if (
+                resolved.lang ===
+                CONFIG.portugueseLang
+            ) {
+                continue;
+            }
+
+            const key =
+                cacheKey(
+                    text,
+                    resolved
+                );
+
+            if (
+                !unique.has(key)
+            ) {
+                unique.set(
+                    key,
+                    {
+                        text,
+                        ...resolved
+                    }
+                );
+            }
+        }
+
+        const queue =
+            Array.from(
+                unique.values()
+            );
+
+        if (!queue.length) {
+            return {
+                total: 0,
+                loaded: 0,
+                failed: 0
+            };
+        }
+
+        const concurrency =
+            Math.max(
+                1,
+                Math.min(
+                    Number(
+                        options.concurrency
+                    ) || 1,
+                    3
+                )
+            );
+
+        let index = 0;
+        let loaded = 0;
+        let failed = 0;
+
+        dispatch(
+            "eyt:speech-preload-start",
+            {
+                total:
+                    queue.length
+            }
+        );
+
+        const run =
+            async () => {
+                while (true) {
+                    const position =
+                        index++;
+
+                    if (
+                        position >=
+                        queue.length
+                    ) {
+                        return;
+                    }
+
+                    const item =
+                        queue[position];
+
+                    const success =
+                        await preload(
+                            item.text,
+                            item
+                        );
+
+                    if (success) {
+                        loaded++;
+                    } else {
+                        failed++;
+                    }
+
+                    dispatch(
+                        "eyt:speech-preload-progress",
+                        {
+                            total:
+                                queue.length,
+                            loaded,
+                            failed,
+                            completed:
+                                loaded +
+                                failed
+                        }
+                    );
+                }
+            };
+
+        await Promise.all(
+            Array.from(
+                {
+                    length:
+                        Math.min(
+                            concurrency,
+                            queue.length
+                        )
+                },
+                run
+            )
+        );
+
+        const result = {
+            total:
+                queue.length,
+            loaded,
+            failed
+        };
+
+        dispatch(
+            "eyt:speech-preload-complete",
+            result
+        );
+
+        return result;
+    }
+
+    /* ========================================================
+       PUBLIC API
+       ======================================================== */
+
     function toggle(
         text,
         button,
@@ -1135,7 +1626,8 @@ const EYTSpeech = (() => {
     ) {
         if (
             currentSession &&
-            currentButton === button
+            currentButton ===
+            button
         ) {
             stop();
 
@@ -1232,41 +1724,6 @@ const EYTSpeech = (() => {
         );
     }
 
-    async function preload(
-        text,
-        options = {}
-    ) {
-        const value =
-            cleanText(text);
-
-        if (!value) {
-            return false;
-        }
-
-        const resolved =
-            resolveOptions(
-                options
-            );
-
-        if (
-            resolved.lang ===
-            CONFIG.portugueseLang
-        ) {
-            return true;
-        }
-
-        try {
-            await generateEnglish(
-                value,
-                resolved
-            );
-
-            return true;
-        } catch (_) {
-            return false;
-        }
-    }
-
     function warmup() {
         try {
             getWorker()
@@ -1281,8 +1738,11 @@ const EYTSpeech = (() => {
         }
     }
 
-    function clearCache() {
-        cache.clear();
+    async function clearCache() {
+        memoryCache.clear();
+        inflight.clear();
+
+        await persistentClear();
 
         return true;
     }
@@ -1302,32 +1762,30 @@ const EYTSpeech = (() => {
             speaking:
                 isSpeaking(),
             runtime,
-            currentLanguage:
-                currentSession?.lang ||
-                null
+            memoryCache:
+                memoryCache.size,
+            generating:
+                inflight.size
         };
     }
+
+    void requestPersistentStorage();
+    void openDatabase();
 
     if (
         "speechSynthesis" in window
     ) {
-        window.speechSynthesis
+        window
+            .speechSynthesis
             .getVoices();
-
-        window.speechSynthesis
-            .addEventListener?.(
-                "voiceschanged",
-                () => {
-                    window
-                        .speechSynthesis
-                        .getVoices();
-                }
-            );
     }
 
     window.addEventListener(
         "pagehide",
-        stop
+        () => {
+            stopSource();
+            stopNative();
+        }
     );
 
     return {
@@ -1353,6 +1811,8 @@ const EYTSpeech = (() => {
         stop,
 
         preload,
+
+        preloadMany,
 
         warmup,
 
