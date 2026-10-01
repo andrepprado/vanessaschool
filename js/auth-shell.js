@@ -137,7 +137,7 @@ window.EYTRequireAuthenticatedArea =
                         )
                     ) {
                         link.href =
-                            "teacher.html";
+                            "/teacher";
                     }
 
                     if (
@@ -186,7 +186,7 @@ window.EYTRequireAuthenticatedArea =
                             "teacher vanessa"
                     ) {
                         link.href =
-                            "teacher.html";
+                            "/teacher";
                     }
                 }
             );
@@ -200,7 +200,7 @@ window.EYTRequireAuthenticatedArea =
             mobileSiteButton
         ) {
             mobileSiteButton.href =
-                "teacher.html";
+                "/teacher";
 
             mobileSiteButton.setAttribute(
                 "aria-label",

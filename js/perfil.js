@@ -292,6 +292,64 @@ document.addEventListener("DOMContentLoaded", async () => {
         render();
     }
 
+
+    /* === PROFILE CHANGE REQUEST START === */
+
+    function configureProfileChangeRequest() {
+        const button =
+            document.getElementById(
+                "profileRequestChange"
+            );
+
+        const registeredName =
+            document.getElementById(
+                "profileRegisteredName"
+            );
+
+        if (!button) {
+            return;
+        }
+
+        const name =
+            getDisplayName();
+
+        const email =
+            state.session?.user?.email ||
+            state.profile?.email ||
+            state.legacyUser?.email ||
+            "";
+
+        if (registeredName) {
+            registeredName.textContent =
+                name;
+        }
+
+        const message = [
+            "Oi, Teacher Vanessa!",
+            "",
+            "Gostaria de solicitar uma alteração no meu cadastro do English in Your Time.",
+            "",
+            `Nome atual: ${name}`,
+            email
+                ? `E-mail: ${email}`
+                : "",
+            "",
+            "Alteração que preciso solicitar:",
+            ""
+        ]
+            .filter(Boolean)
+            .join("\n");
+
+        button.href =
+            `https://wa.me/5512997157739?text=${
+                encodeURIComponent(
+                    message
+                )
+            }`;
+    }
+
+    /* === PROFILE CHANGE REQUEST END === */
+
     const authenticated =
         await requireAuthenticatedSession();
 
@@ -307,39 +365,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (_) {
     }
 
-    const form =
-        document.getElementById(
-            "profileForm"
-        );
-
-    if (form) {
-        form.addEventListener(
-            "submit",
-            async event => {
-                event.preventDefault();
-
-                const input =
-                    document.getElementById(
-                        "profileNameInput"
-                    );
-
-                const name =
-                    String(
-                        input?.value ||
-                        ""
-                    )
-                        .trim();
-
-                if (!name) {
-                    return;
-                }
-
-                await saveProfileName(
-                    name
-                );
-            }
-        );
-    }
 
     const logoutButton =
         document.getElementById(
@@ -414,6 +439,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     render();
+
+    configureProfileChangeRequest();
 
     console.info(
         "[Perfil] Authenticated profile ready.",
