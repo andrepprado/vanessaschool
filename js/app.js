@@ -30,5 +30,10 @@ const EYTApp = (() => {
         return "locked";
     };
     const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
-    return { requireUser, normalizeText, getAllLessons, getLessonOrder, isLessonUnlocked, getNextLesson, getCourseProgress, getAccuracy, evaluateAchievements, getLessonStatus, escapeHTML };
+    const icon = (name, extraClass = "") => {
+        const iconName = /^bi-[a-z0-9-]+$/i.test(String(name || "")) ? String(name) : "bi-circle";
+        const classes = String(extraClass || "").split(/\s+/).filter(item => /^[a-z0-9_-]+$/i.test(item)).join(" ");
+        return `<i class="bi ${iconName}${classes ? ` ${classes}` : ""}" aria-hidden="true"></i>`;
+    };
+    return { requireUser, normalizeText, getAllLessons, getLessonOrder, isLessonUnlocked, getNextLesson, getCourseProgress, getAccuracy, evaluateAchievements, getLessonStatus, escapeHTML, icon };
 })();

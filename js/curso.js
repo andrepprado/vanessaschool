@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const status = EYTApp.getLessonStatus(lesson.id);
         const label = status === "completed" ? "Concluída" : status === "available" ? "Começar" : "Bloqueada";
         return `<${status === "locked" ? "div" : "a"} ${status !== "locked" ? `href="licao.html?id=${lesson.id}"` : ""} class="lesson-card ${status}">
-<div class="lesson-card-icon">${status === "completed" ? "✓" : lesson.icon}</div>
+<div class="lesson-card-icon">${status === "completed" ? EYTApp.icon("bi-check-lg") : EYTApp.icon(lesson.icon)}</div>
 <h3>${EYTApp.escapeHTML(lesson.title)}</h3>
 <p>${EYTApp.escapeHTML(lesson.description)}</p>
 <div class="lesson-card-footer"><span>+${lesson.xp} XP</span><span class="lesson-status">${label}</span></div>

@@ -1887,3 +1887,31 @@ html body.lesson-page .lesson-answer-footer button.eyt-feedback-speech {
 /* ==========================================================================
    FIM
    ========================================================================== */
+
+/* Bootstrap Icons renderer used by the neural speech controls. */
+.eyt-speaker-svg.bi {
+    font-size: 20px !important;
+    line-height: 1 !important;
+}
+
+.lesson-page button.eyt-question-speech .eyt-speaker-svg.bi {
+    font-size: 23px !important;
+}
+
+.lesson-page button.eyt-answer-speech .eyt-speaker-svg.bi {
+    font-size: 18px !important;
+}
+
+.lesson-page button.eyt-word-speech .eyt-speaker-svg.bi {
+    font-size: 16px !important;
+}
+
+@media (max-width: 640px) {
+    .lesson-page button.eyt-question-speech .eyt-speaker-svg.bi {
+        font-size: 20px !important;
+    }
+
+    .lesson-page button.eyt-answer-speech .eyt-speaker-svg.bi {
+        font-size: 16px !important;
+    }
+}

@@ -1,7 +1,5 @@
-import {
-    KokoroTTS,
-    env
-} from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
+import { KokoroTTS } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
+import { env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/+esm";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
@@ -57,7 +55,42 @@ function sendStatus(status, extra = {}) {
 }
 
 function configureEnvironment() {
-    env.wasmPaths = "/models/kokoro/wasm/";
+    /*
+     * PRODUÇÃO:
+     *
+     * Nenhum modelo é buscado fora do domínio Vanessa School.
+     */
+
+    env.allowLocalModels = true;
+    env.allowRemoteModels = false;
+
+    /*
+     * MODEL_ID será adicionado automaticamente:
+     *
+     * /models/
+     * +
+     * onnx-community/Kokoro-82M-v1.0-ONNX
+     */
+
+    env.localModelPath = "/models/";
+
+    /*
+     * Cache do navegador permanece habilitado.
+     */
+
+    env.useBrowserCache = true;
+
+    /*
+     * ONNX Runtime WASM servido pelo próprio domínio.
+     */
+
+    if (
+        env.backends &&
+        env.backends.onnx &&
+        env.backends.onnx.wasm
+    ) {
+        env.backends.onnx.wasm.wasmPaths = "/wasm/";
+    }
 }
 
 async function loadModel() {
@@ -67,17 +100,19 @@ async function loadModel() {
         model: MODEL_ID
     });
 
-    const instance = await KokoroTTS.from_pretrained(
-        MODEL_ID,
-        {
-            device: RUNTIME.device,
-            dtype: RUNTIME.dtype
-        }
-    );
+    const instance =
+        await KokoroTTS.from_pretrained(
+            MODEL_ID,
+            {
+                device: RUNTIME.device,
+                dtype: RUNTIME.dtype,
+                local_files_only: true
+            }
+        );
 
     sendStatus("ready", {
         model: MODEL_ID,
-        source: "remote-cached",
+        source: "self-hosted",
         runtime: "wasm-q8"
     });
 
@@ -93,27 +128,32 @@ async function ensureTTS() {
         return initPromise;
     }
 
-    initPromise = loadModel()
-        .then(instance => {
-            tts = instance;
-            return tts;
-        })
-        .catch(error => {
-            tts = null;
-            initPromise = null;
+    initPromise =
+        loadModel()
+            .then(instance => {
+                tts = instance;
 
-            sendStatus("error", {
-                message: error?.message || String(error)
+                return tts;
+            })
+            .catch(error => {
+                tts = null;
+                initPromise = null;
+
+                sendStatus("error", {
+                    message:
+                        error?.message ||
+                        String(error)
+                });
+
+                throw error;
             });
-
-            throw error;
-        });
 
     return initPromise;
 }
 
 function chooseVoice(lang, persona) {
-    const normalizedLang = normalizeLang(lang);
+    const normalizedLang =
+        normalizeLang(lang);
 
     const profile =
         VOICES[normalizedLang] ||
@@ -126,9 +166,11 @@ function chooseVoice(lang, persona) {
 }
 
 async function generate(message) {
-    const engine = await ensureTTS();
+    const engine =
+        await ensureTTS();
 
-    const text = cleanText(message.text);
+    const text =
+        cleanText(message.text);
 
     if (!text) {
         throw new Error(
@@ -136,7 +178,8 @@ async function generate(message) {
         );
     }
 
-    const lang = normalizeLang(message.lang);
+    const lang =
+        normalizeLang(message.lang);
 
     const persona =
         cleanText(message.persona) ||
@@ -149,27 +192,29 @@ async function generate(message) {
             persona
         );
 
-    const speed = clamp(
-        message.speed,
-        0.65,
-        1.20,
-        lang === "pt-BR"
-            ? 0.97
-            : 0.90
-    );
+    const speed =
+        clamp(
+            message.speed,
+            0.65,
+            1.20,
+            lang === "pt-BR"
+                ? 0.97
+                : 0.90
+        );
 
     sendStatus("generating", {
         voice,
         lang
     });
 
-    const audio = await engine.generate(
-        text,
-        {
-            voice,
-            speed
-        }
-    );
+    const audio =
+        await engine.generate(
+            text,
+            {
+                voice,
+                speed
+            }
+        );
 
     if (
         !audio ||
@@ -180,7 +225,8 @@ async function generate(message) {
         );
     }
 
-    const blob = audio.toBlob();
+    const blob =
+        audio.toBlob();
 
     if (
         !blob ||
@@ -198,7 +244,7 @@ async function generate(message) {
         runtime: {
             device: RUNTIME.device,
             dtype: RUNTIME.dtype,
-            source: "remote-cached"
+            source: "self-hosted"
         }
     };
 }
@@ -206,24 +252,35 @@ async function generate(message) {
 self.addEventListener(
     "message",
     async event => {
-        const message = event.data || {};
+        const message =
+            event.data ||
+            {};
 
-        if (message.type === "init") {
+        if (
+            message.type === "init"
+        ) {
             try {
                 await ensureTTS();
 
                 self.postMessage({
-                    type: "init-complete",
+                    type:
+                        "init-complete",
 
                     runtime: {
-                        device: RUNTIME.device,
-                        dtype: RUNTIME.dtype,
-                        source: "remote-cached"
+                        device:
+                            RUNTIME.device,
+
+                        dtype:
+                            RUNTIME.dtype,
+
+                        source:
+                            "self-hosted"
                     }
                 });
             } catch (error) {
                 self.postMessage({
-                    type: "init-error",
+                    type:
+                        "init-error",
 
                     error:
                         error?.message ||
@@ -241,19 +298,25 @@ self.addEventListener(
             return;
         }
 
-        const id = message.id;
+        const id =
+            message.id;
 
         try {
             self.postMessage({
-                type: "generation-start",
+                type:
+                    "generation-start",
+
                 id
             });
 
             const result =
-                await generate(message);
+                await generate(
+                    message
+                );
 
             self.postMessage({
-                type: "generation-complete",
+                type:
+                    "generation-complete",
 
                 id,
 
@@ -271,7 +334,8 @@ self.addEventListener(
             });
         } catch (error) {
             self.postMessage({
-                type: "generation-error",
+                type:
+                    "generation-error",
 
                 id,
 
@@ -287,6 +351,6 @@ configureEnvironment();
 
 sendStatus("worker-ready", {
     model: MODEL_ID,
-    source: "remote-cached",
+    source: "self-hosted",
     runtime: "wasm-q8"
 });

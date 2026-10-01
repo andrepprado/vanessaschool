@@ -291,38 +291,10 @@ document.addEventListener("DOMContentLoaded", () => {
        ========================================================================== */
 
     function speakerIcon() {
-        return `
-            <svg
-                class="eyt-speaker-svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-                focusable="false"
-            >
-                <path
-                    d="M4 9.5V14.5H8L13 18.5V5.5L8 9.5H4Z"
-                    fill="currentColor"
-                ></path>
-
-                <path
-                    d="M16 8.5C17.05 9.45 17.65 10.62 17.65 12C17.65 13.38 17.05 14.55 16 15.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                ></path>
-
-                <path
-                    d="M18.7 6C20.35 7.5 21.3 9.55 21.3 12C21.3 14.45 20.35 16.5 18.7 18"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                ></path>
-            </svg>
-        `;
+        return EYTApp.icon(
+            "bi-volume-up-fill",
+            "eyt-speaker-svg"
+        );
     }
 
     /* ==========================================================================
@@ -951,7 +923,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <section class="lesson-intro">
 
                 <div class="lesson-intro-icon">
-                    ${lesson.icon}
+                    ${EYTApp.icon(lesson.icon)}
                 </div>
 
                 <span class="eyebrow">
@@ -999,7 +971,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     class="btn btn-primary btn-large"
                     type="button"
                 >
-                    Começar →
+                    Começar ${EYTApp.icon("bi-arrow-right")}
                 </button>
 
             </section>
@@ -1607,7 +1579,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     class="eyt-feedback-status-icon"
                     aria-hidden="true"
                 >
-                    ✓
+                    ${EYTApp.icon("bi-check-lg")}
                 </span>
             `
             : `
@@ -1615,7 +1587,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     class="eyt-feedback-status-icon"
                     aria-hidden="true"
                 >
-                    ×
+                    ${EYTApp.icon("bi-x-lg")}
                 </span>
             `;
     }
@@ -2026,7 +1998,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <section class="lesson-complete">
 
                 <div class="complete-icon">
-                    ✓
+                    ${EYTApp.icon("bi-check-lg")}
                 </div>
 
                 <span class="eyebrow">
@@ -2068,7 +2040,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <div class="complete-stat">
                         <strong>
-                            ✓
+                            ${EYTApp.icon("bi-check-circle-fill")}
                         </strong>
 
                         <span>
@@ -2092,7 +2064,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     href="curso.html"
                     class="btn btn-primary btn-large"
                 >
-                    Continuar aprendendo →
+                    Continuar aprendendo ${EYTApp.icon("bi-arrow-right")}
                 </a>
 
             </section>

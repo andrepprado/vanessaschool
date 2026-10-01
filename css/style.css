@@ -103,6 +103,22 @@ img {
     display: block
 }
 
+.bi {
+    width: 1em;
+    height: 1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: inherit;
+    line-height: 1;
+    vertical-align: -.125em
+}
+
+.bi::before {
+    line-height: 1
+}
+
 a {
     color: inherit;
     text-decoration: none
@@ -4241,6 +4257,10 @@ select:focus-visible {
 .public-site .format-pill {
     padding: 10px 16px;
 
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
     color: rgba(255, 255, 255, .8);
 
     background: rgba(255, 255, 255, .06);
@@ -4549,7 +4569,9 @@ select:focus-visible {
 }
 
 .public-site .urgency-tag {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
 
     margin-bottom: 20px;
 

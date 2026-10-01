@@ -10,8 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("completedLessons").textContent = p.licoesConcluidas.length;
     document.getElementById("achievementCount").textContent = p.conquistas.length;
     const mobileStreak = document.getElementById("mobileStreak"), mobileXp = document.getElementById("mobileXp");
-    if (mobileStreak) mobileStreak.textContent = `🔥 ${p.streak}`;
-    if (mobileXp) mobileXp.textContent = `★ ${p.xp}`;
+    if (mobileStreak) mobileStreak.innerHTML = `${EYTApp.icon("bi-fire")} ${p.streak}`;
+    if (mobileXp) mobileXp.innerHTML = `${EYTApp.icon("bi-star-fill")} ${p.xp}`;
     if (next) {
         const lp = p.progressoLicoes[next.id] || { percent: 0 };
         document.getElementById("continueTitle").textContent = next.title;
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <div class="path-lessons">${unit.lessons.map(lesson => {
         const status = EYTApp.getLessonStatus(lesson.id);
         const label = status === "completed" ? "Concluída" : status === "available" ? "Disponível" : "Bloqueada";
-        const icon = status === "completed" ? "✓" : status === "locked" ? "•" : lesson.icon;
+        const icon = status === "completed" ? EYTApp.icon("bi-check-lg") : status === "locked" ? EYTApp.icon("bi-lock-fill") : EYTApp.icon(lesson.icon);
         return `<${status === "locked" ? "div" : "a"} ${status !== "locked" ? `href="licao.html?id=${lesson.id}"` : ""} class="path-lesson ${status}"><div class="path-lesson-icon">${icon}</div><div class="path-lesson-info"><h4>${EYTApp.escapeHTML(lesson.title)}</h4><p>${EYTApp.escapeHTML(lesson.description)}</p></div><div class="path-lesson-status">${label}</div></${status === "locked" ? "div" : "a"}>`;
     }).join("")}</div>
 </article>`).join("");
