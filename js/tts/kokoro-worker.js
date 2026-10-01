@@ -2,6 +2,76 @@ import {
     KokoroTTS
 } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 
+
+
+/*
+ * Same-origin Hugging Face proxy.
+ *
+ * Keeps the Kokoro runtime exactly as before while avoiding
+ * browser CORS restrictions. Model requests are transparently
+ * routed through the Vercel CDN.
+ */
+const EYT_NATIVE_FETCH = self.fetch.bind(self);
+
+self.fetch = function(input, init) {
+    try {
+        const rawUrl =
+            typeof input === "string"
+                ? input
+                : input instanceof URL
+                    ? input.href
+                    : input?.url || "";
+
+        if (
+            rawUrl.startsWith(
+                "https://huggingface.co/"
+            )
+        ) {
+            const original =
+                new URL(rawUrl);
+
+            const proxied =
+                new URL(
+                    "/hf-kokoro" +
+                    original.pathname +
+                    original.search,
+                    self.location.origin
+                );
+
+            if (
+                typeof input === "string" ||
+                input instanceof URL
+            ) {
+                return EYT_NATIVE_FETCH(
+                    proxied.href,
+                    init
+                );
+            }
+
+            const request =
+                new Request(
+                    proxied.href,
+                    input
+                );
+
+            return EYT_NATIVE_FETCH(
+                request,
+                init
+            );
+        }
+    }
+    catch (error) {
+        console.warn(
+            "[EYTKokoro] Proxy rewrite fallback:",
+            error
+        );
+    }
+
+    return EYT_NATIVE_FETCH(
+        input,
+        init
+    );
+};
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
 const RUNTIME = {
@@ -136,7 +206,7 @@ async function generate(message) {
 
     if (!text) {
         throw new Error(
-            "Texto vazio para geração de áudio."
+            "Texto vazio para gera├º├úo de ├íudio."
         );
     }
 
@@ -146,7 +216,7 @@ async function generate(message) {
 
     if (!originalLang.startsWith("en")) {
         throw new Error(
-            "O Kokoro deste projeto deve ser usado somente para inglês."
+            "O Kokoro deste projeto deve ser usado somente para ingl├¬s."
         );
     }
 
@@ -207,7 +277,7 @@ async function generate(message) {
         typeof audio.toBlob !== "function"
     ) {
         throw new Error(
-            "O Kokoro não retornou um áudio válido."
+            "O Kokoro n├úo retornou um ├íudio v├ílido."
         );
     }
 
@@ -219,7 +289,7 @@ async function generate(message) {
         blob.size === 0
     ) {
         throw new Error(
-            "O Kokoro retornou um áudio vazio."
+            "O Kokoro retornou um ├íudio vazio."
         );
     }
 

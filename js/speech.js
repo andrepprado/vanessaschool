@@ -313,7 +313,7 @@ const EYTSpeech = (() => {
         button.dataset.eytOriginalLabel =
             button.getAttribute("aria-label") ||
             button.getAttribute("title") ||
-            "Ouvir pronúncia";
+            "Ouvir pron├║ncia";
     }
 
     function activateButton(button) {
@@ -331,8 +331,8 @@ const EYTSpeech = (() => {
 
         button.classList.add("is-speaking");
         button.setAttribute("aria-pressed", "true");
-        button.setAttribute("aria-label", "Preparando áudio");
-        button.setAttribute("title", "Preparando áudio");
+        button.setAttribute("aria-label", "Preparando ├íudio");
+        button.setAttribute("title", "Preparando ├íudio");
     }
 
     function setButtonPlaying(button) {
@@ -340,8 +340,8 @@ const EYTSpeech = (() => {
             return;
         }
 
-        button.setAttribute("aria-label", "Parar áudio");
-        button.setAttribute("title", "Parar áudio");
+        button.setAttribute("aria-label", "Parar ├íudio");
+        button.setAttribute("title", "Parar ├íudio");
     }
 
     function resetButton(button = currentButton) {
@@ -354,7 +354,7 @@ const EYTSpeech = (() => {
 
         const label =
             button.dataset.eytOriginalLabel ||
-            "Ouvir pronúncia";
+            "Ouvir pron├║ncia";
 
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -475,7 +475,7 @@ const EYTSpeech = (() => {
             request.reject(
                 new Error(
                     message.error ||
-                    "Falha ao gerar áudio."
+                    "Falha ao gerar ├íudio."
                 )
             );
         }
@@ -542,7 +542,7 @@ const EYTSpeech = (() => {
 
                 reject(
                     new Error(
-                        "Tempo excedido ao gerar áudio."
+                        "Tempo excedido ao gerar ├íudio."
                     )
                 );
             }, CONFIG.timeout);
@@ -674,7 +674,7 @@ const EYTSpeech = (() => {
                 !result.blob.size
             ) {
                 throw new Error(
-                    "Kokoro retornou áudio vazio."
+                    "Kokoro retornou ├íudio vazio."
                 );
             }
 
@@ -847,7 +847,7 @@ const EYTSpeech = (() => {
 
             if (!context) {
                 throw new Error(
-                    "AudioContext indisponível."
+                    "AudioContext indispon├¡vel."
                 );
             }
 
@@ -938,7 +938,7 @@ const EYTSpeech = (() => {
     }
 
     /* ========================================================
-       REPRODUÇÃO INSTANTNEA
+       REPRODU├ç├âO INSTANT├éNEA
        ======================================================== */
 
     async function playPrepared(
@@ -950,7 +950,7 @@ const EYTSpeech = (() => {
 
         if (!context) {
             throw new Error(
-                "AudioContext indisponível."
+                "AudioContext indispon├¡vel."
             );
         }
 
@@ -1019,7 +1019,7 @@ const EYTSpeech = (() => {
     }
 
     /* ========================================================
-       PORTUGUÊS
+       PORTUGU├èS
        ======================================================== */
 
     function selectPortugueseVoice() {
@@ -1093,7 +1093,7 @@ const EYTSpeech = (() => {
         ) {
             return Promise.reject(
                 new Error(
-                    "Voz em português indisponível."
+                    "Voz em portugu├¬s indispon├¡vel."
                 )
             );
         }
@@ -1161,7 +1161,7 @@ const EYTSpeech = (() => {
                 reject(
                     new Error(
                         event.error ||
-                        "Erro no áudio pt-BR."
+                        "Erro no ├íudio pt-BR."
                     )
                 );
             };

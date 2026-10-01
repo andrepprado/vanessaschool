@@ -28,26 +28,26 @@
             "qual ",
             "quais ",
             "traduza",
-            "tradução",
+            "tradu├º├úo",
             "complete",
             "organize",
-            "você",
-            "vocês",
-            "português",
+            "voc├¬",
+            "voc├¬s",
+            "portugu├¬s",
             "significa",
             "se diz",
-            "para o inglês",
-            "para inglês",
+            "para o ingl├¬s",
+            "para ingl├¬s",
             "frase",
-            "número",
+            "n├║mero",
             "cor ",
             "dia ",
             "depois de",
             "antes de",
             "escolha",
-            "família",
+            "fam├¡lia",
             "rotina",
-            "manhã",
+            "manh├ú",
             "tarde",
             "noite",
             "resposta",
@@ -273,7 +273,7 @@
                 }
 
                 console.info(
-                    `[EYTAudio] Pré-carregando ${items.length} áudios em background`
+                    `[EYTAudio] Pr├®-carregando ${items.length} ├íudios em background`
                 );
 
                 void EYTSpeech
@@ -298,7 +298,7 @@
 
     /*
      * pointerdown acontece ANTES do click.
-     * Quando o click chegar, AudioContext já estará acordado.
+     * Quando o click chegar, AudioContext j├í estar├í acordado.
      */
     document.addEventListener(
         "pointerdown",
