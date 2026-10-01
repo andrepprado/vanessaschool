@@ -117,16 +117,16 @@ document.addEventListener("DOMContentLoaded", () => {
             "en-GB",
 
         answerSpeechRate:
-            0.88,
+            0.98,
 
         wordSpeechRate:
-            0.84,
+            0.96,
 
         questionEnglishRate:
-            0.90,
+            0.98,
 
         questionPortugueseRate:
-            0.96
+            1.00
     };
 
     /* ==========================================================================
