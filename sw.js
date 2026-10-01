@@ -1,7 +1,13 @@
 "use strict";
 
+/*
+ * IMPORTANTE:
+ * O cache de audio continua cache-first.
+ * HTML/JS/CSS usam network-first para nunca manter codigo antigo
+ * depois de um novo deploy.
+ */
 const VERSION =
-    "eyt-static-audio-v2";
+    "eyt-static-audio-v3";
 
 const AUDIO_CACHE =
     `${VERSION}-audio`;
@@ -13,16 +19,23 @@ const APP_SHELL = [
     "/",
     "/dashboard",
     "/dashboard.html",
+    "/curso",
+    "/curso.html",
+    "/revisar",
+    "/revisar.html",
+    "/conquistas",
+    "/conquistas.html",
+    "/perfil",
+    "/perfil.html",
+    "/teacher",
+    "/teacher.html",
     "/student-lesson.html",
     "/css/style.css",
     "/js/speech.js",
     "/js/static-audio.js",
     "/js/tts-preload.js",
     "/js/offline-register.js",
-    "/audio/static/manifest.json",
-    "/audio/feedback/correct.wav",
-    "/audio/feedback/incorrect.wav",
-    "/audio/feedback/finish.mp3"
+    "/audio/static/manifest.json"
 ];
 
 self.addEventListener(
@@ -31,9 +44,8 @@ self.addEventListener(
         self.skipWaiting();
 
         event.waitUntil(
-            caches.open(
-                APP_CACHE
-            )
+            caches
+                .open(APP_CACHE)
                 .then(
                     cache =>
                         cache.addAll(
@@ -64,13 +76,13 @@ self.addEventListener(
                         names
                             .filter(
                                 name =>
-                                    name.startsWith(
-                                        "eyt-static-audio-"
+                                    (
+                                        name.startsWith(
+                                            "eyt-static-audio-"
+                                        )
                                     ) &&
-                                    name !==
-                                        AUDIO_CACHE &&
-                                    name !==
-                                        APP_CACHE
+                                    name !== AUDIO_CACHE &&
+                                    name !== APP_CACHE
                             )
                             .map(
                                 name =>
@@ -80,8 +92,11 @@ self.addEventListener(
                             )
                     );
 
-                    await self.clients
-                        .claim();
+                    await self.clients.claim();
+
+                    console.info(
+                        `[EYT SW] Activated ${VERSION}`
+                    );
                 }
             )()
         );
@@ -124,6 +139,94 @@ async function cacheFirst(
     return response;
 }
 
+async function networkFirst(
+    request,
+    cacheName,
+    fallbackUrls = []
+) {
+    const cache =
+        await caches.open(
+            cacheName
+        );
+
+    try {
+        const response =
+            await fetch(
+                request,
+                {
+                    cache:
+                        "no-store"
+                }
+            );
+
+        if (
+            response &&
+            response.ok
+        ) {
+            await cache.put(
+                request,
+                response.clone()
+            );
+        }
+
+        return response;
+    }
+    catch (error) {
+        const cached =
+            await cache.match(
+                request
+            );
+
+        if (cached) {
+            return cached;
+        }
+
+        for (
+            const fallbackUrl of
+            fallbackUrls
+        ) {
+            const fallback =
+                await cache.match(
+                    fallbackUrl
+                );
+
+            if (fallback) {
+                return fallback;
+            }
+        }
+
+        throw error;
+    }
+}
+
+function isApplicationCode(
+    request,
+    url
+) {
+    if (
+        request.destination ===
+            "script" ||
+        request.destination ===
+            "style" ||
+        request.destination ===
+            "document"
+    ) {
+        return true;
+    }
+
+    return (
+        url.pathname.endsWith(
+            ".js"
+        ) ||
+        url.pathname.endsWith(
+            ".css"
+        ) ||
+        url.pathname.endsWith(
+            ".html"
+        )
+    );
+}
+
 self.addEventListener(
     "fetch",
     event => {
@@ -146,14 +249,13 @@ self.addEventListener(
             return;
         }
 
+        /*
+         * AUDIO:
+         * continua cache-first para manter os 800 audios offline.
+         */
         if (
-            (
-                url.pathname.startsWith(
-                    "/audio/static/"
-                ) ||
-                url.pathname.startsWith(
-                    "/audio/feedback/"
-                )
+            url.pathname.startsWith(
+                "/audio/static/"
             )
         ) {
             event.respondWith(
@@ -166,56 +268,57 @@ self.addEventListener(
             return;
         }
 
+        /*
+         * NAVEGACAO:
+         * servidor primeiro.
+         *
+         * Assim /curso, /conquistas, /perfil etc nunca recebem
+         * uma pagina antiga apenas porque havia cache.
+         */
         if (
             event.request.mode ===
             "navigate"
         ) {
             event.respondWith(
-                (
-                    async () => {
-                        try {
-                            const response =
-                                await fetch(
-                                    event.request
-                                );
-
-                            const cache =
-                                await caches.open(
-                                    APP_CACHE
-                                );
-
-                            await cache.put(
-                                event.request,
-                                response.clone()
-                            );
-
-                            return response;
-                        }
-                        catch (_) {
-                            const cache =
-                                await caches.open(
-                                    APP_CACHE
-                                );
-
-                            return (
-                                await cache.match(
-                                    event.request
-                                ) ||
-                                await cache.match(
-                                    "/dashboard.html"
-                                ) ||
-                                await cache.match(
-                                    "/"
-                                )
-                            );
-                        }
-                    }
-                )()
+                networkFirst(
+                    event.request,
+                    APP_CACHE,
+                    [
+                        "/dashboard",
+                        "/dashboard.html"
+                    ]
+                )
             );
 
             return;
         }
 
+        /*
+         * JS / CSS / HTML:
+         * SEMPRE tenta buscar a versao publicada primeiro.
+         *
+         * Este e o ponto que elimina o bug do JS antigo
+         * redirecionando o aluno para a home.
+         */
+        if (
+            isApplicationCode(
+                event.request,
+                url
+            )
+        ) {
+            event.respondWith(
+                networkFirst(
+                    event.request,
+                    APP_CACHE
+                )
+            );
+
+            return;
+        }
+
+        /*
+         * Imagens/fontes/outros assets podem continuar cache-first.
+         */
         event.respondWith(
             cacheFirst(
                 event.request,
@@ -233,17 +336,11 @@ async function cacheAudioLibrary(
             AUDIO_CACHE
         );
 
-    let cached =
-        0;
+    let cached = 0;
+    let failed = 0;
+    let index = 0;
 
-    let failed =
-        0;
-
-    let index =
-        0;
-
-    const concurrency =
-        4;
+    const concurrency = 4;
 
     async function runner() {
         while (
@@ -352,6 +449,13 @@ self.addEventListener(
                     urls
                 )
             );
+        }
+
+        if (
+            event.data?.type ===
+            "EYT_SKIP_WAITING"
+        ) {
+            self.skipWaiting();
         }
     }
 );

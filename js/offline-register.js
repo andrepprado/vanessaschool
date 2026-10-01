@@ -23,6 +23,27 @@
                         }
                     );
 
+            /*
+             * Sempre verifica se existe um sw.js mais novo.
+             * Evita manter a aplicacao presa a uma versao antiga.
+             */
+            try {
+                await registration.update();
+            }
+            catch (updateError) {
+                console.warn(
+                    "[EYTOffline] SW update:",
+                    updateError
+                );
+            }
+
+            if (registration.waiting) {
+                registration.waiting.postMessage({
+                    type:
+                        "EYT_SKIP_WAITING"
+                });
+            }
+
             const ready =
                 await navigator
                     .serviceWorker
