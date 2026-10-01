@@ -7046,3 +7046,51 @@ body.app-body #dashboardPath {
 }
 
 /* === INTERACTIVE LEVEL DEMO END === */
+/* === DEMO TRY AGAIN BUTTON FIX START === */
+
+#demoTryAgain,
+.demo-result-actions #demoTryAgain,
+.demo-result-card #demoTryAgain.btn,
+.demo-result-card #demoTryAgain.btn-secondary {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0b1f3f !important;
+
+    border: 1px solid #ffffff !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    box-shadow: none !important;
+}
+
+#demoTryAgain i,
+#demoTryAgain span {
+    color: #0b1f3f !important;
+}
+
+#demoTryAgain:hover,
+.demo-result-actions #demoTryAgain:hover,
+.demo-result-card #demoTryAgain.btn:hover {
+    background: #f1f3f6 !important;
+    background-color: #f1f3f6 !important;
+    color: #0b1f3f !important;
+
+    border-color: #f1f3f6 !important;
+
+    transform: translateY(-1px);
+}
+
+#demoTryAgain:active {
+    background: #e5e9ef !important;
+    color: #0b1f3f !important;
+
+    transform: translateY(0);
+}
+
+#demoTryAgain:focus-visible {
+    outline: 2px solid #ffffff !important;
+    outline-offset: 3px;
+}
+
+/* === DEMO TRY AGAIN BUTTON FIX END === */
