@@ -1047,7 +1047,7 @@ const EYTSpeech = (() => {
             }
 
             /*
-             * NÃO usamos SpeechSynthesis como fallback.
+             * Não usamos a voz nativa do navegador como fallback.
              *
              * Se Kokoro falhar, mostramos o erro.
              * Assim o aluno nunca recebe uma voz robótica
