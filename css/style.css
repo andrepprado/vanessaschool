@@ -5110,3 +5110,25 @@ select:focus-visible {
 }
 
 /* ===== EYT LOGO FIX END ===== */
+
+
+/* ===== EYT QUESTION AUDIO REMOVAL START ===== */
+
+/*
+ * Perguntas nunca possuem áudio.
+ * Somente alternativas podem reproduzir pronúncia.
+ */
+
+.eyt-question-row {
+    display: block !important;
+    grid-template-columns: none !important;
+}
+
+.eyt-question-row .eyt-question-speech,
+.eyt-question-speech {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* ===== EYT QUESTION AUDIO REMOVAL END ===== */

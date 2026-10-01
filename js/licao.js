@@ -1121,25 +1121,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}
                     </h1>
 
-                    ${speechButton(
-            exercise.question,
-            {
-                lang:
-                    questionLanguage,
 
-                rate:
-                    questionRate,
-
-                persona:
-                    "teacher",
-
-                className:
-                    "eyt-question-speech",
-
-                label:
-                    "Ouvir pergunta"
-            }
-        )}
 
                 </div>
 
