@@ -1,3 +1,56 @@
+/* === AUTHENTICATED AREA GUARD START === */
+
+async function EYTRequireAuthenticatedArea() {
+    try {
+        if (
+            typeof EYTSupabase !== "undefined" &&
+            typeof EYTSupabase.getSession === "function"
+        ) {
+            const session =
+                await EYTSupabase.getSession();
+
+            if (session) {
+                return true;
+            }
+        }
+    }
+    catch (error) {
+        console.warn(
+            "[EYTAuthShell] Supabase session check:",
+            error
+        );
+    }
+
+    /*
+     * Keep compatibility with older local sessions.
+     */
+    try {
+        if (
+            typeof EYTStorage !== "undefined" &&
+            typeof EYTStorage.getUser === "function" &&
+            EYTStorage.getUser()
+        ) {
+            return true;
+        }
+    }
+    catch (_) {
+    }
+
+    /*
+     * Authenticated pages NEVER redirect to public index.html.
+     */
+    location.replace(
+        "acesso.html"
+    );
+
+    return false;
+}
+
+window.EYTRequireAuthenticatedArea =
+    EYTRequireAuthenticatedArea;
+
+/* === AUTHENTICATED AREA GUARD END === */
+
 (() => {
     "use strict";
 

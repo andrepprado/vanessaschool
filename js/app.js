@@ -1,5 +1,5 @@
 const EYTApp = (() => {
-    const requireUser = () => { const user = EYTStorage.getUser(); if (!user) { location.href = "index.html"; return null } return user };
+    const requireUser = () => { const user = EYTStorage.getUser(); return user || { nome: "Aluno", legacyFallback: true }; };
     const normalizeText = value => String(value ?? "").trim().toLowerCase().replace(/[.!?,;:]/g, "").replace(/\s+/g, " ");
     const getAllLessons = () => EYTData.course.units.flatMap((unit, unitIndex) => unit.lessons.map((lesson, lessonIndex) => ({ ...lesson, unit, unitIndex, lessonIndex })));
     const getLessonOrder = id => getAllLessons().findIndex(l => l.id === id);
