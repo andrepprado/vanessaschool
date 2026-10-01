@@ -273,7 +273,7 @@
                 }
 
                 console.info(
-                    `[EYTAudio] Pr├®-carregando ${items.length} ├íudios em background`
+                    `[EYTAudio] Pré-carregando ${items.length} áudios em background`
                 );
 
                 void EYTSpeech
@@ -298,7 +298,7 @@
 
     /*
      * pointerdown acontece ANTES do click.
-     * Quando o click chegar, AudioContext j├í estar├í acordado.
+     * Quando o click chegar, AudioContext já estará acordado.
      */
     document.addEventListener(
         "pointerdown",
