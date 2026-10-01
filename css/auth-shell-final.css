@@ -1,0 +1,220 @@
+/*
+ * Vanessa School authenticated shell final overrides.
+ * This file MUST be loaded after css/style.css.
+ */
+
+.sidebar-bottom {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-sizing: border-box;
+}
+
+.sidebar-bottom > .teacher-card,
+.sidebar-bottom > .sidebar-site-link,
+.sidebar-bottom > .sidebar-logout-button {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+/*
+ * Logout deliberately inherits .sidebar-site-link.
+ * Only button-specific browser defaults are neutralized here.
+ */
+button.sidebar-site-link.sidebar-logout-button {
+    appearance: none;
+    -webkit-appearance: none;
+
+    width: 100%;
+    min-height: 58px;
+
+    margin: 0;
+    padding: 11px 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 11px;
+
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, .045);
+    color: rgba(255, 255, 255, .78);
+
+    font-family: "Work Sans", sans-serif;
+    font-size: inherit;
+    line-height: normal;
+    text-align: left;
+
+    cursor: pointer;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+
+    transition:
+        background .2s ease,
+        border-color .2s ease,
+        color .2s ease,
+        transform .2s ease;
+}
+
+button.sidebar-site-link.sidebar-logout-button:hover {
+    color: #ffffff;
+    background: rgba(196, 18, 48, .17);
+    border-color: rgba(196, 18, 48, .34);
+    transform: translateY(-1px);
+}
+
+button.sidebar-site-link.sidebar-logout-button:active {
+    transform: translateY(0);
+}
+
+button.sidebar-site-link.sidebar-logout-button:focus-visible {
+    outline: 2px solid rgba(233, 30, 140, .85);
+    outline-offset: 2px;
+}
+
+button.sidebar-site-link.sidebar-logout-button:disabled {
+    opacity: .55;
+    cursor: wait;
+    transform: none;
+}
+
+button.sidebar-site-link.sidebar-logout-button .sidebar-site-link-icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    flex: 0 0 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin: 0;
+
+    color: #ffffff;
+    background: rgba(255, 255, 255, .08);
+    border-radius: 9px;
+
+    font-size: 16px;
+    line-height: 1;
+}
+
+button.sidebar-site-link.sidebar-logout-button .sidebar-site-link-icon i {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+button.sidebar-site-link.sidebar-logout-button > div {
+    min-width: 0;
+
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+
+    gap: 0;
+}
+
+button.sidebar-site-link.sidebar-logout-button strong {
+    display: block;
+
+    margin: 0;
+    padding: 0;
+
+    color: inherit;
+
+    font-family: "Work Sans", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+button.sidebar-site-link.sidebar-logout-button > div > span {
+    display: block;
+
+    margin: 2px 0 0;
+    padding: 0;
+
+    color: rgba(255, 255, 255, .45);
+
+    font-family: "Work Sans", sans-serif;
+    font-size: 8px;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+/*
+ * Keep the existing Teacher card and the logout aligned
+ * within exactly the same parent width.
+ */
+.sidebar-bottom .teacher-card {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/*
+ * Mobile header: all three controls share the same vertical axis.
+ */
+.mobile-header-stats {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end;
+    gap: 7px !important;
+}
+
+.mobile-header-stat {
+    height: 36px !important;
+    min-height: 36px !important;
+
+    margin: 0 !important;
+    padding: 0 9px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    gap: 5px;
+
+    box-sizing: border-box;
+    line-height: 1 !important;
+}
+
+.mobile-header-stat > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 1 !important;
+}
+
+.mobile-site-button {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    box-sizing: border-box;
+    line-height: 1 !important;
+}
+
+@media(max-width:480px) {
+    .mobile-header-stats {
+        gap: 5px !important;
+    }
+
+    .mobile-header-stat {
+        min-width: 42px;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+}

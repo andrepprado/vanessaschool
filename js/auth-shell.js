@@ -258,8 +258,7 @@
         button.type =
             "button";
 
-        button.className =
-            "sidebar-logout-button";
+        button.className = "sidebar-site-link sidebar-logout-button";
 
         button.dataset
             .eytLogout =

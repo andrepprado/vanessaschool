@@ -240,7 +240,167 @@
                 width: 100%
             }
         }
+
+        /* === TEACHER HERO PHOTO START === */
+
+        .teacher-hero {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .teacher-hero-content {
+            position: relative;
+            z-index: 3;
+            width: min(58%, 660px);
+            max-width: 660px;
+        }
+
+        .teacher-hero-photo {
+            position: absolute;
+            z-index: 1;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 47%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .teacher-hero-photo img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: center 22%;
+            filter:
+                saturate(.94)
+                contrast(1.03);
+        }
+
+        .teacher-hero-photo::before {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            inset: 0;
+            background:
+                linear-gradient(
+                    90deg,
+                    #0B1F3F 0%,
+                    rgba(11,31,63,.96) 10%,
+                    rgba(11,31,63,.72) 28%,
+                    rgba(11,31,63,.30) 52%,
+                    rgba(11,31,63,.06) 76%,
+                    rgba(11,31,63,0) 100%
+                );
+        }
+
+        .teacher-hero-photo::after {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            inset: 0;
+            background:
+                linear-gradient(
+                    180deg,
+                    rgba(11,31,63,.05) 0%,
+                    rgba(11,31,63,0) 55%,
+                    rgba(11,31,63,.30) 100%
+                );
+        }
+
+        .teacher-hero::after {
+            display: none;
+        }
+
+        @media(max-width:900px) {
+            .teacher-hero-content {
+                width: 64%;
+            }
+
+            .teacher-hero-photo {
+                width: 50%;
+            }
+        }
+
+        @media(max-width:760px) {
+            .teacher-hero {
+                padding: 0 !important;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+
+            .teacher-hero-photo {
+                position: relative;
+                top: auto;
+                right: auto;
+                bottom: auto;
+
+                order: 1;
+
+                width: 100%;
+                height: clamp(280px, 82vw, 410px);
+            }
+
+            .teacher-hero-photo img {
+                object-position: center 18%;
+            }
+
+            .teacher-hero-photo::before {
+                background:
+                    linear-gradient(
+                        180deg,
+                        rgba(11,31,63,0) 0%,
+                        rgba(11,31,63,.04) 42%,
+                        rgba(11,31,63,.58) 76%,
+                        #0B1F3F 100%
+                    );
+            }
+
+            .teacher-hero-photo::after {
+                background:
+                    linear-gradient(
+                        90deg,
+                        rgba(11,31,63,.08) 0%,
+                        rgba(11,31,63,0) 50%,
+                        rgba(11,31,63,.08) 100%
+                    );
+            }
+
+            .teacher-hero-content {
+                order: 2;
+                width: 100%;
+                max-width: none;
+
+                margin-top: -44px;
+                padding: 0 24px 32px;
+
+                position: relative;
+                z-index: 3;
+            }
+
+            .teacher-hero h1 {
+                font-size: clamp(44px, 13vw, 62px);
+            }
+        }
+
+        @media(max-width:420px) {
+            .teacher-hero-photo {
+                height: 300px;
+            }
+
+            .teacher-hero-content {
+                margin-top: -34px;
+                padding-left: 19px;
+                padding-right: 19px;
+            }
+        }
+
+        /* === TEACHER HERO PHOTO END === */
     </style>
+    <link rel="stylesheet" href="css/auth-shell-final.css?v=20261001-shell-final-3">
 </head>
 
 <body class="app-body">
@@ -268,6 +428,9 @@
         <main class="app-main">
             <div class="teacher-page">
                 <section class="teacher-hero">
+                <div class="teacher-hero-photo" aria-hidden="true">
+                    <img src="img/van1.jpg" alt="">
+                </div>
                     <div class="teacher-hero-content">
                         <span class="eyebrow">MEET YOUR TEACHER</span>
                         <h1>Teacher<br>Vanessa.</h1>
@@ -333,7 +496,7 @@
     <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js?v=20261001-auth-shell-1"></script>
-    <script src="js/auth-shell.js?v=20261001-auth-shell-1"></script>
+    <script src="js/auth-shell.js?v=20261001-shell-final-3"></script>
 </body>
 
 </html>
