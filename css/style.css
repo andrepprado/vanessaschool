@@ -6367,3 +6367,92 @@ body.app-body #dashboardPath {
 }
 
 /* === AUTH SHELL FIX END === */
+/* === SIDEBAR LOGOUT BUTTON START === */
+
+.sidebar-logout-button {
+    width: calc(100% - 24px);
+    min-height: 54px;
+    margin: 8px 12px 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    background: rgba(255,255,255,.045);
+    color: #ffffff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition:
+        background .18s ease,
+        border-color .18s ease,
+        transform .18s ease;
+}
+
+.sidebar-logout-button:hover {
+    background: rgba(196,18,48,.16);
+    border-color: rgba(196,18,48,.34);
+}
+
+.sidebar-logout-button:active {
+    transform: translateY(1px);
+}
+
+.sidebar-logout-button:focus-visible {
+    outline: 2px solid rgba(255,255,255,.75);
+    outline-offset: 2px;
+}
+
+.sidebar-logout-button .sidebar-site-link-icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(255,255,255,.08);
+    color: #ffffff;
+}
+
+.sidebar-logout-button .sidebar-site-link-icon i {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.sidebar-logout-button > div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-logout-button strong {
+    display: block;
+    margin: 0;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.sidebar-logout-button span {
+    display: block;
+    margin: 0;
+    color: rgba(255,255,255,.56);
+    font-size: 8px;
+    line-height: 1.25;
+}
+
+.sidebar-logout-button:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.sidebar-bottom .sidebar-logout-button {
+    flex-shrink: 0;
+}
+
+/* === SIDEBAR LOGOUT BUTTON END === */
