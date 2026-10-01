@@ -1,5 +1,6 @@
 import pg from "pg";
 import fs from "node:fs";
+import path from "node:path";
 
 const { Client } = pg;
 
@@ -16,23 +17,26 @@ if (!rawConnectionString) {
 const connectionUrl =
     new URL(rawConnectionString);
 
-/*
- * Some Windows/corporate environments inject a local certificate
- * into the TLS chain. Remove sslmode from the URL so the explicit
- * Node TLS configuration below is respected.
- *
- * TLS is still used, but certificate validation is disabled ONLY
- * for this local one-time database bootstrap connection.
- */
 connectionUrl.searchParams.delete("sslmode");
 connectionUrl.searchParams.delete("sslrootcert");
 connectionUrl.searchParams.delete("uselibpqcompat");
 
-const sql =
-    fs.readFileSync(
-        "supabase/migrations/20261001000100_student_platform.sql",
-        "utf8"
+const migrationsDirectory =
+    "supabase/migrations";
+
+const migrations =
+    fs.readdirSync(migrationsDirectory)
+        .filter(
+            file =>
+                file.toLowerCase().endsWith(".sql")
+        )
+        .sort();
+
+if (!migrations.length) {
+    throw new Error(
+        "No SQL migrations were found."
     );
+}
 
 const client =
     new Client({
@@ -45,19 +49,33 @@ const client =
 
 try {
     console.log(
-        "Connecting securely to Supabase PostgreSQL..."
+        "Connecting to Supabase PostgreSQL..."
     );
 
     await client.connect();
 
-    console.log(
-        "Applying Vanessa School database schema..."
-    );
+    for (const migration of migrations) {
+        const migrationPath =
+            path.join(
+                migrationsDirectory,
+                migration
+            );
 
-    await client.query(sql);
+        const sql =
+            fs.readFileSync(
+                migrationPath,
+                "utf8"
+            );
+
+        console.log(
+            `Applying ${migration}...`
+        );
+
+        await client.query(sql);
+    }
 
     console.log(
-        "Database schema applied successfully."
+        "All database migrations applied successfully."
     );
 } finally {
     await client.end();

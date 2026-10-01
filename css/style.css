@@ -2715,11 +2715,11 @@ select:focus-visible {
 
 /* =========================================================
    ENGLISH IN YOUR TIME
-   AJUSTES DE INTEGRAÃ‡ÃƒO SITE + PLATAFORMA
+   AJUSTES DE INTEGRAÃƒâ€¡ÃƒÆ’O SITE + PLATAFORMA
    ========================================================= */
 
 /* =========================================================
-   SIDEBAR - ÃREA DO LOGO
+   SIDEBAR - ÃƒÂREA DO LOGO
    ========================================================= */
 
 .sidebar-logo {
@@ -3418,9 +3418,9 @@ select:focus-visible {
 /* ========================================================================== */
 /* ========================================================================== */
 /*                                                                            */
-/*        SITE PÃšBLICO â€” TEACHER VANESSA / INDEX.HTML                         */
+/*        SITE PÃƒÅ¡BLICO Ã¢â‚¬â€ TEACHER VANESSA / INDEX.HTML                         */
 /*                                                                            */
-/*        Tudo abaixo pertence SOMENTE Ã  pÃ¡gina index.html.                   */
+/*        Tudo abaixo pertence SOMENTE ÃƒÂ  pÃƒÂ¡gina index.html.                   */
 /*        O body do index.html utiliza: class="public-site"                   */
 /*                                                                            */
 /* ========================================================================== */
@@ -4035,7 +4035,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   SEÃ‡Ã•ES DO SITE PÃšBLICO
+   SEÃƒâ€¡Ãƒâ€¢ES DO SITE PÃƒÅ¡BLICO
    ========================================================================== */
 
 .public-site section {
@@ -4151,7 +4151,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   MÃ‰TODO
+   MÃƒâ€°TODO
    ========================================================================== */
 
 .public-site .method {
@@ -4726,7 +4726,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   RESPONSIVO â€” SITE PÃšBLICO
+   RESPONSIVO Ã¢â‚¬â€ SITE PÃƒÅ¡BLICO
    ========================================================================== */
 
 @media(max-width:1000px) {
@@ -4903,7 +4903,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   ACESSIBILIDADE / MOVIMENTO â€” SITE PÃšBLICO
+   ACESSIBILIDADE / MOVIMENTO Ã¢â‚¬â€ SITE PÃƒÅ¡BLICO
    ========================================================================== */
 
 @media(prefers-reduced-motion:reduce) {
@@ -4990,14 +4990,14 @@ select:focus-visible {
 }
 
 /*
-   O logoFull jÃ¡ contÃ©m toda a identidade visual.
+   O logoFull jÃƒÂ¡ contÃƒÂ©m toda a identidade visual.
 */
 .sidebar-brand-name {
     display: none !important;
 }
 
 /* =========================================================
-   SITE PÃšBLICO
+   SITE PÃƒÅ¡BLICO
    logoMonoWhite
    Sem efeito de avatar/foto
    ========================================================= */
@@ -5115,8 +5115,8 @@ select:focus-visible {
 /* ===== EYT QUESTION AUDIO REMOVAL START ===== */
 
 /*
- * Perguntas nunca possuem Ã¡udio.
- * Somente alternativas podem reproduzir pronÃºncia.
+ * Perguntas nunca possuem ÃƒÂ¡udio.
+ * Somente alternativas podem reproduzir pronÃƒÂºncia.
  */
 
 .eyt-question-row {
@@ -6199,3 +6199,257 @@ select:focus-visible {
 }
 
 /* === STUDENT DATABASE PLATFORM END === */
+
+/* === LEVEL EXERCISES START === */
+
+.student-activities-grid {
+    gap: 18px;
+}
+
+.student-level-lesson {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e5e8ed;
+    border-radius: 17px;
+}
+
+.student-level-lesson-header {
+    width: 100%;
+    padding: 24px;
+    border: 0;
+    background: transparent;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 18px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.student-level-lesson-number {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #0b1f3f;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.student-level-lesson-title > span {
+    color: #c41230;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: .14em;
+}
+
+.student-level-lesson-title h3 {
+    margin: 5px 0 4px;
+    color: #0b1f3f;
+    font-size: 17px;
+}
+
+.student-level-lesson-title p {
+    margin: 0;
+    color: #778195;
+    font-size: 10px;
+}
+
+.student-level-lesson-progress {
+    min-width: 70px;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    justify-content: end;
+    gap: 5px 9px;
+}
+
+.student-level-lesson-progress strong {
+    color: #0b1f3f;
+    font-size: 11px;
+}
+
+.student-level-lesson-progress span {
+    color: #8993a3;
+    font-size: 9px;
+}
+
+.student-level-lesson-progress i {
+    grid-column: 1 / -1;
+    justify-self: end;
+    color: #98a2b3;
+}
+
+.student-level-exercises {
+    max-height: 0;
+    overflow: hidden;
+    background: #f8f9fb;
+    transition: max-height .35s ease;
+}
+
+.student-level-exercises.open {
+    max-height: 5000px;
+    border-top: 1px solid #e8eaef;
+}
+
+.level-exercise-form {
+    margin: 18px;
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 14px;
+}
+
+.level-exercise-form.completed {
+    border-color: #b7dfc9;
+    background: #fbfffc;
+}
+
+.level-exercise-top {
+    min-height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.level-exercise-number {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(11,31,63,.07);
+    color: #0b1f3f;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.level-exercise-completed {
+    color: #067647;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.level-exercise-form h4 {
+    margin: 17px 0;
+    color: #172033;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.level-choice-list {
+    display: grid;
+    gap: 9px;
+}
+
+.level-choice-option {
+    min-height: 47px;
+    padding: 8px 13px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    background: #fafbfc;
+    border: 1px solid #e3e6eb;
+    border-radius: 10px;
+    color: #3d485b;
+    cursor: pointer;
+    font-size: 11px;
+    transition:
+        border-color .15s ease,
+        background .15s ease;
+}
+
+.level-choice-option:hover {
+    border-color: #aeb6c3;
+}
+
+.level-choice-option:has(input:checked) {
+    border-color: #0b1f3f;
+    background: rgba(11,31,63,.04);
+}
+
+.level-choice-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.level-choice-letter {
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    border: 1px solid #dce0e6;
+    border-radius: 7px;
+    color: #0b1f3f;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.level-fill-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 0 14px;
+    background: #fafbfc;
+    color: #172033;
+    border: 1px solid #dfe3e9;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 11px;
+    outline: none;
+}
+
+.level-fill-input:focus {
+    border-color: #0b1f3f;
+    box-shadow: 0 0 0 3px rgba(11,31,63,.06);
+}
+
+.level-exercise-feedback {
+    min-height: 18px;
+    margin: 13px 0 8px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.level-exercise-feedback.success {
+    color: #067647;
+}
+
+.level-exercise-feedback.error {
+    color: #b42318;
+}
+
+.level-check-button {
+    margin-top: 5px;
+}
+
+@media(max-width:700px) {
+    .student-level-lesson-header {
+        grid-template-columns: 42px 1fr;
+    }
+
+    .student-level-lesson-progress {
+        grid-column: 2;
+        justify-content: start;
+        grid-template-columns: auto auto auto;
+    }
+
+    .student-level-lesson-progress i {
+        grid-column: auto;
+    }
+
+    .level-exercise-form {
+        margin: 10px;
+        padding: 18px;
+    }
+}
+
+/* === LEVEL EXERCISES END === */
