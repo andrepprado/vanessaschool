@@ -1,0 +1,385 @@
+/* === AUTO EXTRACTED HTML CSS START === */
+
+/* Extracted from teacher.html <style> blocks */
+
+.teacher-page {
+            width: min(1120px, calc(100% - 64px));
+            margin: 0 auto;
+            padding: 46px 0 80px
+        }
+
+        .teacher-hero {
+            position: relative;
+            min-height: 440px;
+            padding: 54px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            color: #fff;
+            background: #0B1F3F;
+            border-radius: 20px;
+            box-shadow: 0 24px 50px rgba(11, 31, 63, .14)
+        }
+
+        .teacher-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 82% 15%, rgba(233, 30, 140, .2), transparent 32%), radial-gradient(circle at 20% 100%, rgba(196, 18, 48, .15), transparent 35%)
+        }
+
+        .teacher-hero::after {
+            content: "VG";
+            position: absolute;
+            right: -20px;
+            bottom: -105px;
+            color: rgba(255, 255, 255, .035);
+            font-family: "Fraunces", serif;
+            font-size: 340px;
+            font-weight: 700;
+            line-height: 1
+        }
+
+        .teacher-hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 680px
+        }
+
+        .teacher-hero .eyebrow {
+            color: #C9A227
+        }
+
+        .teacher-hero h1 {
+            margin-top: 12px;
+            color: #fff;
+            font-family: "Fraunces", serif;
+            font-size: clamp(48px, 7vw, 76px);
+            font-weight: 600;
+            line-height: .98;
+            letter-spacing: -.035em
+        }
+
+        .teacher-hero p {
+            max-width: 600px;
+            margin-top: 22px;
+            color: rgba(255, 255, 255, .7);
+            font-size: 15px;
+            line-height: 1.75
+        }
+
+        .teacher-hero-actions {
+            margin-top: 29px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .teacher-hero-actions .btn-secondary {
+            color: #fff;
+            border-color: rgba(255, 255, 255, .22)
+        }
+
+        .teacher-hero-actions .btn-secondary:hover {
+            background: rgba(255, 255, 255, .08)
+        }
+
+        .teacher-philosophy {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: .9fr 1.1fr;
+            gap: 16px
+        }
+
+        .teacher-quote {
+            padding: 35px;
+            color: #fff;
+            background: #C41230;
+            border-radius: 18px
+        }
+
+        .teacher-quote span {
+            color: rgba(255, 255, 255, .7)
+        }
+
+        .teacher-quote blockquote {
+            margin-top: 15px;
+            font-family: "Fraunces", serif;
+            font-size: clamp(27px, 3.5vw, 38px);
+            font-weight: 600;
+            line-height: 1.2
+        }
+
+        .teacher-about {
+            padding: 35px;
+            background: #fff;
+            border: 1px solid rgba(11, 31, 63, .12);
+            border-radius: 18px
+        }
+
+        .teacher-about .eyebrow {
+            color: #C41230
+        }
+
+        .teacher-about h2 {
+            margin-top: 8px;
+            color: #0B1F3F;
+            font-size: 32px
+        }
+
+        .teacher-about p {
+            margin-top: 14px;
+            color: #4A4F5E;
+            font-size: 13px;
+            line-height: 1.75
+        }
+
+        .teacher-values {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px
+        }
+
+        .teacher-value {
+            padding: 23px;
+            background: #fff;
+            border: 1px solid rgba(11, 31, 63, .12);
+            border-radius: 15px
+        }
+
+        .teacher-value-number {
+            display: block;
+            margin-bottom: 24px;
+            color: #E91E8C;
+            font-family: "Space Mono", monospace;
+            font-size: 10px;
+            font-weight: 700
+        }
+
+        .teacher-value h3 {
+            color: #0B1F3F;
+            font-family: "Fraunces", serif;
+            font-size: 21px
+        }
+
+        .teacher-value p {
+            margin-top: 7px;
+            color: #4A4F5E;
+            font-size: 11px;
+            line-height: 1.6
+        }
+
+        .teacher-cta {
+            margin-top: 16px;
+            padding: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 25px;
+            background: #fff;
+            border: 1px solid rgba(11, 31, 63, .12);
+            border-radius: 18px
+        }
+
+        .teacher-cta .eyebrow {
+            color: #C41230
+        }
+
+        .teacher-cta h2 {
+            margin-top: 6px;
+            color: #0B1F3F;
+            font-size: 28px
+        }
+
+        .teacher-cta p {
+            margin-top: 5px;
+            color: #4A4F5E;
+            font-size: 11px
+        }
+
+        @media(max-width:760px) {
+            .teacher-page {
+                width: calc(100% - 28px);
+                padding: 24px 0 30px
+            }
+
+            .teacher-hero {
+                min-height: 420px;
+                padding: 30px 23px
+            }
+
+            .teacher-hero::after {
+                font-size: 220px;
+                bottom: -60px
+            }
+
+            .teacher-philosophy {
+                grid-template-columns: 1fr
+            }
+
+            .teacher-values {
+                grid-template-columns: 1fr
+            }
+
+            .teacher-cta {
+                align-items: flex-start;
+                flex-direction: column
+            }
+
+            .teacher-cta .btn {
+                width: 100%
+            }
+        }
+
+        /* === TEACHER HERO PHOTO START === */
+
+        .teacher-hero {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .teacher-hero-content {
+            position: relative;
+            z-index: 3;
+            width: min(58%, 660px);
+            max-width: 660px;
+        }
+
+        .teacher-hero-photo {
+            position: absolute;
+            z-index: 1;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 47%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .teacher-hero-photo img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: center 22%;
+            filter:
+                saturate(.94) contrast(1.03);
+        }
+
+        .teacher-hero-photo::before {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            inset: 0;
+            background:
+                linear-gradient(90deg,
+                    #0B1F3F 0%,
+                    rgba(11, 31, 63, .96) 10%,
+                    rgba(11, 31, 63, .72) 28%,
+                    rgba(11, 31, 63, .30) 52%,
+                    rgba(11, 31, 63, .06) 76%,
+                    rgba(11, 31, 63, 0) 100%);
+        }
+
+        .teacher-hero-photo::after {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            inset: 0;
+            background:
+                linear-gradient(180deg,
+                    rgba(11, 31, 63, .05) 0%,
+                    rgba(11, 31, 63, 0) 55%,
+                    rgba(11, 31, 63, .30) 100%);
+        }
+
+        .teacher-hero::after {
+            display: none;
+        }
+
+        @media(max-width:900px) {
+            .teacher-hero-content {
+                width: 64%;
+            }
+
+            .teacher-hero-photo {
+                width: 50%;
+            }
+        }
+
+        @media(max-width:760px) {
+            .teacher-hero {
+                padding: 0 !important;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+
+            .teacher-hero-photo {
+                position: relative;
+                top: auto;
+                right: auto;
+                bottom: auto;
+
+                order: 1;
+
+                width: 100%;
+                height: clamp(280px, 82vw, 410px);
+            }
+
+            .teacher-hero-photo img {
+                object-position: center 18%;
+            }
+
+            .teacher-hero-photo::before {
+                background:
+                    linear-gradient(180deg,
+                        rgba(11, 31, 63, 0) 0%,
+                        rgba(11, 31, 63, .04) 42%,
+                        rgba(11, 31, 63, .58) 76%,
+                        #0B1F3F 100%);
+            }
+
+            .teacher-hero-photo::after {
+                background:
+                    linear-gradient(90deg,
+                        rgba(11, 31, 63, .08) 0%,
+                        rgba(11, 31, 63, 0) 50%,
+                        rgba(11, 31, 63, .08) 100%);
+            }
+
+            .teacher-hero-content {
+                order: 2;
+                width: 100%;
+                max-width: none;
+
+                margin-top: -44px;
+                padding: 0 24px 32px;
+
+                position: relative;
+                z-index: 3;
+            }
+
+            .teacher-hero h1 {
+                font-size: clamp(44px, 13vw, 62px);
+            }
+        }
+
+        @media(max-width:420px) {
+            .teacher-hero-photo {
+                height: 300px;
+            }
+
+            .teacher-hero-content {
+                margin-top: -34px;
+                padding-left: 19px;
+                padding-right: 19px;
+            }
+        }
+
+        /* === TEACHER HERO PHOTO END === */
+
+/* === AUTO EXTRACTED HTML CSS END === */

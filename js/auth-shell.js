@@ -59,7 +59,7 @@ window.EYTRequireAuthenticatedArea =
             location.pathname
                 .split("/")
                 .pop() ||
-            "dashboard.html"
+            "/dashboard"
         ).toLowerCase();
     }
 
@@ -81,7 +81,7 @@ window.EYTRequireAuthenticatedArea =
             current === target ||
             (
                 current === "" &&
-                target === "dashboard.html"
+                target === "/dashboard"
             )
         );
     }
@@ -107,28 +107,28 @@ window.EYTRequireAuthenticatedArea =
                         text === "inicio"
                     ) {
                         link.href =
-                            "dashboard.html";
+                            "/dashboard";
                     }
 
                     if (
                         text === "aprender"
                     ) {
                         link.href =
-                            "curso.html";
+                            "/curso";
                     }
 
                     if (
                         text === "revisar"
                     ) {
                         link.href =
-                            "revisar.html";
+                            "/revisar";
                     }
 
                     if (
                         text === "conquistas"
                     ) {
                         link.href =
-                            "conquistas.html";
+                            "/conquistas";
                     }
 
                     if (
@@ -144,7 +144,7 @@ window.EYTRequireAuthenticatedArea =
                         text === "perfil"
                     ) {
                         link.href =
-                            "perfil.html";
+                            "/perfil";
                     }
 
                     link.classList.toggle(
