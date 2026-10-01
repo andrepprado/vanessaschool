@@ -20,36 +20,54 @@
 
     <link
         rel="stylesheet"
-        href="css/style.css?v=20261001-adaptive-demo-final-1">
+        href="css/style.css?v=20261001-demo-public-topbar-1">
 </head>
 
-<body class="demo-page-body">
+<body class="public-site demo-page-body">
 
-    <header class="app-toolbar demo-topbar">
-        <div class="app-toolbar-inner">
+    <header class="topbar demo-public-topbar">
+        <div class="topbar-inner">
 
             <a
                 href="/"
-                class="app-toolbar-brand demo-topbar-logo">
+                class="brand"
+                aria-label="Voltar ao site English in Your Time">
 
                 <img
-                    src="img/logoFullMonoWhite.png"
+                    class="brand-logo"
+                    src="img/logoMonoWhite.png"
                     alt="English in Your Time">
+
+                <span>
+                    Teacher Vanessa
+                </span>
 
             </a>
 
-            <div class="app-toolbar-actions demo-topbar-actions">
+            <div class="demo-topbar-context">
+                <i class="bi bi-stars"></i>
+                Teste de nível
+            </div>
 
-                <span class="app-toolbar-badge demo-badge">
-                    <i class="bi bi-stars"></i>
-                    TESTE DE NÍVEL
-                </span>
+            <div class="topbar-actions">
+
+                <a
+                    href="/"
+                    class="student-area-link demo-back-site">
+
+                    <i class="bi bi-arrow-left"></i>
+
+                    Voltar ao site
+
+                </a>
 
                 <a
                     href="/acesso"
-                    class="app-toolbar-button">
+                    class="topbar-cta">
 
                     Área do aluno
+
+                    <i class="bi bi-arrow-right"></i>
 
                 </a>
 
