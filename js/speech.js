@@ -2,36 +2,41 @@ const EYTSpeech = (() => {
     "use strict";
 
     const CONFIG = {
-        workerPath: "/js/tts/kokoro-worker.js?v=20260930-natural-2",
-        englishLang: "en-GB",
+        workerPath: "/js/tts/kokoro-worker.js?v=20260930-instant-1",
+        englishLang: "en-US",
         portugueseLang: "pt-BR",
         englishRate: 0.98,
         slowEnglishRate: 0.93,
         portugueseRate: 1.00,
         timeout: 180000,
-        maxMemoryCacheEntries: 150,
         dbName: "eyt-audio-cache",
         dbVersion: 1,
         storeName: "audio",
-        cacheNamespace: "kokoro-en-v4"
+        cacheNamespace: "kokoro-en-v4",
+        maxBlobMemoryEntries: 180,
+        maxDecodedEntries: 100
     };
 
     let worker = null;
     let requestId = 0;
     let sessionId = 0;
-
+    let queueSequence = 0;
+    let generationActive = false;
     let currentSession = null;
     let currentButton = null;
     let currentSource = null;
     let currentUtterance = null;
-
     let audioContext = null;
     let runtime = null;
     let databasePromise = null;
 
-    const pending = new Map();
-    const memoryCache = new Map();
-    const inflight = new Map();
+    const workerPending = new Map();
+    const blobCache = new Map();
+    const decodedCache = new Map();
+    const blobLoading = new Map();
+    const decoding = new Map();
+    const generationByKey = new Map();
+    const generationQueue = [];
 
     function cleanText(value) {
         return String(value ?? "")
@@ -41,16 +46,14 @@ const EYTSpeech = (() => {
     }
 
     function normalizeLang(value) {
-        const lang = String(value || "")
-            .trim()
-            .toLowerCase();
+        const lang = String(value || "").trim().toLowerCase();
 
         if (lang.startsWith("pt")) {
             return CONFIG.portugueseLang;
         }
 
-        if (lang.startsWith("en-us")) {
-            return "en-US";
+        if (lang.startsWith("en-gb")) {
+            return "en-GB";
         }
 
         return CONFIG.englishLang;
@@ -63,21 +66,71 @@ const EYTSpeech = (() => {
             return fallback;
         }
 
-        return Math.min(
-            max,
-            Math.max(min, number)
-        );
+        return Math.min(max, Math.max(min, number));
     }
 
     function dispatch(name, detail = {}) {
         try {
-            window.dispatchEvent(
-                new CustomEvent(name, {
-                    detail
-                })
-            );
+            window.dispatchEvent(new CustomEvent(name, { detail }));
         } catch (_) {
         }
+    }
+
+    function priorityValue(priority) {
+        if (priority === "foreground") return 0;
+        if (priority === "current") return 1;
+        return 2;
+    }
+
+    function trimMap(map, maximum) {
+        while (map.size > maximum) {
+            const first = map.keys().next().value;
+
+            if (first === undefined) {
+                break;
+            }
+
+            map.delete(first);
+        }
+    }
+
+    function cacheKey(text, options) {
+        return [
+            CONFIG.cacheNamespace,
+            options.lang,
+            options.persona,
+            options.voice || "",
+            Number(options.rate).toFixed(2),
+            cleanText(text)
+        ].join("|");
+    }
+
+    function resolveOptions(options = {}) {
+        const lang = normalizeLang(options.lang);
+
+        let defaultRate;
+
+        if (lang === CONFIG.portugueseLang) {
+            defaultRate = CONFIG.portugueseRate;
+        } else if (options.slow) {
+            defaultRate = CONFIG.slowEnglishRate;
+        } else {
+            defaultRate = CONFIG.englishRate;
+        }
+
+        return {
+            lang,
+            rate: clamp(
+                options.rate,
+                lang === CONFIG.portugueseLang ? 0.85 : 0.90,
+                1.08,
+                defaultRate
+            ),
+            persona: cleanText(options.persona) || "teacher",
+            voice: cleanText(options.voice),
+            button: options.button || null,
+            priority: options.priority || "foreground"
+        };
     }
 
     /* ========================================================
@@ -93,11 +146,8 @@ const EYTSpeech = (() => {
             return Promise.resolve(null);
         }
 
-        databasePromise = new Promise((resolve, reject) => {
-            const request = indexedDB.open(
-                CONFIG.dbName,
-                CONFIG.dbVersion
-            );
+        databasePromise = new Promise(resolve => {
+            const request = indexedDB.open(CONFIG.dbName, CONFIG.dbVersion);
 
             request.onupgradeneeded = event => {
                 const db = event.target.result;
@@ -107,22 +157,9 @@ const EYTSpeech = (() => {
                 }
             };
 
-            request.onsuccess = () => {
-                resolve(request.result);
-            };
-
-            request.onerror = () => {
-                console.warn(
-                    "[EYTSpeech] IndexedDB indisponível:",
-                    request.error
-                );
-
-                resolve(null);
-            };
-
-            request.onblocked = () => {
-                resolve(null);
-            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+            request.onblocked = () => resolve(null);
         });
 
         return databasePromise;
@@ -137,34 +174,20 @@ const EYTSpeech = (() => {
             }
 
             return await new Promise(resolve => {
-                const transaction = db.transaction(
-                    CONFIG.storeName,
-                    "readonly"
-                );
-
-                const store = transaction.objectStore(
-                    CONFIG.storeName
-                );
-
-                const request = store.get(key);
+                const tx = db.transaction(CONFIG.storeName, "readonly");
+                const request = tx.objectStore(CONFIG.storeName).get(key);
 
                 request.onsuccess = () => {
                     const value = request.result;
 
-                    if (
-                        value &&
-                        value.blob instanceof Blob &&
-                        value.blob.size > 0
-                    ) {
-                        resolve(value.blob);
-                    } else {
-                        resolve(null);
-                    }
+                    resolve(
+                        value?.blob instanceof Blob && value.blob.size
+                            ? value.blob
+                            : null
+                    );
                 };
 
-                request.onerror = () => {
-                    resolve(null);
-                };
+                request.onerror = () => resolve(null);
             });
         } catch (_) {
             return null;
@@ -172,10 +195,7 @@ const EYTSpeech = (() => {
     }
 
     async function persistentSet(key, blob) {
-        if (
-            !(blob instanceof Blob) ||
-            blob.size === 0
-        ) {
+        if (!(blob instanceof Blob) || !blob.size) {
             return false;
         }
 
@@ -187,16 +207,9 @@ const EYTSpeech = (() => {
             }
 
             return await new Promise(resolve => {
-                const transaction = db.transaction(
-                    CONFIG.storeName,
-                    "readwrite"
-                );
+                const tx = db.transaction(CONFIG.storeName, "readwrite");
 
-                const store = transaction.objectStore(
-                    CONFIG.storeName
-                );
-
-                store.put(
+                tx.objectStore(CONFIG.storeName).put(
                     {
                         blob,
                         createdAt: Date.now()
@@ -204,24 +217,11 @@ const EYTSpeech = (() => {
                     key
                 );
 
-                transaction.oncomplete = () => {
-                    resolve(true);
-                };
-
-                transaction.onerror = () => {
-                    resolve(false);
-                };
-
-                transaction.onabort = () => {
-                    resolve(false);
-                };
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => resolve(false);
+                tx.onabort = () => resolve(false);
             });
-        } catch (error) {
-            console.warn(
-                "[EYTSpeech] Não foi possível persistir áudio:",
-                error
-            );
-
+        } catch (_) {
             return false;
         }
     }
@@ -235,31 +235,14 @@ const EYTSpeech = (() => {
             }
 
             await new Promise(resolve => {
-                const transaction = db.transaction(
-                    CONFIG.storeName,
-                    "readwrite"
-                );
+                const tx = db.transaction(CONFIG.storeName, "readwrite");
 
-                transaction
-                    .objectStore(CONFIG.storeName)
-                    .clear();
+                tx.objectStore(CONFIG.storeName).clear();
 
-                transaction.oncomplete = resolve;
-                transaction.onerror = resolve;
-                transaction.onabort = resolve;
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+                tx.onabort = resolve;
             });
-        } catch (_) {
-        }
-    }
-
-    async function requestPersistentStorage() {
-        try {
-            if (
-                navigator.storage &&
-                typeof navigator.storage.persist === "function"
-            ) {
-                await navigator.storage.persist();
-            }
         } catch (_) {
         }
     }
@@ -281,47 +264,35 @@ const EYTSpeech = (() => {
             return null;
         }
 
-        audioContext =
-            new AudioContextClass({
-                latencyHint: "interactive"
-            });
+        audioContext = new AudioContextClass({
+            latencyHint: "interactive"
+        });
 
         return audioContext;
     }
 
     async function unlockAudio() {
-        const context =
-            getAudioContext();
+        const context = getAudioContext();
 
         if (!context) {
             return false;
         }
 
         try {
-            if (
-                context.state ===
-                "suspended"
-            ) {
+            if (context.state === "suspended") {
                 await context.resume();
             }
 
-            const buffer =
-                context.createBuffer(
-                    1,
-                    1,
-                    context.sampleRate
-                );
-
-            const source =
-                context.createBufferSource();
-
-            source.buffer =
-                buffer;
-
-            source.connect(
-                context.destination
+            const buffer = context.createBuffer(
+                1,
+                1,
+                context.sampleRate
             );
 
+            const source = context.createBufferSource();
+
+            source.buffer = buffer;
+            source.connect(context.destination);
             source.start(0);
 
             return true;
@@ -331,14 +302,11 @@ const EYTSpeech = (() => {
     }
 
     /* ========================================================
-       BOTÕES
+       UI
        ======================================================== */
 
     function rememberButton(button) {
-        if (
-            !button ||
-            button.dataset.eytOriginalLabel
-        ) {
+        if (!button || button.dataset.eytOriginalLabel) {
             return;
         }
 
@@ -355,34 +323,16 @@ const EYTSpeech = (() => {
 
         rememberButton(button);
 
-        if (
-            currentButton &&
-            currentButton !== button
-        ) {
+        if (currentButton && currentButton !== button) {
             resetButton(currentButton);
         }
 
-        currentButton =
-            button;
+        currentButton = button;
 
-        button.classList.add(
-            "is-speaking"
-        );
-
-        button.setAttribute(
-            "aria-pressed",
-            "true"
-        );
-
-        button.setAttribute(
-            "aria-label",
-            "Preparando áudio"
-        );
-
-        button.setAttribute(
-            "title",
-            "Preparando áudio"
-        );
+        button.classList.add("is-speaking");
+        button.setAttribute("aria-pressed", "true");
+        button.setAttribute("aria-label", "Preparando áudio");
+        button.setAttribute("title", "Preparando áudio");
     }
 
     function setButtonPlaying(button) {
@@ -390,57 +340,29 @@ const EYTSpeech = (() => {
             return;
         }
 
-        button.setAttribute(
-            "aria-label",
-            "Parar áudio"
-        );
-
-        button.setAttribute(
-            "title",
-            "Parar áudio"
-        );
+        button.setAttribute("aria-label", "Parar áudio");
+        button.setAttribute("title", "Parar áudio");
     }
 
-    function resetButton(
-        button = currentButton
-    ) {
+    function resetButton(button = currentButton) {
         if (!button) {
             return;
         }
 
-        button.classList.remove(
-            "is-speaking"
-        );
-
-        button.setAttribute(
-            "aria-pressed",
-            "false"
-        );
+        button.classList.remove("is-speaking");
+        button.setAttribute("aria-pressed", "false");
 
         const label =
             button.dataset.eytOriginalLabel ||
             "Ouvir pronúncia";
 
-        button.setAttribute(
-            "aria-label",
-            label
-        );
+        button.setAttribute("aria-label", label);
+        button.setAttribute("title", label);
 
-        button.setAttribute(
-            "title",
-            label
-        );
-
-        if (
-            button === currentButton
-        ) {
+        if (button === currentButton) {
             currentButton = null;
         }
     }
-
-    /* ========================================================
-       STOP
-       ======================================================== */
 
     function stopSource() {
         if (!currentSource) {
@@ -461,13 +383,9 @@ const EYTSpeech = (() => {
     }
 
     function stopNative() {
-        if (
-            "speechSynthesis" in window
-        ) {
+        if ("speechSynthesis" in window) {
             try {
-                window
-                    .speechSynthesis
-                    .cancel();
+                window.speechSynthesis.cancel();
             } catch (_) {
             }
         }
@@ -476,23 +394,17 @@ const EYTSpeech = (() => {
     }
 
     function stop() {
-        sessionId += 1;
-
+        sessionId++;
         stopSource();
         stopNative();
         resetButton();
-
         currentSession = null;
 
-        dispatch(
-            "eyt:speech-stop"
-        );
+        dispatch("eyt:speech-stop");
     }
 
     function isSpeaking() {
-        return Boolean(
-            currentSession
-        );
+        return Boolean(currentSession);
     }
 
     /* ========================================================
@@ -500,17 +412,10 @@ const EYTSpeech = (() => {
        ======================================================== */
 
     function handleWorkerMessage(event) {
-        const message =
-            event.data || {};
+        const message = event.data || {};
 
-        if (
-            message.type ===
-            "engine-status"
-        ) {
-            if (
-                message.status ===
-                "ready"
-            ) {
+        if (message.type === "engine-status") {
+            if (message.status === "ready") {
                 runtime = {
                     engine: "kokoro",
                     model: message.model,
@@ -519,7 +424,7 @@ const EYTSpeech = (() => {
                 };
 
                 console.info(
-                    "[EYTSpeech] Kokoro neural pronto:",
+                    "[EYTSpeech] Kokoro pronto:",
                     runtime
                 );
             }
@@ -532,10 +437,7 @@ const EYTSpeech = (() => {
             return;
         }
 
-        if (
-            message.type ===
-            "model-progress"
-        ) {
+        if (message.type === "model-progress") {
             dispatch(
                 "eyt:speech-model-progress",
                 message.progress || {}
@@ -544,53 +446,31 @@ const EYTSpeech = (() => {
             return;
         }
 
-        if (
-            message.id == null
-        ) {
+        if (message.id == null) {
             return;
         }
 
-        const request =
-            pending.get(message.id);
+        const request = workerPending.get(message.id);
 
         if (!request) {
             return;
         }
 
-        if (
-            message.type ===
-            "generation-complete"
-        ) {
-            pending.delete(
-                message.id
-            );
-
-            clearTimeout(
-                request.timer
-            );
+        if (message.type === "generation-complete") {
+            workerPending.delete(message.id);
+            clearTimeout(request.timer);
 
             runtime =
                 message.runtime ||
                 runtime;
 
-            request.resolve(
-                message
-            );
-
+            request.resolve(message);
             return;
         }
 
-        if (
-            message.type ===
-            "generation-error"
-        ) {
-            pending.delete(
-                message.id
-            );
-
-            clearTimeout(
-                request.timer
-            );
+        if (message.type === "generation-error") {
+            workerPending.delete(message.id);
+            clearTimeout(request.timer);
 
             request.reject(
                 new Error(
@@ -602,26 +482,17 @@ const EYTSpeech = (() => {
     }
 
     function handleWorkerError(event) {
-        const error =
-            new Error(
-                event?.message ||
-                "Falha no motor Kokoro."
-            );
+        const error = new Error(
+            event?.message ||
+            "Falha no Kokoro."
+        );
 
-        for (
-            const request
-            of pending.values()
-        ) {
-            clearTimeout(
-                request.timer
-            );
-
-            request.reject(
-                error
-            );
+        for (const request of workerPending.values()) {
+            clearTimeout(request.timer);
+            request.reject(error);
         }
 
-        pending.clear();
+        workerPending.clear();
 
         try {
             worker?.terminate();
@@ -641,14 +512,13 @@ const EYTSpeech = (() => {
             return worker;
         }
 
-        worker =
-            new Worker(
-                CONFIG.workerPath,
-                {
-                    type: "module",
-                    name: "eyt-kokoro-neural"
-                }
-            );
+        worker = new Worker(
+            CONFIG.workerPath,
+            {
+                type: "module",
+                name: "eyt-kokoro-neural"
+            }
+        );
 
         worker.addEventListener(
             "message",
@@ -663,162 +533,204 @@ const EYTSpeech = (() => {
         return worker;
     }
 
+    function rawGenerate(text, options) {
+        return new Promise((resolve, reject) => {
+            const id = ++requestId;
+
+            const timer = setTimeout(() => {
+                workerPending.delete(id);
+
+                reject(
+                    new Error(
+                        "Tempo excedido ao gerar áudio."
+                    )
+                );
+            }, CONFIG.timeout);
+
+            workerPending.set(
+                id,
+                {
+                    timer,
+                    resolve,
+                    reject
+                }
+            );
+
+            getWorker().postMessage({
+                type: "generate",
+                id,
+                text,
+                lang: options.lang,
+                speed: options.rate,
+                persona: options.persona,
+                voice: options.voice || ""
+            });
+        });
+    }
+
     /* ========================================================
-       CACHE
+       FILA COM PRIORIDADE
        ======================================================== */
 
-    function cacheKey(
-        text,
-        options
-    ) {
-        return [
-            CONFIG.cacheNamespace,
-            options.lang,
-            options.persona,
-            options.voice || "",
-            options.rate.toFixed(2),
-            cleanText(text)
-        ].join("|");
-    }
+    function promoteGeneration(key, priority) {
+        const task = generationByKey.get(key);
 
-    function trimMemoryCache() {
-        while (
-            memoryCache.size >
-            CONFIG.maxMemoryCacheEntries
-        ) {
-            const first =
-                memoryCache
-                    .keys()
-                    .next()
-                    .value;
-
-            if (
-                first ===
-                undefined
-            ) {
-                break;
-            }
-
-            memoryCache.delete(
-                first
-            );
-        }
-    }
-
-    async function getCachedAudio(key) {
-        if (
-            memoryCache.has(key)
-        ) {
-            return {
-                blob:
-                    memoryCache.get(key),
-                source:
-                    "memory"
-            };
+        if (!task || task.started) {
+            return;
         }
 
-        const persistent =
-            await persistentGet(key);
-
-        if (persistent) {
-            memoryCache.set(
-                key,
-                persistent
-            );
-
-            trimMemoryCache();
-
-            return {
-                blob:
-                    persistent,
-                source:
-                    "indexeddb"
-            };
-        }
-
-        return null;
+        task.priority = Math.min(
+            task.priority,
+            priorityValue(priority)
+        );
     }
 
-    async function storeAudio(
+    function scheduleGeneration(
         key,
-        blob
+        text,
+        options,
+        priority
     ) {
-        memoryCache.set(
-            key,
-            blob
+        const existing = generationByKey.get(key);
+
+        if (existing) {
+            existing.priority = Math.min(
+                existing.priority,
+                priorityValue(priority)
+            );
+
+            return existing.promise;
+        }
+
+        let resolveTask;
+        let rejectTask;
+
+        const promise = new Promise(
+            (resolve, reject) => {
+                resolveTask = resolve;
+                rejectTask = reject;
+            }
         );
 
-        trimMemoryCache();
-
-        await persistentSet(
+        const task = {
             key,
-            blob
+            text,
+            options,
+            priority: priorityValue(priority),
+            sequence: ++queueSequence,
+            started: false,
+            promise,
+            resolve: resolveTask,
+            reject: rejectTask
+        };
+
+        generationByKey.set(
+            key,
+            task
         );
+
+        generationQueue.push(
+            task
+        );
+
+        void processGenerationQueue();
+
+        return promise;
     }
 
-    /* ========================================================
-       GERAR INGLÊS
-       ======================================================== */
+    async function processGenerationQueue() {
+        if (generationActive) {
+            return;
+        }
 
-    function requestGeneration(
-        text,
-        options
-    ) {
-        return new Promise(
-            (
-                resolve,
-                reject
-            ) => {
-                const id =
-                    ++requestId;
+        const waiting = generationQueue
+            .filter(task => !task.started)
+            .sort((a, b) => {
+                if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                }
 
-                const timer =
-                    setTimeout(
-                        () => {
-                            pending.delete(
-                                id
-                            );
+                return a.sequence - b.sequence;
+            });
 
-                            reject(
-                                new Error(
-                                    "Tempo excedido ao gerar áudio neural."
-                                )
-                            );
-                        },
-                        CONFIG.timeout
-                    );
+        const task = waiting[0];
 
-                pending.set(
-                    id,
-                    {
-                        timer,
-                        resolve,
-                        reject
-                    }
+        if (!task) {
+            return;
+        }
+
+        generationActive = true;
+        task.started = true;
+
+        try {
+            const result =
+                await rawGenerate(
+                    task.text,
+                    task.options
                 );
 
-                getWorker()
-                    .postMessage({
-                        type: "generate",
-                        id,
-                        text,
-                        lang:
-                            options.lang,
-                        speed:
-                            options.rate,
-                        persona:
-                            options.persona,
-                        voice:
-                            options.voice ||
-                            ""
-                    });
+            if (
+                !(result.blob instanceof Blob) ||
+                !result.blob.size
+            ) {
+                throw new Error(
+                    "Kokoro retornou áudio vazio."
+                );
             }
-        );
+
+            blobCache.set(
+                task.key,
+                result.blob
+            );
+
+            trimMap(
+                blobCache,
+                CONFIG.maxBlobMemoryEntries
+            );
+
+            void persistentSet(
+                task.key,
+                result.blob
+            );
+
+            task.resolve({
+                ...result,
+                key: task.key,
+                cached: false
+            });
+        } catch (error) {
+            task.reject(error);
+        } finally {
+            generationByKey.delete(
+                task.key
+            );
+
+            const index =
+                generationQueue.indexOf(task);
+
+            if (index >= 0) {
+                generationQueue.splice(
+                    index,
+                    1
+                );
+            }
+
+            generationActive = false;
+
+            queueMicrotask(
+                processGenerationQueue
+            );
+        }
     }
 
-    async function getEnglishAudio(
+    /* ========================================================
+       BLOB CACHE
+       ======================================================== */
+
+    async function getEnglishBlob(
         text,
-        options
+        options,
+        priority
     ) {
         const key =
             cacheKey(
@@ -826,62 +738,141 @@ const EYTSpeech = (() => {
                 options
             );
 
-        const cached =
-            await getCachedAudio(
-                key
-            );
-
-        if (cached) {
+        if (blobCache.has(key)) {
             return {
-                blob:
-                    cached.blob,
-                lang:
-                    options.lang,
-                voice:
-                    options.voice ||
-                    null,
+                key,
+                blob: blobCache.get(key),
+                lang: options.lang,
+                voice: options.voice || null,
                 runtime,
-                cached:
-                    cached.source
+                cached: "memory"
             };
         }
 
-        if (
-            inflight.has(key)
-        ) {
-            return inflight.get(key);
+        if (blobLoading.has(key)) {
+            const state =
+                blobLoading.get(key);
+
+            state.priority =
+                Math.min(
+                    state.priority,
+                    priorityValue(priority)
+                );
+
+            promoteGeneration(
+                key,
+                priority
+            );
+
+            return state.promise;
         }
 
-        const promise =
-            (async () => {
-                const result =
-                    await requestGeneration(
-                        text,
-                        options
-                    );
+        const state = {
+            priority:
+                priorityValue(priority),
+            promise:
+                null
+        };
 
-                if (
-                    !(result.blob instanceof Blob) ||
-                    result.blob.size === 0
-                ) {
-                    throw new Error(
-                        "Áudio neural vazio."
-                    );
-                }
+        state.promise = (async () => {
+            const stored =
+                await persistentGet(key);
 
-                await storeAudio(
+            if (stored) {
+                blobCache.set(
                     key,
-                    result.blob
+                    stored
+                );
+
+                trimMap(
+                    blobCache,
+                    CONFIG.maxBlobMemoryEntries
                 );
 
                 return {
-                    ...result,
-                    cached:
-                        false
+                    key,
+                    blob: stored,
+                    lang: options.lang,
+                    voice: options.voice || null,
+                    runtime,
+                    cached: "indexeddb"
                 };
-            })();
+            }
 
-        inflight.set(
+            return scheduleGeneration(
+                key,
+                text,
+                options,
+                state.priority === 0
+                    ? "foreground"
+                    : state.priority === 1
+                        ? "current"
+                        : "background"
+            );
+        })();
+
+        blobLoading.set(
+            key,
+            state
+        );
+
+        try {
+            return await state.promise;
+        } finally {
+            blobLoading.delete(
+                key
+            );
+        }
+    }
+
+    /* ========================================================
+       AUDIOBUFFER CACHE
+       ======================================================== */
+
+    async function decodeBlob(
+        key,
+        blob
+    ) {
+        if (decodedCache.has(key)) {
+            return decodedCache.get(key);
+        }
+
+        if (decoding.has(key)) {
+            return decoding.get(key);
+        }
+
+        const promise = (async () => {
+            const context =
+                getAudioContext();
+
+            if (!context) {
+                throw new Error(
+                    "AudioContext indisponível."
+                );
+            }
+
+            const bytes =
+                await blob.arrayBuffer();
+
+            const audioBuffer =
+                await context.decodeAudioData(
+                    bytes.slice(0)
+                );
+
+            decodedCache.set(
+                key,
+                audioBuffer
+            );
+
+            trimMap(
+                decodedCache,
+                CONFIG.maxDecodedEntries
+            );
+
+            return audioBuffer;
+        })();
+
+        decoding.set(
             key,
             promise
         );
@@ -889,45 +880,83 @@ const EYTSpeech = (() => {
         try {
             return await promise;
         } finally {
-            inflight.delete(
+            decoding.delete(
                 key
             );
         }
     }
 
+    async function prepareEnglishAudio(
+        text,
+        options,
+        priority = "foreground"
+    ) {
+        const key =
+            cacheKey(
+                text,
+                options
+            );
+
+        if (decodedCache.has(key)) {
+            return {
+                key,
+                buffer:
+                    decodedCache.get(key),
+                lang:
+                    options.lang,
+                voice:
+                    options.voice || null,
+                runtime,
+                cached:
+                    "decoded"
+            };
+        }
+
+        promoteGeneration(
+            key,
+            priority
+        );
+
+        const audio =
+            await getEnglishBlob(
+                text,
+                options,
+                priority
+            );
+
+        const buffer =
+            await decodeBlob(
+                key,
+                audio.blob
+            );
+
+        return {
+            ...audio,
+            key,
+            buffer
+        };
+    }
+
     /* ========================================================
-       PLAY KOKORO
+       REPRODUÇÃO INSTANTÂNEA
        ======================================================== */
 
-    async function playBlob(
-        blob,
-        session,
-        metadata
+    async function playPrepared(
+        prepared,
+        session
     ) {
         const context =
             getAudioContext();
 
         if (!context) {
             throw new Error(
-                "AudioContext não disponível."
+                "AudioContext indisponível."
             );
         }
 
-        if (
-            context.state ===
-            "suspended"
-        ) {
+        if (context.state === "suspended") {
             await context.resume();
         }
-
-        const bytes =
-            await blob.arrayBuffer();
-
-        const buffer =
-            await context
-                .decodeAudioData(
-                    bytes.slice(0)
-                );
 
         if (
             currentSession?.id !==
@@ -937,11 +966,10 @@ const EYTSpeech = (() => {
         }
 
         const source =
-            context
-                .createBufferSource();
+            context.createBufferSource();
 
         source.buffer =
-            buffer;
+            prepared.buffer;
 
         source.connect(
             context.destination
@@ -957,81 +985,59 @@ const EYTSpeech = (() => {
         dispatch(
             "eyt:speech-start",
             {
-                text:
-                    session.text,
-                lang:
-                    metadata.lang,
-                voice:
-                    metadata.voice,
-                engine:
-                    "kokoro",
-                cached:
-                    metadata.cached,
+                text: session.text,
+                lang: prepared.lang,
+                voice: prepared.voice,
+                engine: "kokoro",
+                cached: prepared.cached,
                 runtime:
-                    metadata.runtime ||
+                    prepared.runtime ||
                     runtime
             }
         );
 
-        return new Promise(
-            (
-                resolve,
-                reject
-            ) => {
-                source.onended =
-                    () => {
-                        if (
-                            currentSource ===
-                            source
-                        ) {
-                            currentSource =
-                                null;
-                        }
-
-                        try {
-                            source.disconnect();
-                        } catch (_) {
-                        }
-
-                        resolve(true);
-                    };
+        return new Promise((resolve, reject) => {
+            source.onended = () => {
+                if (currentSource === source) {
+                    currentSource = null;
+                }
 
                 try {
-                    source.start(0);
-                } catch (error) {
-                    reject(error);
+                    source.disconnect();
+                } catch (_) {
                 }
+
+                resolve(true);
+            };
+
+            try {
+                source.start(0);
+            } catch (error) {
+                reject(error);
             }
-        );
+        });
     }
 
     /* ========================================================
        PORTUGUÊS
        ======================================================== */
 
-    function getPortugueseVoices() {
-        if (
-            !("speechSynthesis" in window)
-        ) {
-            return [];
+    function selectPortugueseVoice() {
+        if (!("speechSynthesis" in window)) {
+            return null;
         }
 
-        return window
-            .speechSynthesis
-            .getVoices()
-            .filter(
-                voice =>
-                    String(
-                        voice.lang || ""
-                    )
-                        .toLowerCase()
-                        .startsWith("pt")
-            );
-    }
-
-    function selectPortugueseVoice() {
         const voices =
-            getPortugueseVoices();
+            window.speechSynthesis
+                .getVoices()
+                .filter(
+                    voice =>
+                        String(
+                            voice.lang || ""
+                        )
+                            .toLowerCase()
+                            .startsWith("pt")
+                );
 
         if (!voices.length) {
             return null;
@@ -1092,174 +1098,79 @@ const EYTSpeech = (() => {
             );
         }
 
-        return new Promise(
-            (
-                resolve,
-                reject
-            ) => {
-                const utterance =
-                    new SpeechSynthesisUtterance(
-                        text
-                    );
+        return new Promise((resolve, reject) => {
+            const utterance =
+                new SpeechSynthesisUtterance(
+                    text
+                );
 
-                const voice =
-                    selectPortugueseVoice();
+            const voice =
+                selectPortugueseVoice();
 
-                utterance.lang =
-                    voice?.lang ||
-                    CONFIG.portugueseLang;
+            utterance.lang =
+                voice?.lang ||
+                "pt-BR";
 
-                utterance.rate =
-                    options.rate;
+            utterance.rate =
+                options.rate;
 
-                utterance.pitch =
-                    1;
+            utterance.pitch = 1;
+            utterance.volume = 1;
 
-                utterance.volume =
-                    1;
+            if (voice) {
+                utterance.voice =
+                    voice;
+            }
 
-                if (voice) {
-                    utterance.voice =
-                        voice;
+            currentUtterance =
+                utterance;
+
+            utterance.onstart = () => {
+                if (
+                    currentSession?.id !==
+                    session.id
+                ) {
+                    return;
                 }
 
-                currentUtterance =
-                    utterance;
+                setButtonPlaying(
+                    session.button
+                );
+            };
 
-                utterance.onstart =
-                    () => {
-                        if (
-                            currentSession?.id !==
-                            session.id
-                        ) {
-                            return;
-                        }
+            utterance.onend = () => {
+                if (
+                    currentUtterance ===
+                    utterance
+                ) {
+                    currentUtterance = null;
+                }
 
-                        setButtonPlaying(
-                            session.button
-                        );
+                resolve(true);
+            };
 
-                        dispatch(
-                            "eyt:speech-start",
-                            {
-                                text,
-                                lang:
-                                    CONFIG.portugueseLang,
-                                voice:
-                                    voice?.name ||
-                                    null,
-                                engine:
-                                    "browser-pt"
-                            }
-                        );
-                    };
+            utterance.onerror = event => {
+                if (
+                    event.error === "canceled" ||
+                    event.error === "interrupted"
+                ) {
+                    resolve(false);
+                    return;
+                }
 
-                utterance.onend =
-                    () => {
-                        if (
-                            currentUtterance ===
-                            utterance
-                        ) {
-                            currentUtterance =
-                                null;
-                        }
+                reject(
+                    new Error(
+                        event.error ||
+                        "Erro no áudio pt-BR."
+                    )
+                );
+            };
 
-                        resolve(true);
-                    };
-
-                utterance.onerror =
-                    event => {
-                        if (
-                            event.error ===
-                                "canceled" ||
-                            event.error ===
-                                "interrupted"
-                        ) {
-                            resolve(false);
-
-                            return;
-                        }
-
-                        reject(
-                            new Error(
-                                event.error ||
-                                "Falha no áudio em português."
-                            )
-                        );
-                    };
-
-                window
-                    .speechSynthesis
-                    .cancel();
-
-                window
-                    .speechSynthesis
-                    .speak(
-                        utterance
-                    );
-            }
-        );
-    }
-
-    /* ========================================================
-       OPTIONS
-       ======================================================== */
-
-    function resolveOptions(
-        options = {}
-    ) {
-        const lang =
-            normalizeLang(
-                options.lang
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(
+                utterance
             );
-
-        let defaultRate;
-
-        if (
-            lang ===
-            CONFIG.portugueseLang
-        ) {
-            defaultRate =
-                CONFIG.portugueseRate;
-        } else if (
-            options.slow
-        ) {
-            defaultRate =
-                CONFIG.slowEnglishRate;
-        } else {
-            defaultRate =
-                CONFIG.englishRate;
-        }
-
-        return {
-            lang,
-
-            rate:
-                clamp(
-                    options.rate,
-                    lang ===
-                        CONFIG.portugueseLang
-                        ? 0.85
-                        : 0.90,
-                    1.08,
-                    defaultRate
-                ),
-
-            persona:
-                cleanText(
-                    options.persona
-                ) ||
-                "teacher",
-
-            voice:
-                cleanText(
-                    options.voice
-                ),
-
-            button:
-                options.button ||
-                null
-        };
+        });
     }
 
     /* ========================================================
@@ -1278,9 +1189,10 @@ const EYTSpeech = (() => {
         }
 
         const resolved =
-            resolveOptions(
-                options
-            );
+            resolveOptions({
+                ...options,
+                priority: "foreground"
+            });
 
         stop();
 
@@ -1289,8 +1201,7 @@ const EYTSpeech = (() => {
 
         const session = {
             id,
-            text:
-                value,
+            text: value,
             button:
                 resolved.button
         };
@@ -1318,10 +1229,11 @@ const EYTSpeech = (() => {
                         session
                     );
             } else {
-                const generated =
-                    await getEnglishAudio(
+                const prepared =
+                    await prepareEnglishAudio(
                         value,
-                        resolved
+                        resolved,
+                        "foreground"
                     );
 
                 if (
@@ -1332,10 +1244,9 @@ const EYTSpeech = (() => {
                 }
 
                 result =
-                    await playBlob(
-                        generated.blob,
-                        session,
-                        generated
+                    await playPrepared(
+                        prepared,
+                        session
                     );
             }
 
@@ -1353,8 +1264,7 @@ const EYTSpeech = (() => {
                 dispatch(
                     "eyt:speech-end",
                     {
-                        text:
-                            value,
+                        text: value,
                         lang:
                             resolved.lang
                     }
@@ -1386,8 +1296,7 @@ const EYTSpeech = (() => {
                     error:
                         error?.message ||
                         String(error),
-                    text:
-                        value,
+                    text: value,
                     lang:
                         resolved.lang
                 }
@@ -1413,9 +1322,12 @@ const EYTSpeech = (() => {
         }
 
         const resolved =
-            resolveOptions(
-                options
-            );
+            resolveOptions({
+                ...options,
+                priority:
+                    options.priority ||
+                    "current"
+            });
 
         if (
             resolved.lang ===
@@ -1425,15 +1337,16 @@ const EYTSpeech = (() => {
         }
 
         try {
-            await getEnglishAudio(
+            await prepareEnglishAudio(
                 value,
-                resolved
+                resolved,
+                resolved.priority
             );
 
             return true;
         } catch (error) {
             console.warn(
-                "[EYTSpeech] Falha no preload:",
+                "[EYTSpeech] preload:",
                 value,
                 error
             );
@@ -1446,7 +1359,7 @@ const EYTSpeech = (() => {
         items,
         options = {}
     ) {
-        const source =
+        const list =
             Array.isArray(items)
                 ? items
                 : [];
@@ -1454,18 +1367,14 @@ const EYTSpeech = (() => {
         const unique =
             new Map();
 
-        for (
-            const item
-            of source
-        ) {
+        for (const item of list) {
             if (!item) {
                 continue;
             }
 
             const text =
                 cleanText(
-                    typeof item ===
-                        "string"
+                    typeof item === "string"
                         ? item
                         : item.text
                 );
@@ -1475,12 +1384,15 @@ const EYTSpeech = (() => {
             }
 
             const resolved =
-                resolveOptions(
-                    typeof item ===
-                        "string"
+                resolveOptions({
+                    ...(typeof item === "string"
                         ? {}
-                        : item
-                );
+                        : item),
+                    priority:
+                        item?.priority ||
+                        options.priority ||
+                        "background"
+                });
 
             if (
                 resolved.lang ===
@@ -1495,9 +1407,7 @@ const EYTSpeech = (() => {
                     resolved
                 );
 
-            if (
-                !unique.has(key)
-            ) {
+            if (!unique.has(key)) {
                 unique.set(
                     key,
                     {
@@ -1513,13 +1423,9 @@ const EYTSpeech = (() => {
                 unique.values()
             );
 
-        if (!queue.length) {
-            return {
-                total: 0,
-                loaded: 0,
-                failed: 0
-            };
-        }
+        let index = 0;
+        let loaded = 0;
+        let failed = 0;
 
         const concurrency =
             Math.max(
@@ -1527,65 +1433,39 @@ const EYTSpeech = (() => {
                 Math.min(
                     Number(
                         options.concurrency
-                    ) || 1,
-                    3
+                    ) || 4,
+                    8
                 )
             );
 
-        let index = 0;
-        let loaded = 0;
-        let failed = 0;
+        async function runner() {
+            while (true) {
+                const position =
+                    index++;
 
-        dispatch(
-            "eyt:speech-preload-start",
-            {
-                total:
+                if (
+                    position >=
                     queue.length
-            }
-        );
-
-        const run =
-            async () => {
-                while (true) {
-                    const position =
-                        index++;
-
-                    if (
-                        position >=
-                        queue.length
-                    ) {
-                        return;
-                    }
-
-                    const item =
-                        queue[position];
-
-                    const success =
-                        await preload(
-                            item.text,
-                            item
-                        );
-
-                    if (success) {
-                        loaded++;
-                    } else {
-                        failed++;
-                    }
-
-                    dispatch(
-                        "eyt:speech-preload-progress",
-                        {
-                            total:
-                                queue.length,
-                            loaded,
-                            failed,
-                            completed:
-                                loaded +
-                                failed
-                        }
-                    );
+                ) {
+                    return;
                 }
-            };
+
+                const item =
+                    queue[position];
+
+                const success =
+                    await preload(
+                        item.text,
+                        item
+                    );
+
+                if (success) {
+                    loaded++;
+                } else {
+                    failed++;
+                }
+            }
+        }
 
         await Promise.all(
             Array.from(
@@ -1596,28 +1476,17 @@ const EYTSpeech = (() => {
                             queue.length
                         )
                 },
-                run
+                runner
             )
         );
 
-        const result = {
+        return {
             total:
                 queue.length,
             loaded,
             failed
         };
-
-        dispatch(
-            "eyt:speech-preload-complete",
-            result
-        );
-
-        return result;
     }
-
-    /* ========================================================
-       PUBLIC API
-       ======================================================== */
 
     function toggle(
         text,
@@ -1626,8 +1495,7 @@ const EYTSpeech = (() => {
     ) {
         if (
             currentSession &&
-            currentButton ===
-            button
+            currentButton === button
         ) {
             stop();
 
@@ -1671,8 +1539,7 @@ const EYTSpeech = (() => {
                 lang:
                     options.lang ||
                     CONFIG.englishLang,
-                slow:
-                    true
+                slow: true
             }
         );
     }
@@ -1726,11 +1593,9 @@ const EYTSpeech = (() => {
 
     function warmup() {
         try {
-            getWorker()
-                .postMessage({
-                    type:
-                        "warmup"
-                });
+            getWorker().postMessage({
+                type: "warmup"
+            });
 
             return true;
         } catch (_) {
@@ -1739,8 +1604,10 @@ const EYTSpeech = (() => {
     }
 
     async function clearCache() {
-        memoryCache.clear();
-        inflight.clear();
+        blobCache.clear();
+        decodedCache.clear();
+        blobLoading.clear();
+        decoding.clear();
 
         await persistentClear();
 
@@ -1762,22 +1629,25 @@ const EYTSpeech = (() => {
             speaking:
                 isSpeaking(),
             runtime,
-            memoryCache:
-                memoryCache.size,
+            blobs:
+                blobCache.size,
+            decoded:
+                decodedCache.size,
             generating:
-                inflight.size
+                generationQueue.length
         };
     }
 
-    void requestPersistentStorage();
     void openDatabase();
 
-    if (
-        "speechSynthesis" in window
-    ) {
-        window
-            .speechSynthesis
-            .getVoices();
+    try {
+        navigator.storage
+            ?.persist?.();
+    } catch (_) {
+    }
+
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.getVoices();
     }
 
     window.addEventListener(
@@ -1789,41 +1659,23 @@ const EYTSpeech = (() => {
     );
 
     return {
-        isSupported:
-            () => true,
-
+        isSupported: () => true,
         isSpeaking,
-
         speak,
-
         speakEnglish,
-
         speakEnglishSlow,
-
         speakPortuguese,
-
         toggle,
-
         toggleEnglish,
-
         togglePortuguese,
-
         stop,
-
         preload,
-
         preloadMany,
-
         warmup,
-
         clearCache,
-
         getRuntime,
-
         getConfig,
-
         getAudioState,
-
         unlockAudio
     };
 })();

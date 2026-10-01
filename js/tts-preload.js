@@ -2,17 +2,15 @@
     "use strict";
 
     const CONFIG = {
-        questionEnglishLang: "en-GB",
-        answerEnglishLang: "en-GB",
-
-        questionRate: 0.98,
+        englishLang: "en-US",
         answerRate: 0.98,
         wordRate: 0.96,
-
-        initialDelay: 400,
-        backgroundConcurrency: 1,
-        priorityConcurrency: 2
+        questionRate: 0.98,
+        backgroundDelay: 1200
     };
+
+    const alreadyPrepared = new Set();
+    let scanTimer = null;
 
     function clean(value) {
         return String(value ?? "")
@@ -35,7 +33,6 @@
             "organize",
             "você",
             "vocês",
-            " inglês",
             "português",
             "significa",
             "se diz",
@@ -57,367 +54,283 @@
             "palavra"
         ];
 
-        return portugueseSignals
-            .some(
-                signal =>
-                    value.includes(
-                        signal
-                    )
-            )
+        return portugueseSignals.some(
+            signal =>
+                value.includes(signal)
+        )
             ? "pt-BR"
-            : CONFIG
-                .questionEnglishLang;
+            : CONFIG.englishLang;
     }
 
-    function push(
-        target,
-        text,
-        options
-    ) {
-        const value =
-            clean(text);
-
-        if (!value) {
+    function preloadSpeechButton(button) {
+        if (
+            typeof EYTSpeech === "undefined"
+        ) {
             return;
         }
 
-        target.push({
-            text:
-                value,
-            ...options
-        });
+        const text =
+            clean(
+                button.dataset.speech
+            );
+
+        if (!text) {
+            return;
+        }
+
+        const lang =
+            button.dataset.speechLang ||
+            CONFIG.englishLang;
+
+        if (
+            String(lang)
+                .toLowerCase()
+                .startsWith("pt")
+        ) {
+            return;
+        }
+
+        const parsedRate =
+            Number(
+                button.dataset.speechRate
+            );
+
+        const rate =
+            Number.isFinite(parsedRate)
+                ? parsedRate
+                : CONFIG.answerRate;
+
+        const persona =
+            button.dataset.speechPersona ||
+            "teacher";
+
+        const key = [
+            lang,
+            rate,
+            persona,
+            text
+        ].join("|");
+
+        if (
+            alreadyPrepared.has(key)
+        ) {
+            return;
+        }
+
+        alreadyPrepared.add(key);
+
+        void EYTSpeech.preload(
+            text,
+            {
+                lang,
+                rate,
+                persona,
+                priority: "current"
+            }
+        );
     }
 
-    function collectLessonAudio(
-        lesson
-    ) {
+    function scanVisibleAudio() {
+        document
+            .querySelectorAll(
+                "[data-speech]"
+            )
+            .forEach(
+                preloadSpeechButton
+            );
+    }
+
+    function scheduleScan() {
+        clearTimeout(scanTimer);
+
+        scanTimer =
+            setTimeout(
+                scanVisibleAudio,
+                10
+            );
+    }
+
+    function collectBackgroundAudio() {
+        if (
+            typeof EYTApp === "undefined" ||
+            typeof EYTApp.getAllLessons !==
+                "function" ||
+            typeof EYTSpeech === "undefined"
+        ) {
+            return [];
+        }
+
         const result = [];
 
-        for (
-            const exercise
-            of lesson.exercises || []
+        function push(
+            text,
+            rate,
+            persona
         ) {
-            const question =
-                clean(
-                    exercise.question
-                );
+            const value =
+                clean(text);
 
-            const questionLang =
-                detectLanguage(
-                    question
-                );
-
-            if (
-                questionLang
-                    .toLowerCase()
-                    .startsWith("en")
-            ) {
-                push(
-                    result,
-                    question,
-                    {
-                        lang:
-                            questionLang,
-                        rate:
-                            CONFIG.questionRate,
-                        persona:
-                            "teacher"
-                    }
-                );
+            if (!value) {
+                return;
             }
 
-            if (
-                exercise.type ===
-                "multiple"
+            result.push({
+                text: value,
+                lang:
+                    CONFIG.englishLang,
+                rate,
+                persona,
+                priority:
+                    "background"
+            });
+        }
+
+        for (
+            const lesson
+            of EYTApp.getAllLessons()
+        ) {
+            for (
+                const exercise
+                of lesson.exercises || []
             ) {
+                if (
+                    detectLanguage(
+                        exercise.question
+                    ) === CONFIG.englishLang
+                ) {
+                    push(
+                        exercise.question,
+                        CONFIG.questionRate,
+                        "teacher"
+                    );
+                }
+
                 for (
                     const option
                     of exercise.options || []
                 ) {
                     push(
-                        result,
                         option,
-                        {
-                            lang:
-                                CONFIG.answerEnglishLang,
-                            rate:
-                                CONFIG.answerRate,
-                            persona:
-                                "teacherMale"
-                        }
+                        CONFIG.answerRate,
+                        "teacherMale"
                     );
                 }
-            }
 
-            if (
-                exercise.type ===
-                "order"
-            ) {
                 for (
                     const word
                     of exercise.words || []
                 ) {
                     push(
-                        result,
                         word,
-                        {
-                            lang:
-                                CONFIG.answerEnglishLang,
-                            rate:
-                                CONFIG.wordRate,
-                            persona:
-                                "teacher"
-                        }
+                        CONFIG.wordRate,
+                        "teacher"
                     );
                 }
-            }
 
-            if (
-                exercise.answer
-            ) {
-                push(
-                    result,
-                    exercise.answer,
-                    {
-                        lang:
-                            CONFIG.answerEnglishLang,
-                        rate:
-                            CONFIG.answerRate,
-                        persona:
-                            "teacherMale"
-                    }
-                );
-            }
+                if (exercise.answer) {
+                    push(
+                        exercise.answer,
+                        CONFIG.answerRate,
+                        "teacherMale"
+                    );
+                }
 
-            for (
-                const alternative
-                of exercise.alternatives || []
-            ) {
-                push(
-                    result,
-                    alternative,
-                    {
-                        lang:
-                            CONFIG.answerEnglishLang,
-                        rate:
-                            CONFIG.answerRate,
-                        persona:
-                            "teacherMale"
-                    }
-                );
+                for (
+                    const item
+                    of exercise.alternatives || []
+                ) {
+                    push(
+                        item,
+                        CONFIG.answerRate,
+                        "teacherMale"
+                    );
+                }
             }
         }
 
         return result;
     }
 
-    function uniqueItems(items) {
-        const map =
-            new Map();
-
-        for (
-            const item
-            of items
-        ) {
-            const key = [
-                item.lang,
-                item.rate,
-                item.persona,
-                item.voice || "",
-                item.text
-            ].join("|");
-
-            if (
-                !map.has(key)
-            ) {
-                map.set(
-                    key,
-                    item
-                );
-            }
-        }
-
-        return Array.from(
-            map.values()
-        );
-    }
-
-    function getPriorityLesson(
-        lessons
-    ) {
-        const params =
-            new URLSearchParams(
-                window.location.search
-            );
-
-        const id =
-            params.get("id");
-
-        if (id) {
-            const lesson =
-                lessons.find(
-                    item =>
-                        item.id === id
-                );
-
-            if (lesson) {
-                return lesson;
-            }
-        }
-
-        if (
-            typeof EYTApp !==
-                "undefined" &&
-            typeof EYTApp.getNextLesson ===
-                "function"
-        ) {
-            const next =
-                EYTApp.getNextLesson();
-
-            if (next) {
-                return next;
-            }
-        }
-
-        return lessons[0] ||
-            null;
-    }
-
-    async function startPreload() {
+    function startBackgroundPreload() {
         if (
             typeof EYTSpeech ===
-                "undefined" ||
-            typeof EYTApp ===
-                "undefined" ||
-            typeof EYTApp.getAllLessons !==
-                "function"
+            "undefined"
         ) {
             return;
         }
-
-        const lessons =
-            EYTApp.getAllLessons();
-
-        if (
-            !Array.isArray(lessons) ||
-            !lessons.length
-        ) {
-            return;
-        }
-
-        console.info(
-            "[EYTAudioPreloader] Iniciando cache de áudio..."
-        );
 
         EYTSpeech.warmup();
 
-        const priorityLesson =
-            getPriorityLesson(
-                lessons
-            );
-
-        if (priorityLesson) {
-            const priorityItems =
-                uniqueItems(
-                    collectLessonAudio(
-                        priorityLesson
-                    )
-                );
-
-            if (
-                priorityItems.length
-            ) {
-                console.info(
-                    `[EYTAudioPreloader] Prioridade: ${priorityLesson.title} (${priorityItems.length} áudios)`
-                );
-
-                await EYTSpeech.preloadMany(
-                    priorityItems,
-                    {
-                        concurrency:
-                            CONFIG.priorityConcurrency
-                    }
-                );
-            }
-        }
-
-        const remainingLessons =
-            lessons.filter(
-                lesson =>
-                    !priorityLesson ||
-                    lesson.id !==
-                        priorityLesson.id
-            );
-
-        const backgroundItems =
-            uniqueItems(
-                remainingLessons
-                    .flatMap(
-                        collectLessonAudio
-                    )
-            );
-
-        if (
-            backgroundItems.length
-        ) {
-            console.info(
-                `[EYTAudioPreloader] Background: ${backgroundItems.length} áudios`
-            );
-
-            const result =
-                await EYTSpeech.preloadMany(
-                    backgroundItems,
-                    {
-                        concurrency:
-                            CONFIG.backgroundConcurrency
-                    }
-                );
-
-            console.info(
-                "[EYTAudioPreloader] Cache concluído:",
-                result
-            );
-        }
-    }
-
-    function schedule() {
-        const run =
-            () => {
-                void startPreload();
-            };
-
-        if (
-            window.location.pathname
-                .toLowerCase()
-                .includes("licao")
-        ) {
-            setTimeout(
-                run,
-                100
-            );
-
-            return;
-        }
-
-        if (
-            "requestIdleCallback" in
-            window
-        ) {
-            requestIdleCallback(
-                run,
-                {
-                    timeout:
-                        1500
-                }
-            );
-
-            return;
-        }
+        scanVisibleAudio();
 
         setTimeout(
-            run,
-            CONFIG.initialDelay
+            () => {
+                const items =
+                    collectBackgroundAudio();
+
+                if (!items.length) {
+                    return;
+                }
+
+                console.info(
+                    `[EYTAudio] Pré-carregando ${items.length} áudios em background`
+                );
+
+                void EYTSpeech
+                    .preloadMany(
+                        items,
+                        {
+                            concurrency: 6,
+                            priority:
+                                "background"
+                        }
+                    )
+                    .then(result => {
+                        console.info(
+                            "[EYTAudio] Cache pronto:",
+                            result
+                        );
+                    });
+            },
+            CONFIG.backgroundDelay
         );
+    }
+
+    /*
+     * pointerdown acontece ANTES do click.
+     * Quando o click chegar, AudioContext já estará acordado.
+     */
+    document.addEventListener(
+        "pointerdown",
+        () => {
+            if (
+                typeof EYTSpeech !==
+                "undefined"
+            ) {
+                void EYTSpeech.unlockAudio();
+            }
+        },
+        {
+            capture: true,
+            passive: true
+        }
+    );
+
+    const observer =
+        new MutationObserver(
+            scheduleScan
+        );
+
+    function init() {
+        observer.observe(
+            document.body,
+            {
+                childList: true,
+                subtree: true
+            }
+        );
+
+        startBackgroundPreload();
     }
 
     if (
@@ -426,13 +339,12 @@
     ) {
         document.addEventListener(
             "DOMContentLoaded",
-            schedule,
+            init,
             {
-                once:
-                    true
+                once: true
             }
         );
     } else {
-        schedule();
+        init();
     }
 })();

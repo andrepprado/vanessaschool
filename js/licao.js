@@ -108,13 +108,13 @@ document.addEventListener("DOMContentLoaded", () => {
             true,
 
         questionEnglishLang:
-            "en-GB",
+            "en-US",
 
         questionPortugueseLang:
             "pt-BR",
 
         answerEnglishLang:
-            "en-GB",
+            "en-US",
 
         answerSpeechRate:
             0.98,
