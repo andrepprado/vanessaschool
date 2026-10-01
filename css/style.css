@@ -6456,3 +6456,124 @@ body.app-body #dashboardPath {
 }
 
 /* === SIDEBAR LOGOUT BUTTON END === */
+/* === SIDEBAR LOGOUT SAME SIZE START === */
+
+.sidebar-bottom .sidebar-logout-button,
+.sidebar-logout-button {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    min-height: 58px !important;
+    height: 58px !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 11px !important;
+
+    border: 1px solid rgba(255,255,255,.08) !important;
+    border-radius: 10px !important;
+
+    background: rgba(255,255,255,.045) !important;
+    color: #ffffff !important;
+
+    font: inherit !important;
+    text-align: left !important;
+    cursor: pointer !important;
+
+    flex: 0 0 auto !important;
+
+    transition:
+        background .18s ease,
+        border-color .18s ease,
+        transform .18s ease !important;
+}
+
+.sidebar-bottom {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.sidebar-bottom .teacher-card,
+.sidebar-bottom .sidebar-site-link,
+.sidebar-bottom .sidebar-logout-button {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.sidebar-logout-button:hover {
+    background: rgba(196,18,48,.16) !important;
+    border-color: rgba(196,18,48,.34) !important;
+}
+
+.sidebar-logout-button:active {
+    transform: translateY(1px);
+}
+
+.sidebar-logout-button .sidebar-site-link-icon {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+
+    display: grid !important;
+    place-items: center !important;
+
+    flex: 0 0 34px !important;
+
+    border-radius: 8px !important;
+
+    background: rgba(255,255,255,.08) !important;
+    color: #ffffff !important;
+}
+
+.sidebar-logout-button .sidebar-site-link-icon i {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    font-size: 15px !important;
+    line-height: 1 !important;
+}
+
+.sidebar-logout-button > div {
+    min-width: 0 !important;
+
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+
+    justify-content: center !important;
+
+    gap: 2px !important;
+}
+
+.sidebar-logout-button strong {
+    display: block !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: #ffffff !important;
+
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+.sidebar-logout-button > div > span {
+    display: block !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: rgba(255,255,255,.56) !important;
+
+    font-size: 8px !important;
+    line-height: 1.25 !important;
+}
+
+/* === SIDEBAR LOGOUT SAME SIZE END === */
