@@ -32,12 +32,6 @@ const migrations =
         )
         .sort();
 
-if (!migrations.length) {
-    throw new Error(
-        "No SQL migrations were found."
-    );
-}
-
 const client =
     new Client({
         connectionString:
@@ -55,7 +49,7 @@ try {
     await client.connect();
 
     for (const migration of migrations) {
-        const migrationPath =
+        const filePath =
             path.join(
                 migrationsDirectory,
                 migration
@@ -63,7 +57,7 @@ try {
 
         const sql =
             fs.readFileSync(
-                migrationPath,
+                filePath,
                 "utf8"
             );
 
@@ -75,8 +69,9 @@ try {
     }
 
     console.log(
-        "All database migrations applied successfully."
+        "All migrations applied successfully."
     );
-} finally {
+}
+finally {
     await client.end();
 }

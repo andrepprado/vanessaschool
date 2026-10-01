@@ -938,7 +938,7 @@ const EYTSpeech = (() => {
     }
 
     /* ========================================================
-       REPRODUÇÃO INSTANTÂNEA
+       REPRODUÇÃO INSTANTNEA
        ======================================================== */
 
     async function playPrepared(

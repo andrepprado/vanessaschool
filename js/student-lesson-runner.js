@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+window.EYTStudentLessonMain = () => {
     "use strict";
 
     if (
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
             )
     ) {
         window.location.href =
-            "curso.html";
+            "dashboard.html#dashboardPath";
 
         return;
     }
@@ -2057,7 +2057,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
                 <a
-                    href="curso.html"
+                    href="dashboard.html#dashboardPath"
                     class="btn btn-primary btn-large"
                 >
                     Continuar aprendendo ${EYTApp.icon("bi-arrow-right")}
@@ -2122,7 +2122,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 window.location.href =
-                    "curso.html";
+                    "dashboard.html#dashboardPath";
             }
         );
 
@@ -2199,4 +2199,4 @@ document.addEventListener("DOMContentLoaded", () => {
        ========================================================================== */
 
     renderIntro();
-});
+};

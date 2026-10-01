@@ -1,118 +1,494 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="theme-color" content="#0b1f3f">
-<title>Ãrea do Aluno | English in Your Time</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-<link rel="stylesheet" href="css/style.css?v=20261001-db1">
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+    <meta name="theme-color" content="#071229">
+
+    <title>
+        Início | English in Your Time
+    </title>
+
+
+    <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/book.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="css/style.css?v=20261001-ui-repair-1">
+
 </head>
-<body class="student-db-body">
-<div class="student-db-layout">
-<aside class="student-db-sidebar">
-<a href="/dashboard" class="student-db-logo">
-<img src="img/logoFullMonoWhite.png" alt="English in Your Time">
-</a>
 
-<nav class="student-db-menu">
-<a href="/dashboard" class="active">
-<i class="bi bi-house-door"></i>
-InÃ­cio
-</a>
+<body class="app-body">
 
-<div class="student-db-menu-disabled">
-<i class="bi bi-journal-text"></i>
-Materiais
-<span>EM BREVE</span>
-</div>
+    <div class="app-layout">
 
-<div class="student-db-menu-disabled">
-<i class="bi bi-pencil-square"></i>
-ExercÃ­cios
-<span>EM BREVE</span>
-</div>
+        <aside class="sidebar">
 
-<div class="student-db-menu-disabled">
-<i class="bi bi-graph-up-arrow"></i>
-EvoluÃ§Ã£o
-<span>EM BREVE</span>
-</div>
-</nav>
+            <a href="dashboard.html" class="sidebar-logo">
 
-<button id="studentLogout" class="student-db-logout">
-<i class="bi bi-box-arrow-left"></i>
-Sair
-</button>
-</aside>
+                <img src="img/logoFullMonoWhite.png" alt="English in Your Time">
 
-<main class="student-db-main">
-<div id="studentLoading" class="student-db-loading">
-<span class="auth-spinner dark"></span>
-<p>Carregando seu ambiente...</p>
-</div>
+            </a>
 
-<div id="studentContent" class="hidden">
-<header class="student-db-header">
-<div>
-<span class="eyebrow">YOUR LEARNING SPACE</span>
+            <div class="sidebar-brand-name">
+                English in Your Time
+            </div>
 
-<h1>
-OlÃ¡,
-<span id="studentName">Aluno</span>.
-</h1>
+            <nav class="sidebar-nav">
 
-<p>
-Seu ambiente de aprendizado personalizado.
-</p>
-</div>
+                <a href="dashboard.html" class="nav-item active">
+                    <span class="nav-icon"><i class="bi bi-house-door" aria-hidden="true"></i></span>
+                    <span>Início</span>
+                </a>
 
-<div class="student-level-card">
-<span>SEU NÃVEL</span>
-<strong id="studentLevel">A1</strong>
-</div>
-</header>
+                <a href="#dashboardPath" class="nav-item">
+                    <span class="nav-icon"><i class="bi bi-play-circle" aria-hidden="true"></i></span>
+                    <span>Aprender</span>
+                </a>
 
-<section class="student-db-stats">
-<article>
-<span>PROGRESSO</span>
-<strong id="studentProgress">0%</strong>
-</article>
+                <a href="#dashboardPath" class="nav-item">
+                    <span class="nav-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span>
+                    <span>Revisar</span>
+                </a>
 
-<article>
-<span>XP</span>
-<strong id="studentXp">0</strong>
-</article>
+                <a href="#dashboardPath" class="nav-item">
+                    <span class="nav-icon"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+                    <span>Conquistas</span>
+                </a>
 
-<article>
-<span>SEQUÃŠNCIA</span>
-<strong>
-<span id="studentStreak">0</span> dias
-</strong>
-</article>
-</section>
+                <a href="teacher.html" class="nav-item"><span class="nav-icon"><i class="bi bi-mortarboard" aria-hidden="true"></i></span>
+                    <span>Teacher Vanessa</span>
+                </a>
 
-<section class="student-db-section">
-<div class="section-title">
-<div>
-<span class="eyebrow">YOUR CONTENT</span>
-<h2>Seu conteÃºdo</h2>
-<p>
-Aqui aparecerÃ£o somente os materiais e atividades
-liberados para o seu nÃ­vel.
-</p>
-</div>
-</div>
+                <a href="#dashboardPath" class="nav-item">
+                    <span class="nav-icon"><i class="bi bi-person-circle" aria-hidden="true"></i></span>
+                    <span>Perfil</span>
+                </a>
 
-<div id="studentActivities" class="student-activities-grid"></div>
-</section>
-</div>
-</main>
-</div>
+            </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-client.js?v=20261001-db1"></script>
-<script src="js/level-content.js?v=20261001-levels1"></script>
-<script src="js/student-dashboard.js?v=20261001-db1"></script>
+            <div class="sidebar-bottom">
+
+                <a href="teacher.html" class="teacher-card">
+
+                    <div class="teacher-avatar">
+                        VG
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Teacher Vanessa
+                        </strong>
+
+                        <span>
+                            Conheça sua teacher
+                        </span>
+
+                    </div>
+
+                </a>
+
+                <a href="index.html" class="sidebar-site-link">
+
+                    <span class="sidebar-site-link-icon">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Site da Teacher
+                        </strong>
+
+                        <span>
+                            Voltar para a página principal
+                        </span>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+        </aside>
+
+        <header class="mobile-header">
+
+            <a href="dashboard.html" class="mobile-header-logo">
+
+                <img src="img/logoFullMonoWhite.png" alt="English in Your Time">
+
+            </a>
+
+            <div class="mobile-header-stats">
+
+                <span class="mobile-header-stat" id="mobileStreak">
+                    <i class="bi bi-fire" aria-hidden="true"></i> 0
+                </span>
+
+                <span class="mobile-header-stat" id="mobileXp">
+                    <i class="bi bi-star-fill" aria-hidden="true"></i> 0
+                </span>
+
+                <a href="index.html" class="mobile-site-button">
+                    Site
+                </a>
+
+            </div>
+
+        </header>
+
+        <main class="app-main">
+
+            <div class="dashboard-page">
+
+                <header class="dashboard-header">
+
+                    <div class="dashboard-welcome">
+
+                        <span class="eyebrow">
+                            YOUR JOURNEY
+                        </span>
+
+                        <h1>
+                            Olá,
+                            <span id="userName">
+                                Aluno
+                            </span>!
+                        </h1>
+
+                        <p>
+                            Pronto para continuar evoluindo no inglês?
+                        </p>
+
+                    </div>
+
+                    <div class="dashboard-user-stats">
+
+                        <div class="top-stat">
+
+                            <span>
+                                <i class="bi bi-fire" aria-hidden="true"></i>
+                            </span>
+
+                            <div>
+
+                                <strong id="streakTop">
+                                    0 dias
+                                </strong>
+
+                                <small>
+                                    sequência
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                        <div class="top-stat">
+
+                            <span><i class="bi bi-star-fill" aria-hidden="true"></i></span>
+
+                            <div>
+
+                                <strong id="xpTop">
+                                    0 XP
+                                </strong>
+
+                                <small>
+                                    experiência
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </header>
+
+                <section class="continue-card">
+
+                    <div class="continue-card-content">
+
+                        <span class="continue-card-label">
+                            CONTINUE APRENDENDO
+                        </span>
+
+                        <h2 id="continueTitle">
+                            Greetings
+                        </h2>
+
+                        <p id="continueDescription">
+                            Aprenda as principais formas de cumprimentar alguém em inglês.
+                        </p>
+
+                    </div>
+
+                    <div class="continue-card-bottom">
+
+                        <div class="continue-progress">
+
+                            <div class="continue-progress-top">
+
+                                <span>
+                                    Seu progresso
+                                </span>
+
+                                <strong id="continuePercent">
+                                    0%
+                                </strong>
+
+                            </div>
+
+                            <div class="progress">
+
+                                <div class="progress-bar" id="continueProgressBar"></div>
+
+                            </div>
+
+                        </div>
+
+                        <a id="continueButton" href="licao.html?id=greetings" class="btn">
+
+                            Continuar
+
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+
+                        </a>
+
+                    </div>
+
+                </section>
+
+                <section class="daily-goal-card">
+
+                    <div class="daily-goal-icon">
+                        <i class="bi bi-bullseye" aria-hidden="true"></i>
+                    </div>
+
+                    <div class="daily-goal-info">
+
+                        <strong>
+                            META DIÁRIA
+                        </strong>
+
+                        <p>
+                            Complete exercícios hoje para manter sua sequência.
+                        </p>
+
+                        <div class="daily-goal-progress">
+
+                            <div class="progress">
+
+                                <div class="progress-bar" id="dailyGoalBar"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="daily-goal-value">
+
+                        <strong id="dailyGoalValue">
+                            0 / 50 XP
+                        </strong>
+
+                        <span id="dailyGoalPercent">
+                            0%
+                        </span>
+
+                    </div>
+
+                </section>
+
+                <div class="section-title">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            YOUR PROGRESS
+                        </span>
+
+                        <h2>
+                            Sua evolução
+                        </h2>
+
+                    </div>
+
+                </div>
+
+                <section class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            <i class="bi bi-star-fill" aria-hidden="true"></i>
+                        </div>
+
+                        <strong id="totalXp">
+                            0
+                        </strong>
+
+                        <span>
+                            XP total
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            <i class="bi bi-fire" aria-hidden="true"></i>
+                        </div>
+
+                        <strong id="streak">
+                            0
+                        </strong>
+
+                        <span>
+                            dias consecutivos
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        </div>
+
+                        <strong id="completedLessons">
+                            0
+                        </strong>
+
+                        <span>
+                            lições concluídas
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <div class="stat-card-icon">
+                            <i class="bi bi-trophy-fill" aria-hidden="true"></i>
+                        </div>
+
+                        <strong id="achievementCount">
+                            0
+                        </strong>
+
+                        <span>
+                            conquistas
+                        </span>
+
+                    </div>
+
+                </section>
+
+                <div class="section-title">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            LEARNING PATH
+                        </span>
+
+                        <h2>
+                            Sua trilha
+                        </h2>
+
+                        <p>
+                            Avance uma etapa de cada vez.
+                        </p>
+
+                    </div>
+
+                    <a href="#dashboardPath">
+                        Ver curso <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </a>
+
+                </div>
+
+                <section id="dashboardPath" class="learning-path"></section>
+
+                <section class="dashboard-teacher-banner">
+
+                    <div class="dashboard-teacher-banner-content">
+
+                        <span class="eyebrow">
+                            YOUR TEACHER
+                        </span>
+
+                        <h2>
+                            Conheça a Teacher Vanessa
+                        </h2>
+
+                        <p>
+                            Conheça um pouco mais sobre a metodologia e a proposta do
+                            English in Your Time.
+                        </p>
+
+                    </div>
+
+                    <div class="dashboard-teacher-banner-actions">
+
+                        <a href="teacher.html" class="btn btn-primary">
+                            Conhecer a Teacher
+                        </a>
+
+                        <a href="index.html" class="btn btn-secondary">
+                            Visitar o site
+                        </a>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </main>
+
+        <nav class="mobile-bottom-nav">
+
+            <a href="dashboard.html" class="active">
+                <span class="nav-icon"><i class="bi bi-house-door" aria-hidden="true"></i></span>
+                <span>Início</span>
+            </a>
+
+            <a href="#dashboardPath">
+                <span class="nav-icon"><i class="bi bi-play-circle" aria-hidden="true"></i></span>
+                <span>Aprender</span>
+            </a>
+
+            <a href="#dashboardPath">
+                <span class="nav-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span>
+                <span>Revisar</span>
+            </a>
+
+            <a href="#dashboardPath">
+                <span class="nav-icon"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+                <span>Conquistas</span>
+            </a>
+
+            <a href="#dashboardPath">
+                <span class="nav-icon"><i class="bi bi-person-circle" aria-hidden="true"></i></span>
+                <span>Perfil</span>
+            </a>
+
+        </nav>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js?v=20261001-ui-repair-1"></script>
+    <script src="js/level-content.js?v=20261001-ui-repair-1"></script>
+    <script src="js/student-dashboard.js?v=20261001-ui-repair-1"></script>
+
 </body>
+
 </html>

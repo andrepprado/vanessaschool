@@ -2715,11 +2715,11 @@ select:focus-visible {
 
 /* =========================================================
    ENGLISH IN YOUR TIME
-   AJUSTES DE INTEGRAÃƒâ€¡ÃƒÆ’O SITE + PLATAFORMA
+   AJUSTES DE INTEGRAÃâ€¡ÃÆ’O SITE + PLATAFORMA
    ========================================================= */
 
 /* =========================================================
-   SIDEBAR - ÃƒÂREA DO LOGO
+   SIDEBAR - ÃREA DO LOGO
    ========================================================= */
 
 .sidebar-logo {
@@ -3418,9 +3418,9 @@ select:focus-visible {
 /* ========================================================================== */
 /* ========================================================================== */
 /*                                                                            */
-/*        SITE PÃƒÅ¡BLICO Ã¢â‚¬â€ TEACHER VANESSA / INDEX.HTML                         */
+/*        SITE PÃÅ¡BLICO ââ‚¬” TEACHER VANESSA / INDEX.HTML                         */
 /*                                                                            */
-/*        Tudo abaixo pertence SOMENTE ÃƒÂ  pÃƒÂ¡gina index.html.                   */
+/*        Tudo abaixo pertence SOMENTE Ã  página index.html.                   */
 /*        O body do index.html utiliza: class="public-site"                   */
 /*                                                                            */
 /* ========================================================================== */
@@ -4035,7 +4035,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   SEÃƒâ€¡Ãƒâ€¢ES DO SITE PÃƒÅ¡BLICO
+   SEÃâ€¡ÕES DO SITE PÃÅ¡BLICO
    ========================================================================== */
 
 .public-site section {
@@ -4151,7 +4151,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   MÃƒâ€°TODO
+   MÃâ€°TODO
    ========================================================================== */
 
 .public-site .method {
@@ -4726,7 +4726,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   RESPONSIVO Ã¢â‚¬â€ SITE PÃƒÅ¡BLICO
+   RESPONSIVO ââ‚¬” SITE PÃÅ¡BLICO
    ========================================================================== */
 
 @media(max-width:1000px) {
@@ -4903,7 +4903,7 @@ select:focus-visible {
 }
 
 /* ==========================================================================
-   ACESSIBILIDADE / MOVIMENTO Ã¢â‚¬â€ SITE PÃƒÅ¡BLICO
+   ACESSIBILIDADE / MOVIMENTO ââ‚¬” SITE PÃÅ¡BLICO
    ========================================================================== */
 
 @media(prefers-reduced-motion:reduce) {
@@ -4990,14 +4990,14 @@ select:focus-visible {
 }
 
 /*
-   O logoFull jÃƒÂ¡ contÃƒÂ©m toda a identidade visual.
+   O logoFull já contém toda a identidade visual.
 */
 .sidebar-brand-name {
     display: none !important;
 }
 
 /* =========================================================
-   SITE PÃƒÅ¡BLICO
+   SITE PÃÅ¡BLICO
    logoMonoWhite
    Sem efeito de avatar/foto
    ========================================================= */
@@ -5115,8 +5115,8 @@ select:focus-visible {
 /* ===== EYT QUESTION AUDIO REMOVAL START ===== */
 
 /*
- * Perguntas nunca possuem ÃƒÂ¡udio.
- * Somente alternativas podem reproduzir pronÃƒÂºncia.
+ * Perguntas nunca possuem áudio.
+ * Somente alternativas podem reproduzir pronúncia.
  */
 
 .eyt-question-row {
@@ -6200,256 +6200,62 @@ select:focus-visible {
 
 /* === STUDENT DATABASE PLATFORM END === */
 
-/* === LEVEL EXERCISES START === */
+/* === ORIGINAL AUTHENTICATED EXPERIENCE START === */
 
-.student-activities-grid {
-    gap: 18px;
+body.app-body {
+    min-height: 100vh;
+    height: auto !important;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
-.student-level-lesson {
-    overflow: hidden;
-    background: #fff;
-    border: 1px solid #e5e8ed;
-    border-radius: 17px;
+body.app-body .app-layout {
+    min-height: 100vh;
+    height: auto !important;
 }
 
-.student-level-lesson-header {
-    width: 100%;
-    padding: 24px;
-    border: 0;
-    background: transparent;
-    display: grid;
-    grid-template-columns: 48px 1fr auto;
-    align-items: center;
-    gap: 18px;
-    text-align: left;
-    cursor: pointer;
+body.app-body .app-main {
+    min-height: 100vh;
+    height: auto !important;
 }
 
-.student-level-lesson-number {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: #0b1f3f;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
+body.app-body .dashboard-page {
+    min-height: 0 !important;
+    height: auto !important;
 }
 
-.student-level-lesson-title > span {
-    color: #c41230;
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: .14em;
+body.app-body #dashboardPath {
+    min-height: 0 !important;
+    height: auto !important;
 }
 
-.student-level-lesson-title h3 {
-    margin: 5px 0 4px;
-    color: #0b1f3f;
-    font-size: 17px;
-}
-
-.student-level-lesson-title p {
-    margin: 0;
-    color: #778195;
-    font-size: 10px;
-}
-
-.student-level-lesson-progress {
-    min-width: 70px;
-    display: grid;
-    grid-template-columns: auto auto;
-    align-items: center;
-    justify-content: end;
-    gap: 5px 9px;
-}
-
-.student-level-lesson-progress strong {
-    color: #0b1f3f;
-    font-size: 11px;
-}
-
-.student-level-lesson-progress span {
-    color: #8993a3;
-    font-size: 9px;
-}
-
-.student-level-lesson-progress i {
-    grid-column: 1 / -1;
-    justify-self: end;
-    color: #98a2b3;
-}
-
-.student-level-exercises {
-    max-height: 0;
-    overflow: hidden;
-    background: #f8f9fb;
-    transition: max-height .35s ease;
-}
-
-.student-level-exercises.open {
-    max-height: 5000px;
-    border-top: 1px solid #e8eaef;
-}
-
-.level-exercise-form {
-    margin: 18px;
-    padding: 24px;
-    background: #fff;
-    border: 1px solid #e4e7ec;
-    border-radius: 14px;
-}
-
-.level-exercise-form.completed {
-    border-color: #b7dfc9;
-    background: #fbfffc;
-}
-
-.level-exercise-top {
-    min-height: 25px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.level-exercise-number {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: rgba(11,31,63,.07);
-    color: #0b1f3f;
-    font-size: 9px;
-    font-weight: 700;
-}
-
-.level-exercise-completed {
-    color: #067647;
+.student-level-dashboard-badge {
+    width: fit-content;
+    margin-top: 12px;
+    padding: 6px 11px;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: 9px;
+    gap: 6px;
+    color: var(--magenta-deep);
+    background: var(--magenta-soft);
+    border-radius: var(--radius-pill);
+    font-family: "Space Mono", monospace;
+    font-size: 8px;
     font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
 }
 
-.level-exercise-form h4 {
-    margin: 17px 0;
-    color: #172033;
-    font-size: 14px;
-    line-height: 1.55;
-}
-
-.level-choice-list {
-    display: grid;
-    gap: 9px;
-}
-
-.level-choice-option {
-    min-height: 47px;
-    padding: 8px 13px;
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    background: #fafbfc;
-    border: 1px solid #e3e6eb;
-    border-radius: 10px;
-    color: #3d485b;
-    cursor: pointer;
-    font-size: 11px;
-    transition:
-        border-color .15s ease,
-        background .15s ease;
-}
-
-.level-choice-option:hover {
-    border-color: #aeb6c3;
-}
-
-.level-choice-option:has(input:checked) {
-    border-color: #0b1f3f;
-    background: rgba(11,31,63,.04);
-}
-
-.level-choice-option input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.level-choice-letter {
-    width: 27px;
-    height: 27px;
-    flex: 0 0 27px;
-    display: grid;
-    place-items: center;
-    background: #fff;
-    border: 1px solid #dce0e6;
-    border-radius: 7px;
-    color: #0b1f3f;
-    font-size: 9px;
-    font-weight: 700;
-}
-
-.level-fill-input {
+/*
+ * Speech CSS already contains the original 2-column
+ * question layout and .eyt-question-speech button.
+ */
+.lesson-page .eyt-question-row {
     width: 100%;
-    box-sizing: border-box;
-    min-height: 48px;
-    padding: 0 14px;
-    background: #fafbfc;
-    color: #172033;
-    border: 1px solid #dfe3e9;
-    border-radius: 10px;
-    font: inherit;
-    font-size: 11px;
-    outline: none;
 }
 
-.level-fill-input:focus {
-    border-color: #0b1f3f;
-    box-shadow: 0 0 0 3px rgba(11,31,63,.06);
+.lesson-page button.eyt-question-speech {
+    display: inline-flex;
 }
 
-.level-exercise-feedback {
-    min-height: 18px;
-    margin: 13px 0 8px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.level-exercise-feedback.success {
-    color: #067647;
-}
-
-.level-exercise-feedback.error {
-    color: #b42318;
-}
-
-.level-check-button {
-    margin-top: 5px;
-}
-
-@media(max-width:700px) {
-    .student-level-lesson-header {
-        grid-template-columns: 42px 1fr;
-    }
-
-    .student-level-lesson-progress {
-        grid-column: 2;
-        justify-content: start;
-        grid-template-columns: auto auto auto;
-    }
-
-    .student-level-lesson-progress i {
-        grid-column: auto;
-    }
-
-    .level-exercise-form {
-        margin: 10px;
-        padding: 18px;
-    }
-}
-
-/* === LEVEL EXERCISES END === */
+/* === ORIGINAL AUTHENTICATED EXPERIENCE END === */

@@ -1,36 +1,19 @@
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
-        const loading =
-            document.getElementById(
-                "studentLoading"
-            );
+        const escapeHTML = value =>
+            String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
 
-        const content =
-            document.getElementById(
-                "studentContent"
-            );
-
-        const logout =
-            document.getElementById(
-                "studentLogout"
-            );
-
-        let client = null;
-        let profile = null;
-        let levelData = null;
-        let progressMap = new Map();
-
-        logout?.addEventListener(
-            "click",
-            async () => {
-                await EYTSupabase.logout();
-                location.href = "/acesso";
-            }
-        );
+        const icon = name =>
+            `<i class="bi ${name}" aria-hidden="true"></i>`;
 
         try {
-            client =
+            const client =
                 await EYTSupabase
                     .getClient();
 
@@ -41,10 +24,11 @@ document.addEventListener(
             if (!session) {
                 location.href =
                     "/acesso";
+
                 return;
             }
 
-            profile =
+            const profile =
                 await EYTSupabase
                     .getProfile();
 
@@ -60,14 +44,17 @@ document.addEventListener(
             ) {
                 location.href =
                     "/admin";
+
                 return;
             }
 
             if (!profile.active) {
-                await EYTSupabase.logout();
+                await EYTSupabase
+                    .logout();
 
                 location.href =
                     "/acesso";
+
                 return;
             }
 
@@ -77,712 +64,573 @@ document.addEventListener(
                     "A1"
                 ).toUpperCase();
 
-            levelData =
+            const levelData =
                 window.EYTLevelContent[
                     level
                 ];
 
             if (!levelData) {
                 throw new Error(
-                    `Nenhum conteúdo foi configurado para o nível ${level}.`
+                    `Nenhum conteúdo disponível para o nível ${level}.`
                 );
             }
 
             const {
-                data: exerciseProgress,
-                error: exerciseProgressError
+                data: progress,
+                error
             } = await client
                 .from(
-                    "student_exercise_progress"
+                    "student_progress"
                 )
                 .select(
-                    "exercise_id,lesson_id,level,correct,attempts,last_answer,completed_at"
+                    "progress_percent,xp,streak,completed_lessons,lesson_progress,correct_answers,total_answers,last_study_date,xp_today"
                 )
                 .eq(
                     "student_id",
                     profile.id
-                );
-
-            if (exerciseProgressError) {
-                throw exerciseProgressError;
-            }
-
-            progressMap =
-                new Map(
-                    (exerciseProgress || [])
-                        .map(
-                            item => [
-                                item.exercise_id,
-                                item
-                            ]
-                        )
-                );
-
-            renderHeader();
-            renderLessons();
-            updateStatistics();
-
-            loading.classList.add(
-                "hidden"
-            );
-
-            content.classList.remove(
-                "hidden"
-            );
-        } catch (error) {
-            console.error(error);
-
-            loading.innerHTML = `
-                <div class="student-empty-state">
-                    <h2>
-                        Não foi possível carregar seu ambiente
-                    </h2>
-
-                    <p>
-                        ${escapeHtml(
-                            error.message
-                        )}
-                    </p>
-
-                    <a
-                        href="/acesso"
-                        class="btn btn-primary">
-                        Voltar ao acesso
-                    </a>
-                </div>
-            `;
-        }
-
-        function getAllExercises() {
-            return levelData.lessons
-                .flatMap(
-                    lesson =>
-                        lesson.exercises
-                            .map(
-                                exercise => ({
-                                    ...exercise,
-                                    lessonId:
-                                        lesson.id
-                                })
-                            )
-                );
-        }
-
-        function getCompletedCount() {
-            return getAllExercises()
-                .filter(
-                    exercise =>
-                        progressMap.get(
-                            exercise.id
-                        )?.correct === true
                 )
-                .length;
-        }
+                .single();
 
-        function renderHeader() {
-            document.getElementById(
-                "studentName"
-            ).textContent =
-                profile.name;
-
-            document.getElementById(
-                "studentLevel"
-            ).textContent =
-                profile.level;
-
-            const title =
-                document.querySelector(
-                    ".student-db-section .section-title h2"
-                );
-
-            const description =
-                document.querySelector(
-                    ".student-db-section .section-title p"
-                );
-
-            if (title) {
-                title.textContent =
-                    levelData.title;
+            if (error) {
+                throw error;
             }
-
-            if (description) {
-                description.textContent =
-                    levelData.description;
-            }
-        }
-
-        function renderLessons() {
-            const root =
-                document.getElementById(
-                    "studentActivities"
-                );
-
-            root.innerHTML =
-                levelData.lessons
-                    .map(
-                        (
-                            lesson,
-                            index
-                        ) => {
-                            const completed =
-                                lesson.exercises.filter(
-                                    exercise =>
-                                        progressMap.get(
-                                            exercise.id
-                                        )?.correct
-                                ).length;
-
-                            const percentage =
-                                Math.round(
-                                    completed /
-                                    lesson.exercises.length *
-                                    100
-                                );
-
-                            return `
-                                <article
-                                    class="student-level-lesson"
-                                    data-lesson="${escapeAttribute(
-                                        lesson.id
-                                    )}">
-
-                                    <button
-                                        type="button"
-                                        class="student-level-lesson-header"
-                                        data-toggle-lesson="${escapeAttribute(
-                                            lesson.id
-                                        )}">
-
-                                        <div class="student-level-lesson-number">
-                                            ${index + 1}
-                                        </div>
-
-                                        <div class="student-level-lesson-title">
-                                            <span>
-                                                LESSON ${index + 1}
-                                            </span>
-
-                                            <h3>
-                                                ${escapeHtml(
-                                                    lesson.title
-                                                )}
-                                            </h3>
-
-                                            <p>
-                                                ${escapeHtml(
-                                                    lesson.description
-                                                )}
-                                            </p>
-                                        </div>
-
-                                        <div class="student-level-lesson-progress">
-                                            <strong>
-                                                ${completed}/${lesson.exercises.length}
-                                            </strong>
-
-                                            <span>
-                                                ${percentage}%
-                                            </span>
-
-                                            <i class="bi bi-chevron-down"></i>
-                                        </div>
-                                    </button>
-
-                                    <div
-                                        class="student-level-exercises ${
-                                            index === 0
-                                                ? "open"
-                                                : ""
-                                        }"
-                                        data-lesson-content="${escapeAttribute(
-                                            lesson.id
-                                        )}">
-
-                                        ${lesson.exercises
-                                            .map(
-                                                (
-                                                    exercise,
-                                                    exerciseIndex
-                                                ) =>
-                                                    renderExercise(
-                                                        lesson,
-                                                        exercise,
-                                                        exerciseIndex
-                                                    )
-                                            )
-                                            .join("")}
-                                    </div>
-                                </article>
-                            `;
-                        }
-                    )
-                    .join("");
-
-            root.querySelectorAll(
-                "[data-toggle-lesson]"
-            ).forEach(
-                button => {
-                    button.addEventListener(
-                        "click",
-                        () => {
-                            const lessonId =
-                                button.dataset
-                                    .toggleLesson;
-
-                            const lessonContent =
-                                root.querySelector(
-                                    `[data-lesson-content="${cssEscape(
-                                        lessonId
-                                    )}"]`
-                                );
-
-                            lessonContent
-                                ?.classList
-                                .toggle("open");
-                        }
-                    );
-                }
-            );
-
-            root.querySelectorAll(
-                ".level-exercise-form"
-            ).forEach(
-                form => {
-                    form.addEventListener(
-                        "submit",
-                        handleExerciseSubmit
-                    );
-                }
-            );
-        }
-
-        function renderExercise(
-            lesson,
-            exercise,
-            index
-        ) {
-            const saved =
-                progressMap.get(
-                    exercise.id
-                );
 
             const completed =
-                saved?.correct === true;
+                Array.isArray(
+                    progress.completed_lessons
+                )
+                    ? progress.completed_lessons
+                    : [];
 
-            let control = "";
+            const lessonProgress =
+                progress.lesson_progress &&
+                typeof progress.lesson_progress ===
+                    "object"
+                    ? progress.lesson_progress
+                    : {};
 
-            if (
-                exercise.type ===
-                "choice"
-            ) {
-                control = `
-                    <div class="level-choice-list">
-                        ${exercise.options
-                            .map(
-                                (
-                                    option,
-                                    optionIndex
-                                ) => `
-                                    <label class="level-choice-option">
-                                        <input
-                                            type="radio"
-                                            name="${escapeAttribute(
-                                                exercise.id
-                                            )}"
-                                            value="${escapeAttribute(
-                                                option
-                                            )}"
-                                            ${
-                                                completed
-                                                    ? "disabled"
-                                                    : ""
-                                            }>
+            const lessons =
+                levelData.lessons.map(
+                    (
+                        lesson,
+                        index
+                    ) => ({
+                        ...lesson,
+                        number:
+                            index + 1,
+                        icon:
+                            lesson.icon ||
+                            "bi-book",
+                        xp:
+                            lesson.xp ||
+                            40
+                    })
+                );
 
-                                        <span class="level-choice-letter">
-                                            ${String.fromCharCode(
-                                                65 +
-                                                optionIndex
-                                            )}
-                                        </span>
+            function statusFor(index) {
+                const lesson =
+                    lessons[index];
 
-                                        <span>
-                                            ${escapeHtml(
-                                                option
-                                            )}
-                                        </span>
-                                    </label>
-                                `
-                            )
-                            .join("")}
-                    </div>
-                `;
-            } else {
-                control = `
-                    <input
-                        type="text"
-                        class="level-fill-input"
-                        name="answer"
-                        autocomplete="off"
-                        placeholder="Digite sua resposta..."
-                        ${
-                            completed
-                                ? `value="${escapeAttribute(
-                                    saved?.last_answer ||
-                                    exercise.answer
-                                )}" disabled`
-                                : ""
-                        }>
-                `;
-            }
-
-            return `
-                <form
-                    class="level-exercise-form ${
-                        completed
-                            ? "completed"
-                            : ""
-                    }"
-                    data-exercise="${escapeAttribute(
-                        exercise.id
-                    )}"
-                    data-lesson="${escapeAttribute(
+                if (
+                    completed.includes(
                         lesson.id
-                    )}">
+                    )
+                ) {
+                    return "completed";
+                }
 
-                    <div class="level-exercise-top">
-                        <span class="level-exercise-number">
-                            ${index + 1}
-                        </span>
+                if (index === 0) {
+                    return "available";
+                }
 
-                        ${
-                            completed
-                                ? `
-                                    <span class="level-exercise-completed">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                        Concluído
-                                    </span>
-                                `
-                                : ""
-                        }
-                    </div>
+                if (
+                    completed.includes(
+                        lessons[
+                            index - 1
+                        ].id
+                    )
+                ) {
+                    return "available";
+                }
 
-                    <h4>
-                        ${escapeHtml(
-                            exercise.question
-                        )}
-                    </h4>
-
-                    ${control}
-
-                    <div class="level-exercise-feedback"></div>
-
-                    ${
-                        completed
-                            ? ""
-                            : `
-                                <button
-                                    type="submit"
-                                    class="btn btn-primary level-check-button">
-                                    Verificar resposta
-                                    <i class="bi bi-arrow-right"></i>
-                                </button>
-                            `
-                    }
-                </form>
-            `;
-        }
-
-        async function handleExerciseSubmit(
-            event
-        ) {
-            event.preventDefault();
-
-            const form =
-                event.currentTarget;
-
-            const exerciseId =
-                form.dataset.exercise;
-
-            const lessonId =
-                form.dataset.lesson;
-
-            const lesson =
-                levelData.lessons.find(
-                    item =>
-                        item.id ===
-                        lessonId
-                );
-
-            const exercise =
-                lesson?.exercises.find(
-                    item =>
-                        item.id ===
-                        exerciseId
-                );
-
-            if (!exercise) {
-                return;
+                return "locked";
             }
 
-            const feedback =
-                form.querySelector(
-                    ".level-exercise-feedback"
-                );
-
-            const button =
-                form.querySelector(
-                    ".level-check-button"
-                );
-
-            let answer = "";
-
-            if (
-                exercise.type ===
-                "choice"
+            function percentFor(
+                lesson
             ) {
-                const selected =
-                    form.querySelector(
-                        'input[type="radio"]:checked'
-                    );
-
-                if (!selected) {
-                    feedback.textContent =
-                        "Selecione uma alternativa.";
-
-                    feedback.className =
-                        "level-exercise-feedback error";
-
-                    return;
+                if (
+                    completed.includes(
+                        lesson.id
+                    )
+                ) {
+                    return 100;
                 }
 
-                answer =
-                    selected.value;
-            } else {
-                const input =
-                    form.querySelector(
-                        'input[name="answer"]'
-                    );
-
-                answer =
-                    input?.value
-                        .trim() ||
-                    "";
-
-                if (!answer) {
-                    feedback.textContent =
-                        "Digite sua resposta.";
-
-                    feedback.className =
-                        "level-exercise-feedback error";
-
-                    return;
-                }
+                return Number(
+                    lessonProgress[
+                        lesson.id
+                    ]?.percent ||
+                    0
+                );
             }
 
-            const acceptedAnswers =
-                [
-                    exercise.answer,
-                    ...(exercise.alternatives ||
-                        [])
-                ]
-                    .map(normalizeAnswer);
+            const nextLesson =
+                lessons.find(
+                    (
+                        lesson,
+                        index
+                    ) =>
+                        statusFor(
+                            index
+                        ) ===
+                            "available" &&
+                        !completed.includes(
+                            lesson.id
+                        )
+                ) ||
+                lessons[
+                    lessons.length -
+                    1
+                ];
 
-            const correct =
-                acceptedAnswers.includes(
-                    normalizeAnswer(
-                        answer
-                    )
-                );
+            const completedCount =
+                lessons.filter(
+                    lesson =>
+                        completed.includes(
+                            lesson.id
+                        )
+                ).length;
 
-            const existing =
-                progressMap.get(
-                    exercise.id
-                );
-
-            button.disabled =
-                true;
-
-            button.textContent =
-                "Salvando...";
-
-            try {
-                const row = {
-                    student_id:
-                        profile.id,
-                    exercise_id:
-                        exercise.id,
-                    lesson_id:
-                        lesson.id,
-                    level:
-                        profile.level,
-                    correct:
-                        correct ||
-                        existing?.correct ===
-                            true,
-                    attempts:
-                        Number(
-                            existing?.attempts ||
-                            0
-                        ) + 1,
-                    last_answer:
-                        answer,
-                    completed_at:
-                        correct
-                            ? new Date()
-                                .toISOString()
-                            : existing
-                                ?.completed_at ||
-                              null,
-                    updated_at:
-                        new Date()
-                            .toISOString()
-                };
-
-                const {
-                    error
-                } = await client
-                    .from(
-                        "student_exercise_progress"
-                    )
-                    .upsert(
-                        row,
-                        {
-                            onConflict:
-                                "student_id,exercise_id"
-                        }
-                    );
-
-                if (error) {
-                    throw error;
-                }
-
-                progressMap.set(
-                    exercise.id,
-                    row
-                );
-
-                if (correct) {
-                    feedback.innerHTML = `
-                        <i class="bi bi-check-circle-fill"></i>
-                        Resposta correta!
-                    `;
-
-                    feedback.className =
-                        "level-exercise-feedback success";
-
-                    setTimeout(
-                        () => {
-                            renderLessons();
-                            updateStatistics();
-                        },
-                        650
-                    );
-                } else {
-                    feedback.innerHTML = `
-                        <i class="bi bi-x-circle-fill"></i>
-                        Ainda não. Tente novamente.
-                    `;
-
-                    feedback.className =
-                        "level-exercise-feedback error";
-
-                    button.disabled =
-                        false;
-
-                    button.innerHTML =
-                        'Tentar novamente <i class="bi bi-arrow-right"></i>';
-                }
-            } catch (error) {
-                console.error(error);
-
-                feedback.textContent =
-                    "Não foi possível salvar sua resposta.";
-
-                feedback.className =
-                    "level-exercise-feedback error";
-
-                button.disabled =
-                    false;
-
-                button.innerHTML =
-                    'Verificar resposta <i class="bi bi-arrow-right"></i>';
-            }
-        }
-
-        function updateStatistics() {
-            const all =
-                getAllExercises();
-
-            const completed =
-                getCompletedCount();
-
-            const percent =
-                all.length
+            const coursePercent =
+                lessons.length
                     ? Math.round(
-                        completed /
-                        all.length *
+                        completedCount /
+                        lessons.length *
                         100
                     )
                     : 0;
 
-            document.getElementById(
-                "studentProgress"
-            ).textContent =
-                `${percent}%`;
+            /*
+             * ORIGINAL HEADER
+             */
+            const firstName =
+                String(
+                    profile.name ||
+                    "Aluno"
+                )
+                    .trim()
+                    .split(/\s+/)[0];
 
             document.getElementById(
-                "studentXp"
+                "userName"
             ).textContent =
-                completed * 10;
+                firstName;
 
-            const streak =
-                document.getElementById(
-                    "studentStreak"
+            document.getElementById(
+                "streakTop"
+            ).textContent =
+                `${progress.streak || 0} ${
+                    Number(
+                        progress.streak ||
+                        0
+                    ) === 1
+                        ? "dia"
+                        : "dias"
+                }`;
+
+            document.getElementById(
+                "xpTop"
+            ).textContent =
+                `${progress.xp || 0} XP`;
+
+            document.getElementById(
+                "totalXp"
+            ).textContent =
+                progress.xp ||
+                0;
+
+            document.getElementById(
+                "streak"
+            ).textContent =
+                progress.streak ||
+                0;
+
+            document.getElementById(
+                "completedLessons"
+            ).textContent =
+                completedCount;
+
+            document.getElementById(
+                "achievementCount"
+            ).textContent =
+                Math.min(
+                    5,
+                    Math.floor(
+                        coursePercent /
+                        20
+                    )
                 );
 
-            if (streak) {
-                streak.textContent =
-                    completed;
+            const mobileStreak =
+                document.getElementById(
+                    "mobileStreak"
+                );
+
+            if (mobileStreak) {
+                mobileStreak.innerHTML =
+                    `${icon(
+                        "bi-fire"
+                    )} ${
+                        progress.streak ||
+                        0
+                    }`;
             }
+
+            const mobileXp =
+                document.getElementById(
+                    "mobileXp"
+                );
+
+            if (mobileXp) {
+                mobileXp.innerHTML =
+                    `${icon(
+                        "bi-star-fill"
+                    )} ${
+                        progress.xp ||
+                        0
+                    }`;
+            }
+
+            /*
+             * LEVEL BADGE
+             */
+            const welcome =
+                document.querySelector(
+                    ".dashboard-welcome"
+                );
+
+            if (
+                welcome &&
+                !welcome.querySelector(
+                    ".student-level-dashboard-badge"
+                )
+            ) {
+                const badge =
+                    document.createElement(
+                        "div"
+                    );
+
+                badge.className =
+                    "student-level-dashboard-badge";
+
+                badge.innerHTML = `
+                    ${icon(
+                        "bi-mortarboard-fill"
+                    )}
+                    Nível ${escapeHTML(
+                        level
+                    )}
+                `;
+
+                welcome.appendChild(
+                    badge
+                );
+            }
+
+            /*
+             * CONTINUE CARD - ORIGINAL
+             */
+            if (nextLesson) {
+                const nextPercent =
+                    percentFor(
+                        nextLesson
+                    );
+
+                document.getElementById(
+                    "continueTitle"
+                ).textContent =
+                    nextLesson.title;
+
+                document.getElementById(
+                    "continueDescription"
+                ).textContent =
+                    nextLesson.description;
+
+                document.getElementById(
+                    "continuePercent"
+                ).textContent =
+                    `${nextPercent}%`;
+
+                document.getElementById(
+                    "continueProgressBar"
+                ).style.width =
+                    `${nextPercent}%`;
+
+                document.getElementById(
+                    "continueButton"
+                ).href =
+                    `student-lesson.html?id=${encodeURIComponent(
+                        nextLesson.id
+                    )}`;
+            }
+
+            /*
+             * DAILY GOAL - ORIGINAL
+             */
+            const today =
+                new Date()
+                    .toISOString()
+                    .slice(
+                        0,
+                        10
+                    );
+
+            const todayXp =
+                progress.last_study_date ===
+                today
+                    ? Number(
+                        progress.xp_today ||
+                        0
+                    )
+                    : 0;
+
+            const dailyPercent =
+                Math.min(
+                    100,
+                    Math.round(
+                        todayXp /
+                        50 *
+                        100
+                    )
+                );
+
+            document.getElementById(
+                "dailyGoalValue"
+            ).textContent =
+                `${todayXp} / 50 XP`;
+
+            document.getElementById(
+                "dailyGoalPercent"
+            ).textContent =
+                `${dailyPercent}%`;
+
+            document.getElementById(
+                "dailyGoalBar"
+            ).style.width =
+                `${dailyPercent}%`;
+
+            /*
+             * ORIGINAL LEARNING PATH
+             */
+            const root =
+                document.getElementById(
+                    "dashboardPath"
+                );
+
+            root.innerHTML = `
+                <article class="path-unit">
+
+                    <header class="path-unit-header">
+
+                        <div class="path-unit-number">
+                            ${escapeHTML(
+                                level
+                            )}
+                        </div>
+
+                        <div>
+
+                            <h3>
+                                ${escapeHTML(
+                                    levelData.title
+                                )}
+                            </h3>
+
+                            <p>
+                                ${escapeHTML(
+                                    levelData.description
+                                )}
+                            </p>
+
+                        </div>
+
+                    </header>
+
+                    <div class="path-lessons">
+
+                        ${lessons.map(
+                            (
+                                lesson,
+                                index
+                            ) => {
+                                const status =
+                                    statusFor(
+                                        index
+                                    );
+
+                                const percent =
+                                    percentFor(
+                                        lesson
+                                    );
+
+                                const statusText =
+                                    status ===
+                                    "completed"
+                                        ? "Concluída"
+                                        : status ===
+                                          "locked"
+                                            ? "Bloqueada"
+                                            : percent > 0
+                                                ? `${percent}%`
+                                                : "Disponível";
+
+                                const lessonIcon =
+                                    status ===
+                                    "completed"
+                                        ? icon(
+                                            "bi-check-lg"
+                                        )
+                                        : status ===
+                                          "locked"
+                                            ? icon(
+                                                "bi-lock-fill"
+                                            )
+                                            : icon(
+                                                lesson.icon
+                                            );
+
+                                const content = `
+                                    <div class="path-lesson-icon">
+                                        ${lessonIcon}
+                                    </div>
+
+                                    <div class="path-lesson-info">
+
+                                        <h4>
+                                            ${escapeHTML(
+                                                lesson.title
+                                            )}
+                                        </h4>
+
+                                        <p>
+                                            ${escapeHTML(
+                                                lesson.description
+                                            )}
+                                        </p>
+
+                                    </div>
+
+                                    <div class="path-lesson-status">
+                                        ${escapeHTML(
+                                            statusText
+                                        )}
+                                    </div>
+                                `;
+
+                                if (
+                                    status ===
+                                    "locked"
+                                ) {
+                                    return `
+                                        <div class="path-lesson locked">
+                                            ${content}
+                                        </div>
+                                    `;
+                                }
+
+                                return `
+                                    <a
+                                        href="student-lesson.html?id=${encodeURIComponent(
+                                            lesson.id
+                                        )}"
+                                        class="path-lesson ${status}">
+                                        ${content}
+                                    </a>
+                                `;
+                            }
+                        ).join("")}
+
+                    </div>
+
+                </article>
+            `;
+
+            /*
+             * Links that previously went to localStorage-only pages
+             * now take the authenticated student to the learning path.
+             */
+            document
+                .querySelectorAll(
+                    'a[href="#dashboardPath"]'
+                )
+                .forEach(
+                    link => {
+                        link.addEventListener(
+                            "click",
+                            event => {
+                                event.preventDefault();
+
+                                document.getElementById(
+                                    "dashboardPath"
+                                )?.scrollIntoView({
+                                    behavior:
+                                        "smooth",
+                                    block:
+                                        "start"
+                                });
+                            }
+                        );
+                    }
+                );
+        }
+        catch (error) {
+            console.error(error);
+
+            document.body.innerHTML = `
+                <main
+                    style="
+                        min-height:100vh;
+                        display:grid;
+                        place-items:center;
+                        padding:30px;
+                        background:#F7F3EA;
+                    ">
+
+                    <section
+                        style="
+                            max-width:600px;
+                            text-align:center;
+                        ">
+
+                        <h1
+                            style="
+                                color:#0B1F3F;
+                                margin-bottom:15px;
+                            ">
+                            Não foi possível carregar seu ambiente
+                        </h1>
+
+                        <p
+                            style="
+                                color:#4A4F5E;
+                                margin-bottom:25px;
+                            ">
+                            ${escapeHTML(
+                                error.message
+                            )}
+                        </p>
+
+                        <a
+                            href="/acesso"
+                            class="btn btn-primary">
+                            Voltar ao acesso
+                        </a>
+
+                    </section>
+
+                </main>
+            `;
         }
     }
 );
-
-function normalizeAnswer(value) {
-    return String(value ?? "")
-        .trim()
-        .toLowerCase()
-        .replace(/[.!?,;:]/g,"")
-        .replace(/\s+/g," ");
-}
-
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-}
-
-function escapeAttribute(value) {
-    return escapeHtml(value);
-}
-
-function cssEscape(value) {
-    if (
-        window.CSS &&
-        typeof window.CSS.escape ===
-            "function"
-    ) {
-        return window.CSS.escape(
-            value
-        );
-    }
-
-    return String(value)
-        .replace(
-            /"/g,
-            '\\"'
-        );
-}
