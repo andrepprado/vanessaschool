@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0b1f3f">
+<title>Gerenciamento de Alunos | English in Your Time</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="css/style.css?v=20261001-db1">
+</head>
+<body class="admin-body">
+<aside class="admin-sidebar">
+<a href="/admin" class="admin-sidebar-logo">
+<img src="img/logoFullMonoWhite.png" alt="English in Your Time">
+</a>
+
+<nav>
+<a href="/admin" class="active">
+<i class="bi bi-people-fill"></i>
+Alunos
+</a>
+
+<div class="admin-nav-disabled">
+<i class="bi bi-journal-text"></i>
+Materiais
+<span>EM BREVE</span>
+</div>
+
+<div class="admin-nav-disabled">
+<i class="bi bi-pencil-square"></i>
+Atividades
+<span>EM BREVE</span>
+</div>
+</nav>
+
+<div class="admin-sidebar-bottom">
+<div>
+<span>ADMINISTRADOR</span>
+<strong id="adminName">
+Teacher Vanessa
+</strong>
+</div>
+
+<button id="adminLogout">
+<i class="bi bi-box-arrow-left"></i>
+Sair
+</button>
+</div>
+</aside>
+
+<main class="admin-main">
+<header class="admin-header">
+<div>
+<span class="eyebrow">
+STUDENT MANAGEMENT
+</span>
+
+<h1>
+Gerenciamento de alunos
+</h1>
+
+<p>
+Cadastre alunos, defina níveis e acompanhe
+a evolução individual.
+</p>
+</div>
+
+<div class="admin-header-count">
+<span>ALUNOS</span>
+<strong id="studentsCount">0</strong>
+</div>
+</header>
+
+<div
+id="adminMessage"
+class="auth-message">
+</div>
+
+<section class="admin-create-card">
+<div class="admin-section-heading">
+<div>
+<span class="eyebrow">NEW STUDENT</span>
+<h2>Cadastrar aluno</h2>
+</div>
+</div>
+
+<form
+id="createStudentForm"
+class="admin-create-grid">
+
+<div class="form-group">
+<label for="newStudentName">Nome</label>
+<input
+id="newStudentName"
+type="text"
+required>
+</div>
+
+<div class="form-group">
+<label for="newStudentEmail">E-mail</label>
+<input
+id="newStudentEmail"
+type="email"
+required>
+</div>
+
+<div class="form-group">
+<label for="newStudentPassword">
+Senha inicial
+</label>
+<input
+id="newStudentPassword"
+type="password"
+minlength="8"
+required>
+</div>
+
+<div class="form-group">
+<label for="newStudentLevel">Nível</label>
+<select id="newStudentLevel">
+<option value="A1">A1</option>
+<option value="A2">A2</option>
+<option value="B1">B1</option>
+<option value="B2">B2</option>
+<option value="C1">C1</option>
+</select>
+</div>
+
+<div class="admin-create-action">
+<button
+id="createStudentButton"
+type="submit"
+class="btn btn-primary">
+<i class="bi bi-person-plus"></i>
+Cadastrar
+</button>
+</div>
+</form>
+</section>
+
+<section class="admin-students-card">
+<div class="admin-section-heading">
+<div>
+<span class="eyebrow">STUDENTS</span>
+<h2>Alunos cadastrados</h2>
+</div>
+
+<button
+type="button"
+class="btn btn-secondary"
+onclick="loadStudents()">
+<i class="bi bi-arrow-clockwise"></i>
+Atualizar
+</button>
+</div>
+
+<div class="admin-table-wrapper">
+<table class="admin-table">
+<thead>
+<tr>
+<th>Aluno</th>
+<th>Nível</th>
+<th>Progresso</th>
+<th>XP</th>
+<th>Sequência</th>
+<th>Status</th>
+<th>Observações</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="studentsTableBody">
+<tr>
+<td colspan="8">
+Carregando...
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+
+<dialog
+id="editStudentDialog"
+class="admin-dialog">
+
+<form
+id="editStudentForm"
+class="admin-edit-form">
+
+<input
+type="hidden"
+id="editStudentId">
+
+<header>
+<div>
+<span class="eyebrow">EDIT STUDENT</span>
+<h2>Editar aluno</h2>
+</div>
+
+<button
+type="button"
+id="editCancel"
+class="dialog-close">
+<i class="bi bi-x-lg"></i>
+</button>
+</header>
+
+<div class="admin-edit-grid">
+<div class="form-group">
+<label for="editStudentName">Nome</label>
+<input
+id="editStudentName"
+type="text"
+required>
+</div>
+
+<div class="form-group">
+<label for="editStudentEmail">E-mail</label>
+<input
+id="editStudentEmail"
+type="email"
+required>
+</div>
+
+<div class="form-group">
+<label for="editStudentLevel">Nível</label>
+<select id="editStudentLevel">
+<option value="A1">A1</option>
+<option value="A2">A2</option>
+<option value="B1">B1</option>
+<option value="B2">B2</option>
+<option value="C1">C1</option>
+</select>
+</div>
+
+<div class="form-group">
+<label for="editStudentPassword">
+Nova senha
+<small>opcional</small>
+</label>
+<input
+id="editStudentPassword"
+type="password"
+minlength="8"
+placeholder="Deixe vazio para manter">
+</div>
+
+<div class="form-group">
+<label for="editStudentProgress">
+Progresso %
+</label>
+<input
+id="editStudentProgress"
+type="number"
+min="0"
+max="100">
+</div>
+
+<div class="form-group">
+<label for="editStudentXp">XP</label>
+<input
+id="editStudentXp"
+type="number"
+min="0">
+</div>
+
+<div class="form-group">
+<label for="editStudentStreak">
+Sequência
+</label>
+<input
+id="editStudentStreak"
+type="number"
+min="0">
+</div>
+
+<div class="form-group admin-checkbox-group">
+<label>
+<input
+id="editStudentActive"
+type="checkbox">
+Aluno ativo
+</label>
+</div>
+
+<div class="form-group admin-notes-group">
+<label for="editStudentNotes">
+Observações
+</label>
+<textarea
+id="editStudentNotes"
+rows="5"
+placeholder="Evolução, dificuldades, planejamento..."></textarea>
+</div>
+</div>
+
+<footer>
+<button
+type="button"
+class="btn btn-secondary"
+onclick="document.getElementById('editStudentDialog').close()">
+Cancelar
+</button>
+
+<button
+type="submit"
+class="btn btn-primary">
+Salvar alterações
+</button>
+</footer>
+</form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=20261001-db1"></script>
+<script src="js/admin.js?v=20261001-db1"></script>
+</body>
+</html>

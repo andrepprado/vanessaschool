@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0b1f3f">
+<title>Administração | English in Your Time</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="css/style.css?v=20261001-db1">
+</head>
+<body class="admin-login-body">
+<main class="admin-login-layout">
+<section class="admin-login-brand">
+<img src="img/logoFullMonoWhite.png" alt="English in Your Time">
+
+<span class="eyebrow">ADMINISTRATION</span>
+
+<h1>
+Gestão da plataforma.
+</h1>
+
+<p>
+Ambiente exclusivo para gerenciamento de alunos,
+níveis e evolução.
+</p>
+
+<a href="/acesso">
+<i class="bi bi-arrow-left"></i>
+Voltar para o acesso
+</a>
+</section>
+
+<section class="admin-login-panel">
+<div class="admin-login-card">
+<div class="admin-login-icon">
+<i class="bi bi-shield-lock-fill"></i>
+</div>
+
+<span class="login-card-kicker">
+ACESSO RESTRITO
+</span>
+
+<h2>Administração</h2>
+
+<p>
+Entre com as credenciais administrativas.
+</p>
+
+<form id="adminLoginForm" class="login-form">
+<div class="form-group">
+<label for="adminEmail">E-mail</label>
+<input
+type="email"
+id="adminEmail"
+autocomplete="email"
+required>
+</div>
+
+<div class="form-group">
+<label for="adminPassword">Senha</label>
+<input
+type="password"
+id="adminPassword"
+autocomplete="current-password"
+required>
+</div>
+
+<div
+id="adminLoginMessage"
+class="auth-message">
+</div>
+
+<button
+type="submit"
+id="adminLoginButton"
+class="btn btn-primary btn-large">
+Entrar na administração
+<i class="bi bi-arrow-right"></i>
+</button>
+</form>
+</div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=20261001-db1"></script>
+<script src="js/admin-login.js?v=20261001-db1"></script>
+</body>
+</html>

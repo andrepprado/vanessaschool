@@ -1,304 +1,172 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <meta name="theme-color" content="#071229">
-    <title>Área do Aluno | English in Your Time</title>
-    
-    <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/book.svg">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-<meta name="description" content="Acesse sua área de aprendizado English in Your Time.">
-    <link rel="stylesheet" href="css/style.css?v=20260930-no-question-audio-1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0b1f3f">
+<title>Acesso | English in Your Time</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="css/style.css?v=20261001-db1">
 </head>
-
 <body class="student-access-page">
-
-    <main class="student-access-layout">
-
-        <section class="student-access-brand">
-
-            <a href="index.html" class="access-back-link">
-                <i class="bi bi-arrow-left" aria-hidden="true"></i>
-                Voltar para o site
-            </a>
-
-            <div class="student-access-brand-content">
-
-                <div class="student-access-logo-box">
-                    <img src="img/logoFullMonoBlue.png"
-                        alt="English in Your Time">
-                </div>
-
-                <span class="eyebrow">ENGLISH IN YOUR TIME</span>
-
-                <h1>
-                    Seu inglês.<br>
-                    Seu ritmo.<br>
-                    Seu momento.
-                </h1>
-
-                <p>
-                    Entre na sua área de aprendizado para continuar sua jornada,
-                    acompanhar seu progresso e praticar inglês no seu tempo.
-                </p>
-
-                <div class="student-access-benefits">
-
-                    <div class="student-access-benefit">
-                        <span>01</span>
-                        <div>
-                            <strong>Continue de onde parou</strong>
-                            <p>Seu progresso fica salvo neste dispositivo.</p>
-                        </div>
-                    </div>
-
-                    <div class="student-access-benefit">
-                        <span>02</span>
-                        <div>
-                            <strong>Acompanhe sua evolução</strong>
-                            <p>XP, sequência, lições e conquistas.</p>
-                        </div>
-                    </div>
-
-                    <div class="student-access-benefit">
-                        <span>03</span>
-                        <div>
-                            <strong>Aprenda no seu ritmo</strong>
-                            <p>Uma jornada construída passo a passo.</p>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="student-access-signature">
-                Teacher Vanessa Ghiringhelli
-            </div>
-
-        </section>
-
-        <section class="student-access-panel">
-
-            <div class="student-access-card">
-
-                <div class="student-access-mobile-logo">
-                    <img src="img/logoFullMonoBlue.png"
-                        alt="English in Your Time">
-                </div>
-
-                <div id="newStudentArea">
-
-                    <span class="login-card-kicker">ÁREA DO ALUNO</span>
-
-                    <h2>Vamos começar?</h2>
-
-                    <p class="student-access-description">
-                        Digite seu nome para criar sua identificação neste dispositivo.
-                    </p>
-
-                    <form id="accessForm" class="login-form">
-
-                        <div class="form-group">
-                            <label for="studentName">Seu nome</label>
-
-                            <input type="text" id="studentName" name="studentName"
-                                placeholder="Como podemos chamar você?" autocomplete="name" maxlength="50" required>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary btn-large login-button">
-                            Entrar na plataforma
-                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                        </button>
-
-                    </form>
-
-                </div>
-
-                <div id="returningStudentArea" class="hidden">
-
-                    <span class="login-card-kicker">WELCOME BACK</span>
-
-                    <h2>
-                        Que bom ter você de volta,
-                        <span id="returningStudentName"></span>.
-                    </h2>
-
-                    <p class="student-access-description">
-                        Sua jornada está salva neste dispositivo.
-                    </p>
-
-                    <div class="returning-student-actions">
-
-                        <a href="dashboard.html" class="btn btn-primary btn-large">
-                            Continuar aprendendo
-                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                        </a>
-
-                        <button type="button" id="changeStudentButton" class="btn btn-secondary btn-large">
-                            Entrar com outro nome
-                        </button>
-
-                    </div>
-
-                    <div class="returning-progress">
-
-                        <div class="returning-progress-item">
-                            <strong id="accessXp">0</strong>
-                            <span>XP</span>
-                        </div>
-
-                        <div class="returning-progress-item">
-                            <strong id="accessStreak">0</strong>
-                            <span>Sequência</span>
-                        </div>
-
-                        <div class="returning-progress-item">
-                            <strong id="accessLessons">0</strong>
-                            <span>Lições</span>
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="login-divider">
-                    <span></span>
-                    <p>YOUR TIME, YOUR ENGLISH</p>
-                    <span></span>
-                </div>
-
-                <div class="student-access-teacher">
-
-                    <div class="teacher-avatar">
-                        VG
-                    </div>
-
-                    <div>
-                        <strong>Teacher Vanessa Ghiringhelli</strong>
-                        <p>English in Your Time</p>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <footer class="student-access-footer">
-
-                <a href="index.html">
-                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar para o site
-                </a>
-
-                <span>
-                    © <span id="currentYear"></span> English in Your Time
-                </span>
-
-            </footer>
-
-        </section>
-
-    </main>
-
-    <script src="js/storage.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-
-            const user = EYTStorage.getUser();
-            const progress = EYTStorage.getProgress();
-
-            const newStudentArea = document.getElementById("newStudentArea");
-            const returningStudentArea = document.getElementById("returningStudentArea");
-
-            const form = document.getElementById("accessForm");
-            const studentName = document.getElementById("studentName");
-
-            const returningStudentName = document.getElementById("returningStudentName");
-
-            const changeStudentButton = document.getElementById("changeStudentButton");
-
-            const currentYear = document.getElementById("currentYear");
-
-            currentYear.textContent = new Date().getFullYear();
-
-            function showExistingUser() {
-
-                if (!user || !user.nome) {
-                    return;
-                }
-
-                newStudentArea.classList.add("hidden");
-                returningStudentArea.classList.remove("hidden");
-
-                returningStudentName.textContent = user.nome.split(" ")[0];
-
-                document.getElementById("accessXp").textContent = progress.xp || 0;
-                document.getElementById("accessStreak").textContent = progress.streak || 0;
-                document.getElementById("accessLessons").textContent =
-                    progress.licoesConcluidas
-                        ? progress.licoesConcluidas.length
-                        : 0;
-            }
-
-            function showNewUser() {
-
-                returningStudentArea.classList.add("hidden");
-                newStudentArea.classList.remove("hidden");
-
-                studentName.value = "";
-                studentName.focus();
-            }
-
-            if (user && user.nome) {
-                showExistingUser();
-            }
-
-            form.addEventListener("submit", function (event) {
-
-                event.preventDefault();
-
-                const nome = studentName.value.trim();
-
-                if (!nome) {
-                    studentName.focus();
-                    return;
-                }
-
-                /*
-                 * Quando não existe usuário, cria normalmente.
-                 *
-                 * Caso exista algum usuário e a pessoa tenha escolhido
-                 * "Entrar com outro nome", apenas substituímos a identificação.
-                 *
-                 * O progresso permanece salvo neste dispositivo.
-                 */
-                const existing = EYTStorage.getUser();
-
-                if (existing) {
-
-                    EYTStorage.saveUser({
-                        ...existing,
-                        nome: nome
-                    });
-
-                } else {
-
-                    EYTStorage.createUser(nome);
-                }
-
-                window.location.href = "dashboard.html";
-            });
-
-            changeStudentButton.addEventListener("click", function () {
-
-                showNewUser();
-            });
-
-        });
-    </script>
-
+<main class="student-access-layout">
+<section class="student-access-brand">
+<a href="/" class="access-back-link">
+<i class="bi bi-arrow-left"></i>
+Voltar para o site
+</a>
+
+<div class="student-access-brand-content">
+<div class="student-access-logo-box">
+<img src="img/logoFullMonoWhite.png" alt="English in Your Time">
+</div>
+
+<span class="eyebrow">ENGLISH IN YOUR TIME</span>
+
+<h1>
+Seu inglês.<br>
+Seu ritmo.<br>
+Seu momento.
+</h1>
+
+<p>
+Entre na sua área exclusiva para acessar os conteúdos,
+materiais e atividades destinados ao seu nível.
+</p>
+
+<div class="student-access-benefits">
+<div class="student-access-benefit">
+<span>01</span>
+<div>
+<strong>Ambiente individual</strong>
+<p>Cada aluno possui seu próprio acesso.</p>
+</div>
+</div>
+
+<div class="student-access-benefit">
+<span>02</span>
+<div>
+<strong>Conteúdo por nível</strong>
+<p>A1, A2, B1, B2 ou C1.</p>
+</div>
+</div>
+
+<div class="student-access-benefit">
+<span>03</span>
+<div>
+<strong>Acompanhamento</strong>
+<p>Sua evolução é acompanhada individualmente.</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="student-access-signature">
+Teacher Vanessa Ghiringhelli
+</div>
+</section>
+
+<section class="student-access-panel">
+<div class="student-access-card">
+<div class="student-access-mobile-logo">
+<img src="img/logoFullMonoBlue.png" alt="English in Your Time">
+</div>
+
+<span class="login-card-kicker">ÁREA DO ALUNO</span>
+
+<h2>Entrar na plataforma</h2>
+
+<p class="student-access-description">
+Use o e-mail e a senha cadastrados pela Teacher Vanessa.
+</p>
+
+<form id="studentLoginForm" class="login-form">
+<div class="form-group">
+<label for="loginEmail">E-mail</label>
+<input
+type="email"
+id="loginEmail"
+autocomplete="email"
+placeholder="seuemail@exemplo.com"
+required>
+</div>
+
+<div class="form-group">
+<label for="loginPassword">Senha</label>
+<input
+type="password"
+id="loginPassword"
+autocomplete="current-password"
+placeholder="Sua senha"
+required>
+</div>
+
+<div id="loginMessage" class="auth-message"></div>
+
+<button
+type="submit"
+id="loginButton"
+class="btn btn-primary btn-large login-button">
+Entrar na plataforma
+<i class="bi bi-arrow-right"></i>
+</button>
+</form>
+
+<div class="access-choice-divider">
+<span></span>
+<p>OU</p>
+<span></span>
+</div>
+
+<a href="/demo" class="btn btn-secondary btn-large demo-access-button">
+<span>
+<i class="bi bi-display"></i>
+Conhecer ambiente demonstrativo
+</span>
+<i class="bi bi-arrow-right"></i>
+</a>
+
+<p class="demo-access-note">
+Conheça a plataforma sem login e sem registrar progresso.
+</p>
+
+<div class="admin-access-link">
+<a href="/admin-login">
+<i class="bi bi-shield-lock"></i>
+Acesso administrativo
+</a>
+</div>
+
+<div class="login-divider">
+<span></span>
+<p>YOUR TIME, YOUR ENGLISH</p>
+<span></span>
+</div>
+
+<div class="student-access-teacher">
+<div class="teacher-avatar">VG</div>
+<div>
+<strong>Teacher Vanessa Ghiringhelli</strong>
+<p>English in Your Time</p>
+</div>
+</div>
+</div>
+
+<footer class="student-access-footer">
+<a href="/">
+<i class="bi bi-arrow-left"></i>
+Voltar para o site
+</a>
+
+<span>
+© <span id="currentYear"></span> English in Your Time
+</span>
+</footer>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js?v=20261001-db1"></script>
+<script src="js/access-db.js?v=20261001-db1"></script>
 </body>
-
 </html>

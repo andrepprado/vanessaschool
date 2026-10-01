@@ -1,0 +1,11 @@
+{
+  "name": "vanessaschool",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "English in Your Time student platform",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "pg": "^8.16.3"
+  }
+}
