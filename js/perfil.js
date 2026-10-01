@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("profileAccuracy").textContent = `${EYTApp.getAccuracy()}%`;
     };
     document.getElementById("profileForm").addEventListener("submit", e => { e.preventDefault(); const nome = document.getElementById("profileNameInput").value.trim(); if (!nome) return; EYTStorage.saveUser({ ...user, nome }); render() });
-    document.getElementById("logoutButton").onclick = () => { EYTStorage.logout(); location.href = "index.html" };
+
     document.getElementById("resetButton").onclick = () => { if (!confirm("Deseja realmente apagar todo o seu progresso?")) return; EYTStorage.resetProgress(); render() };
     render();
 });

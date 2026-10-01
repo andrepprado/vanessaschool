@@ -6259,3 +6259,111 @@ body.app-body #dashboardPath {
 }
 
 /* === ORIGINAL AUTHENTICATED EXPERIENCE END === */
+/* === AUTH SHELL FIX START === */
+
+.sidebar-logout-button {
+    width: 100%;
+    min-height: 58px;
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    background: rgba(255,255,255,.045);
+    color: #fff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background .18s ease,
+        border-color .18s ease;
+}
+
+.sidebar-logout-button:hover {
+    background: rgba(196,18,48,.17);
+    border-color: rgba(196,18,48,.34);
+}
+
+.sidebar-logout-button .sidebar-site-link-icon {
+    flex: 0 0 auto;
+}
+
+.sidebar-logout-button div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-logout-button strong {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.sidebar-logout-button span {
+    color: rgba(255,255,255,.56);
+    font-size: 8px;
+}
+
+.mobile-header-stats {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end;
+    gap: 7px !important;
+}
+
+.mobile-header-stat {
+    height: 36px !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 9px !important;
+    box-sizing: border-box;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px;
+    line-height: 1 !important;
+    vertical-align: middle;
+}
+
+.mobile-header-stat i,
+.mobile-header-stat span {
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+.mobile-site-button {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50%;
+    line-height: 1 !important;
+}
+
+.mobile-site-button i {
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+@media(max-width:480px) {
+    .mobile-header-stats {
+        gap: 5px !important;
+    }
+
+    .mobile-header-stat {
+        min-width: 42px;
+        padding: 0 6px !important;
+    }
+}
+
+/* === AUTH SHELL FIX END === */
