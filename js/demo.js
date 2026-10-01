@@ -3,16 +3,8 @@ document.addEventListener(
     () => {
         "use strict";
 
-        const content =
-            window.EYTLevelContent;
-
-        if (!content) {
-            console.error(
-                "[Demo] EYTLevelContent unavailable."
-            );
-
-            return;
-        }
+        const WHATSAPP_NUMBER =
+            "5512997157739";
 
         const LEVELS = [
             "A1",
@@ -22,17 +14,56 @@ document.addEventListener(
             "C1"
         ];
 
-        const state = {
-            level: "A2",
-            exercises: [],
-            current: 0,
-            correct: 0,
-            answered: false
+        const LEVEL_NAMES = {
+            A1: "Beginner",
+            A2: "Elementary",
+            B1: "Intermediate",
+            B2: "Upper-Intermediate",
+            C1: "Advanced"
         };
 
-        const levelSection =
+        const LEVEL_DESCRIPTIONS = {
+            A1:
+                "Você está construindo as bases do inglês. O foco ideal é consolidar vocabulário essencial, estruturas básicas e comunicação cotidiana.",
+
+            A2:
+                "Você já possui uma boa base inicial e consegue lidar com diversas situações do dia a dia. O próximo passo é ampliar tempos verbais, vocabulário e autonomia.",
+
+            B1:
+                "Você demonstra domínio consistente das estruturas básicas e intermediárias e já consegue compreender e formular ideias com maior autonomia.",
+
+            B2:
+                "Você apresenta boa compreensão de estruturas complexas e consegue se comunicar com maior precisão, naturalidade e independência.",
+
+            C1:
+                "Você demonstra domínio avançado do idioma e boa capacidade para compreender estruturas complexas, nuances e construções mais sofisticadas."
+        };
+
+        const content =
+            window.EYTLevelContent;
+
+        if (!content) {
+            console.error(
+                "[Demo] EYTLevelContent unavailable."
+            );
+            return;
+        }
+
+        const state = {
+            levelIndex: 1,
+            questionNumber: 0,
+            maxQuestions: 10,
+            correct: 0,
+            history: [],
+            used: new Set(),
+            currentExercise: null,
+            answered: false,
+            practiceMode: false
+        };
+
+        const intro =
             document.getElementById(
-                "demoLevelSection"
+                "demoIntro"
             );
 
         const exerciseSection =
@@ -50,24 +81,22 @@ document.addEventListener(
                 "demoExerciseContent"
             );
 
-        const counter =
-            document.getElementById(
-                "demoExerciseCounter"
-            );
-
         const progressBar =
             document.getElementById(
                 "demoExerciseProgressBar"
             );
 
-        const exerciseLevel =
+        const counter =
+            document.getElementById(
+                "demoExerciseCounter"
+            );
+
+        const levelIndicator =
             document.getElementById(
                 "demoExerciseLevel"
             );
 
-        function normalize(
-            value
-        ) {
+        function normalize(value) {
             return String(
                 value ?? ""
             )
@@ -79,171 +108,143 @@ document.addEventListener(
                 );
         }
 
-        function escapeHtml(
-            value
-        ) {
+        function escapeHtml(value) {
             return String(
                 value ?? ""
             )
-                .replace(
-                    /&/g,
-                    "&amp;"
-                )
-                .replace(
-                    /</g,
-                    "&lt;"
-                )
-                .replace(
-                    />/g,
-                    "&gt;"
-                )
-                .replace(
-                    /"/g,
-                    "&quot;"
-                )
-                .replace(
-                    /'/g,
-                    "&#039;"
-                );
+                .replace(/&/g,"&amp;")
+                .replace(/</g,"&lt;")
+                .replace(/>/g,"&gt;")
+                .replace(/"/g,"&quot;")
+                .replace(/'/g,"&#039;");
         }
 
-        function getLevelData(
-            level
-        ) {
-            return (
-                content[level] ||
-                null
-            );
-        }
+        function flattenExercises(level) {
+            const levelData =
+                content[level];
 
-        function buildDemoExercises(
-            level
-        ) {
-            const data =
-                getLevelData(
-                    level
-                );
-
-            if (
-                !data ||
-                !Array.isArray(
-                    data.lessons
-                )
-            ) {
+            if (!levelData) {
                 return [];
             }
 
-            /*
-             * One exercise per lesson gives a broader
-             * demonstration of the selected level.
-             */
-            return data.lessons
-                .map(
-                    lesson => {
-                        const exercise =
-                            Array.isArray(
-                                lesson.exercises
-                            )
-                                ? lesson.exercises[0]
-                                : null;
+            const lessons =
+                Array.isArray(
+                    levelData.lessons
+                )
+                    ? levelData.lessons
+                    : [];
 
-                        if (!exercise) {
-                            return null;
+            const output = [];
+
+            lessons.forEach(
+                (
+                    lesson,
+                    lessonIndex
+                ) => {
+                    const exercises =
+                        Array.isArray(
+                            lesson.exercises
+                        )
+                            ? lesson.exercises
+                            : [];
+
+                    exercises.forEach(
+                        (
+                            exercise,
+                            exerciseIndex
+                        ) => {
+                            output.push({
+                                ...exercise,
+                                level,
+                                lessonTitle:
+                                    lesson.title ||
+                                    level,
+                                key:
+                                    `${level}-${lessonIndex}-${exerciseIndex}`
+                            });
                         }
+                    );
+                }
+            );
 
-                        return {
-                            ...exercise,
-
-                            lessonTitle:
-                                lesson.title
-                        };
-                    }
-                )
-                .filter(Boolean)
-                .slice(
-                    0,
-                    5
-                );
+            return output;
         }
 
-        function updateLevelSelection() {
-            document
-                .querySelectorAll(
-                    "[data-demo-level]"
-                )
-                .forEach(
-                    button => {
-                        button
-                            .classList
-                            .toggle(
-                                "active",
-                                button.dataset
-                                    .demoLevel ===
-                                    state.level
-                            );
-                    }
-                );
-
-            const data =
-                getLevelData(
-                    state.level
-                );
-
-            const selectedLevel =
-                document.getElementById(
-                    "demoSelectedLevel"
-                );
-
-            const description =
-                document.getElementById(
-                    "demoSelectedDescription"
-                );
-
-            const launch =
-                document.getElementById(
-                    "demoLaunchButton"
-                );
-
-            if (selectedLevel) {
-                selectedLevel.textContent =
-                    state.level;
-            }
-
-            if (description) {
-                description.textContent =
-                    data?.description ||
-                    "";
-            }
-
-            if (launch) {
-                launch.innerHTML = `
-                    Experimentar ${state.level}
-
-                    <i class="bi bi-play-fill"></i>
-                `;
-            }
-        }
-
-        function selectLevel(
-            level
-        ) {
-            if (
-                !LEVELS.includes(
+        function getUnusedExercise(level) {
+            const candidates =
+                flattenExercises(
                     level
                 )
-            ) {
-                return;
+                    .filter(
+                        exercise =>
+                            !state.used.has(
+                                exercise.key
+                            )
+                    );
+
+            if (!candidates.length) {
+                return null;
             }
 
-            state.level =
-                level;
+            const index =
+                Math.floor(
+                    Math.random() *
+                    candidates.length
+                );
 
-            updateLevelSelection();
+            return candidates[index];
         }
 
-        function renderChoice(
-            exercise
-        ) {
+        function getExercise() {
+            const currentLevel =
+                LEVELS[
+                    state.levelIndex
+                ];
+
+            let exercise =
+                getUnusedExercise(
+                    currentLevel
+                );
+
+            if (exercise) {
+                return exercise;
+            }
+
+            for (
+                let distance = 1;
+                distance < LEVELS.length;
+                distance++
+            ) {
+                const alternatives = [
+                    state.levelIndex - distance,
+                    state.levelIndex + distance
+                ];
+
+                for (
+                    const index of alternatives
+                ) {
+                    if (
+                        index < 0 ||
+                        index >= LEVELS.length
+                    ) {
+                        continue;
+                    }
+
+                    exercise =
+                        getUnusedExercise(
+                            LEVELS[index]
+                        );
+
+                    if (exercise) {
+                        return exercise;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function renderChoice(exercise) {
             const options =
                 Array.isArray(
                     exercise.options
@@ -253,7 +254,6 @@ document.addEventListener(
 
             return `
                 <div class="demo-question-options">
-
                     ${options
                         .map(
                             (
@@ -283,7 +283,6 @@ document.addEventListener(
                             `
                         )
                         .join("")}
-
                 </div>
             `;
         }
@@ -313,47 +312,67 @@ document.addEventListener(
 
         function renderExercise() {
             const exercise =
-                state.exercises[
-                    state.current
-                ];
+                getExercise();
 
             if (!exercise) {
-                finishDemo();
+                finishDiagnostic();
                 return;
             }
+
+            state.currentExercise =
+                exercise;
+
+            state.used.add(
+                exercise.key
+            );
 
             state.answered =
                 false;
 
-            const total =
-                state.exercises.length;
+            if (counter) {
+                counter.textContent =
+                    `${
+                        state.questionNumber + 1
+                    } / ${state.maxQuestions}`;
+            }
 
-            counter.textContent =
-                `${state.current + 1} / ${total}`;
+            if (levelIndicator) {
+                levelIndicator.textContent =
+                    `NÍVEL ${exercise.level}`;
+            }
 
-            exerciseLevel.textContent =
-                state.level;
-
-            progressBar.style.width =
-                `${
-                    (
-                        state.current /
-                        total
-                    ) *
-                    100
-                }%`;
+            if (progressBar) {
+                progressBar.style.width =
+                    `${
+                        (
+                            state.questionNumber /
+                            state.maxQuestions
+                        ) *
+                        100
+                    }%`;
+            }
 
             exerciseContent.innerHTML = `
                 <div class="demo-question-card">
 
-                    <span class="demo-question-lesson">
-                        ${escapeHtml(
-                            exercise.lessonTitle
-                        )}
-                    </span>
+                    <div class="demo-question-meta">
+
+                        <span>
+                            ${escapeHtml(
+                                exercise.lessonTitle
+                            )}
+                        </span>
+
+                        <strong>
+                            ${exercise.level}
+                        </strong>
+
+                    </div>
 
                     <span class="eyebrow">
-                        QUESTÃO ${state.current + 1}
+                        QUESTÃO ${
+                            state.questionNumber + 1
+                        }
                     </span>
 
                     <h2>
@@ -448,30 +467,33 @@ document.addEventListener(
                 );
             }
 
-            document
-                .getElementById(
+            const checkButton =
+                document.getElementById(
                     "demoCheckAnswer"
-                )
-                .addEventListener(
+                );
+
+            if (checkButton) {
+                checkButton.addEventListener(
                     "click",
                     checkAnswer
                 );
+            }
         }
 
-        function getUserAnswer(
-            exercise
-        ) {
+        function getAnswer(exercise) {
             if (
                 exercise.type ===
                 "choice"
             ) {
-                return document
-                    .querySelector(
-                        ".demo-answer-option.selected"
-                    )
-                    ?.dataset
-                    ?.demoAnswer ||
-                    "";
+                return (
+                    document
+                        .querySelector(
+                            ".demo-answer-option.selected"
+                        )
+                        ?.dataset
+                        ?.demoAnswer ||
+                    ""
+                );
             }
 
             return (
@@ -484,9 +506,9 @@ document.addEventListener(
             );
         }
 
-        function isCorrectAnswer(
+        function answerIsCorrect(
             exercise,
-            userAnswer
+            answer
         ) {
             const accepted = [
                 exercise.answer,
@@ -504,30 +526,55 @@ document.addEventListener(
 
             return accepted.includes(
                 normalize(
-                    userAnswer
+                    answer
                 )
             );
+        }
+
+        function updateDifficulty(correct) {
+            if (
+                state.practiceMode
+            ) {
+                return;
+            }
+
+            if (correct) {
+                state.levelIndex =
+                    Math.min(
+                        state.levelIndex + 1,
+                        LEVELS.length - 1
+                    );
+            }
+            else {
+                state.levelIndex =
+                    Math.max(
+                        state.levelIndex - 1,
+                        0
+                    );
+            }
         }
 
         function checkAnswer() {
             if (
                 state.answered
             ) {
-                nextExercise();
+                nextQuestion();
                 return;
             }
 
             const exercise =
-                state.exercises[
-                    state.current
-                ];
+                state.currentExercise;
 
             const answer =
-                getUserAnswer(
+                getAnswer(
                     exercise
                 );
 
-            if (!answer.trim()) {
+            if (
+                !String(
+                    answer
+                ).trim()
+            ) {
                 return;
             }
 
@@ -535,7 +582,7 @@ document.addEventListener(
                 true;
 
             const correct =
-                isCorrectAnswer(
+                answerIsCorrect(
                     exercise,
                     answer
                 );
@@ -544,56 +591,68 @@ document.addEventListener(
                 state.correct++;
             }
 
+            state.history.push({
+                level:
+                    exercise.level,
+
+                correct,
+
+                lessonTitle:
+                    exercise.lessonTitle
+            });
+
+            updateDifficulty(
+                correct
+            );
+
             const feedback =
                 document.getElementById(
                     "demoQuestionFeedback"
                 );
 
-            feedback.hidden =
-                false;
+            if (feedback) {
+                feedback.hidden =
+                    false;
 
-            feedback.className =
-                `demo-question-feedback ${
+                feedback.className =
+                    `demo-question-feedback ${
+                        correct
+                            ? "correct"
+                            : "incorrect"
+                    }`;
+
+                feedback.innerHTML =
                     correct
-                        ? "correct"
-                        : "incorrect"
-                }`;
+                        ? `
+                            <i class="bi bi-check-circle-fill"></i>
 
-            feedback.innerHTML =
-                correct
-                    ? `
-                        <i class="bi bi-check-circle-fill"></i>
+                            <div>
+                                <strong>
+                                    Correto!
+                                </strong>
 
-                        <div>
+                                <span>
+                                    A próxima questão pode ficar mais desafiadora.
+                                </span>
+                            </div>
+                        `
+                        : `
+                            <i class="bi bi-x-circle-fill"></i>
 
-                            <strong>
-                                Muito bem!
-                            </strong>
+                            <div>
+                                <strong>
+                                    Não foi dessa vez.
+                                </strong>
 
-                            <span>
-                                Sua resposta está correta.
-                            </span>
-
-                        </div>
-                    `
-                    : `
-                        <i class="bi bi-x-circle-fill"></i>
-
-                        <div>
-
-                            <strong>
-                                Quase!
-                            </strong>
-
-                            <span>
-                                Resposta correta:
-                                ${escapeHtml(
-                                    exercise.answer
-                                )}
-                            </span>
-
-                        </div>
-                    `;
+                                <span>
+                                    Resposta esperada:
+                                    ${escapeHtml(
+                                        exercise.answer
+                                    )}
+                                </span>
+                            </div>
+                        `;
+            }
 
             if (
                 exercise.type ===
@@ -643,14 +702,16 @@ document.addEventListener(
                         "demoFillAnswer"
                     );
 
-                input.disabled =
-                    true;
+                if (input) {
+                    input.disabled =
+                        true;
 
-                input.classList.add(
-                    correct
-                        ? "correct"
-                        : "incorrect"
-                );
+                    input.classList.add(
+                        correct
+                            ? "correct"
+                            : "incorrect"
+                    );
+                }
             }
 
             const button =
@@ -658,63 +719,425 @@ document.addEventListener(
                     "demoCheckAnswer"
                 );
 
-            button.innerHTML =
-                state.current ===
-                    state.exercises.length -
-                    1
-                    ? `
-                        Ver resultado
-                        <i class="bi bi-arrow-right"></i>
-                    `
-                    : `
-                        Continuar
-                        <i class="bi bi-arrow-right"></i>
-                    `;
+            if (button) {
+                button.innerHTML =
+                    state.questionNumber >=
+                        state.maxQuestions - 1
+                        ? `
+                            Ver resultado
+                            <i class="bi bi-arrow-right"></i>
+                        `
+                        : `
+                            Continuar
+                            <i class="bi bi-arrow-right"></i>
+                        `;
+            }
         }
 
-        function nextExercise() {
-            state.current++;
+        function nextQuestion() {
+            state.questionNumber++;
 
             if (
-                state.current >=
-                state.exercises.length
+                state.questionNumber >=
+                state.maxQuestions
             ) {
-                finishDemo();
+                finishDiagnostic();
                 return;
             }
 
             renderExercise();
         }
 
-        function startDemo() {
-            state.exercises =
-                buildDemoExercises(
-                    state.level
+        function calculateEstimatedLevel() {
+            const scores = {
+                A1: [],
+                A2: [],
+                B1: [],
+                B2: [],
+                C1: []
+            };
+
+            state.history.forEach(
+                item => {
+                    scores[
+                        item.level
+                    ].push(
+                        item.correct
+                            ? 1
+                            : 0
+                    );
+                }
+            );
+
+            let estimated = 0;
+
+            LEVELS.forEach(
+                (
+                    level,
+                    index
+                ) => {
+                    const values =
+                        scores[level];
+
+                    if (!values.length) {
+                        return;
+                    }
+
+                    const ratio =
+                        values.reduce(
+                            (
+                                total,
+                                value
+                            ) =>
+                                total + value,
+                            0
+                        ) /
+                        values.length;
+
+                    if (
+                        ratio >= .5
+                    ) {
+                        estimated =
+                            Math.max(
+                                estimated,
+                                index
+                            );
+                    }
+                }
+            );
+
+            return LEVELS[
+                estimated
+            ];
+        }
+
+        function getHighestTestedLevel() {
+            let highest = 0;
+
+            state.history.forEach(
+                item => {
+                    highest =
+                        Math.max(
+                            highest,
+                            LEVELS.indexOf(
+                                item.level
+                            )
+                        );
+                }
+            );
+
+            return LEVELS[
+                highest
+            ];
+        }
+
+        function buildStrengths(level) {
+            const index =
+                LEVELS.indexOf(
+                    level
                 );
 
-            if (
-                !state.exercises.length
-            ) {
-                alert(
-                    "Não há exercícios demonstrativos disponíveis para este nível."
+            const items = [];
+
+            state.history
+                .filter(
+                    item =>
+                        item.correct
+                )
+                .forEach(
+                    item => {
+                        if (
+                            !items.includes(
+                                item.lessonTitle
+                            )
+                        ) {
+                            items.push(
+                                item.lessonTitle
+                            );
+                        }
+                    }
                 );
 
+            if (!items.length) {
+                items.push(
+                    index === 0
+                        ? "fundamentos iniciais"
+                        : `conteúdos até ${LEVELS[
+                            Math.max(
+                                index - 1,
+                                0
+                            )
+                        ]}`
+                );
+            }
+
+            return items.slice(
+                0,
+                4
+            );
+        }
+
+        function buildDevelopment(level) {
+            const items = [];
+
+            state.history
+                .filter(
+                    item =>
+                        !item.correct
+                )
+                .forEach(
+                    item => {
+                        if (
+                            !items.includes(
+                                item.lessonTitle
+                            )
+                        ) {
+                            items.push(
+                                item.lessonTitle
+                            );
+                        }
+                    }
+                );
+
+            if (!items.length) {
+                const index =
+                    LEVELS.indexOf(
+                        level
+                    );
+
+                items.push(
+                    index <
+                        LEVELS.length - 1
+                        ? `conteúdos do nível ${
+                            LEVELS[
+                                index + 1
+                            ]
+                        }`
+                        : "refinamento e fluência"
+                );
+            }
+
+            return items.slice(
+                0,
+                4
+            );
+        }
+
+        function renderList(
+            element,
+            items
+        ) {
+            if (!element) {
                 return;
             }
 
-            state.current = 0;
-            state.correct = 0;
-            state.answered =
+            element.innerHTML =
+                items
+                    .map(
+                        item => `
+                            <span>
+                                <i class="bi bi-check2"></i>
+
+                                ${escapeHtml(
+                                    item
+                                )}
+                            </span>
+                        `
+                    )
+                    .join("");
+        }
+
+        function configureWhatsApp(
+            level
+        ) {
+            const button =
+                document.getElementById(
+                    "demoWhatsAppButton"
+                );
+
+            if (!button) {
+                return;
+            }
+
+            const score =
+                `${state.correct}/${state.history.length}`;
+
+            const message = [
+                "Oi, Teacher Vanessa!",
+                "",
+                "Fiz o teste de nível no English in Your Time.",
+                `Meu nível estimado foi ${level} - ${LEVEL_NAMES[level]}.`,
+                `Meu resultado foi ${score} respostas corretas.`,
+                "",
+                "Gostaria de entender melhor meu resultado e saber mais sobre as aulas."
+            ].join(
+                "\n"
+            );
+
+            button.href =
+                `https://wa.me/${WHATSAPP_NUMBER}?text=${
+                    encodeURIComponent(
+                        message
+                    )
+                }`;
+
+            button.target =
+                "_blank";
+
+            button.rel =
+                "noopener";
+        }
+
+        function finishDiagnostic() {
+            exerciseSection.hidden =
+                true;
+
+            resultSection.hidden =
                 false;
 
-            levelSection.hidden =
-                true;
+            if (progressBar) {
+                progressBar.style.width =
+                    "100%";
+            }
+
+            const level =
+                calculateEstimatedLevel();
+
+            const percent =
+                state.history.length
+                    ? Math.round(
+                        state.correct /
+                        state.history.length *
+                        100
+                    )
+                    : 0;
+
+            const resultLevel =
+                document.getElementById(
+                    "demoResultLevel"
+                );
+
+            const resultTitle =
+                document.getElementById(
+                    "demoResultTitle"
+                );
+
+            const resultDescription =
+                document.getElementById(
+                    "demoResultDescription"
+                );
+
+            const resultScore =
+                document.getElementById(
+                    "demoResultScore"
+                );
+
+            const resultPercent =
+                document.getElementById(
+                    "demoResultPercent"
+                );
+
+            const resultHighest =
+                document.getElementById(
+                    "demoResultHighest"
+                );
+
+            if (resultLevel) {
+                resultLevel.textContent =
+                    level;
+            }
+
+            if (resultTitle) {
+                resultTitle.textContent =
+                    LEVEL_NAMES[level];
+            }
+
+            if (resultDescription) {
+                resultDescription.textContent =
+                    LEVEL_DESCRIPTIONS[
+                        level
+                    ];
+            }
+
+            if (resultScore) {
+                resultScore.textContent =
+                    `${state.correct}/${state.history.length}`;
+            }
+
+            if (resultPercent) {
+                resultPercent.textContent =
+                    `${percent}%`;
+            }
+
+            if (resultHighest) {
+                resultHighest.textContent =
+                    getHighestTestedLevel();
+            }
+
+            renderList(
+                document.getElementById(
+                    "demoStrengths"
+                ),
+                buildStrengths(
+                    level
+                )
+            );
+
+            renderList(
+                document.getElementById(
+                    "demoDevelopment"
+                ),
+                buildDevelopment(
+                    level
+                )
+            );
+
+            configureWhatsApp(
+                level
+            );
+
+            window.scrollTo({
+                top:
+                    resultSection
+                        .offsetTop -
+                    20,
+
+                behavior:
+                    "smooth"
+            });
+        }
+
+        function resetState() {
+            state.levelIndex = 1;
+            state.questionNumber = 0;
+            state.maxQuestions = 10;
+            state.correct = 0;
+            state.history = [];
+            state.used =
+                new Set();
+            state.currentExercise =
+                null;
+            state.answered =
+                false;
+            state.practiceMode =
+                false;
+        }
+
+        function startDiagnostic() {
+            resetState();
+
+            if (intro) {
+                intro.hidden =
+                    true;
+            }
 
             resultSection.hidden =
                 true;
 
             exerciseSection.hidden =
                 false;
+
+            renderExercise();
 
             window.scrollTo({
                 top:
@@ -725,91 +1148,63 @@ document.addEventListener(
                 behavior:
                     "smooth"
             });
-
-            renderExercise();
         }
 
-        function closeDemo() {
+        function restartDiagnostic() {
+            resetState();
+
             exerciseSection.hidden =
                 true;
 
             resultSection.hidden =
                 true;
 
-            levelSection.hidden =
-                false;
+            if (intro) {
+                intro.hidden =
+                    false;
+            }
 
             window.scrollTo({
-                top:
-                    levelSection
-                        .offsetTop -
-                    30,
-
+                top: 0,
                 behavior:
                     "smooth"
             });
         }
 
-        function finishDemo() {
-            exerciseSection.hidden =
-                true;
+        function startLevelPractice() {
+            const level =
+                calculateEstimatedLevel();
 
-            resultSection.hidden =
-                false;
+            resetState();
 
-            const total =
-                state.exercises.length;
-
-            const percent =
-                total
-                    ? Math.round(
-                        state.correct /
-                        total *
-                        100
-                    )
-                    : 0;
-
-            document
-                .getElementById(
-                    "demoResultLevel"
-                )
-                .textContent =
-                    state.level;
-
-            document
-                .getElementById(
-                    "demoResultScore"
-                )
-                .textContent =
-                    `${state.correct}/${total}`;
-
-            const text =
-                document.getElementById(
-                    "demoResultText"
+            state.levelIndex =
+                LEVELS.indexOf(
+                    level
                 );
 
-            if (
-                percent === 100
-            ) {
-                text.textContent =
-                    "Excelente desempenho nesta pequena amostra. No ambiente do aluno, você teria acesso à trilha completa do nível.";
+            state.maxQuestions = 5;
+
+            state.practiceMode =
+                true;
+
+            if (intro) {
+                intro.hidden =
+                    true;
             }
-            else if (
-                percent >= 60
-            ) {
-                text.textContent =
-                    "Bom resultado. Esta demonstração mostra apenas uma pequena parte das atividades disponíveis no nível.";
-            }
-            else {
-                text.textContent =
-                    "Esta foi apenas uma amostra. Na plataforma, cada atividade faz parte de uma sequência de aprendizagem.";
-            }
+
+            resultSection.hidden =
+                true;
+
+            exerciseSection.hidden =
+                false;
+
+            renderExercise();
 
             window.scrollTo({
                 top:
-                    resultSection
+                    exerciseSection
                         .offsetTop -
-                    30,
+                    20,
 
                 behavior:
                     "smooth"
@@ -817,71 +1212,43 @@ document.addEventListener(
         }
 
         document
-            .querySelectorAll(
-                "[data-demo-level]"
-            )
-            .forEach(
-                button => {
-                    button.addEventListener(
-                        "click",
-                        () => {
-                            selectLevel(
-                                button.dataset
-                                    .demoLevel
-                            );
-                        }
-                    );
-                }
-            );
-
-        document
             .getElementById(
-                "demoStartButton"
+                "demoStartDiagnostic"
             )
-            .addEventListener(
+            ?.addEventListener(
                 "click",
-                () => {
-                    levelSection
-                        .scrollIntoView({
-                            behavior:
-                                "smooth",
-                            block:
-                                "start"
-                        });
-                }
-            );
-
-        document
-            .getElementById(
-                "demoLaunchButton"
-            )
-            .addEventListener(
-                "click",
-                startDemo
+                startDiagnostic
             );
 
         document
             .getElementById(
                 "demoCloseExercise"
             )
-            .addEventListener(
+            ?.addEventListener(
                 "click",
-                closeDemo
+                restartDiagnostic
             );
 
         document
             .getElementById(
                 "demoTryAgain"
             )
-            .addEventListener(
+            ?.addEventListener(
                 "click",
-                closeDemo
+                restartDiagnostic
             );
 
-        updateLevelSelection();
+        document
+            .getElementById(
+                "demoTryLevel"
+            )
+            ?.addEventListener(
+                "click",
+                startLevelPractice
+            );
 
         console.info(
-            "[Demo] Interactive level demo ready."
+            "[Demo] Adaptive diagnostic ready."
         );
     }
 );
