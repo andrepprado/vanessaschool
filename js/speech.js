@@ -1681,146 +1681,102 @@ const EYTSpeech = (() => {
 })();
 
 /* === EYT RESILIENT AUDIO FALLBACK START === */
-
 (() => {
     "use strict";
 
     /*
-     * ========================================================
-     * RESILIENT ZERO-DELAY AUDIO V2
-     * ========================================================
-     *
      * IMPORTANT:
+     * EYTSpeech is originally declared as a global lexical binding:
      *
-     * The original EYTSpeech engine deliberately catches
-     * generation errors and returns false.
+     * const EYTSpeech = ...
      *
-     * Therefore failover CANNOT depend exclusively on catch().
+     * That does NOT guarantee window.EYTSpeech exists.
      *
-     * This layer:
-     *
-     * 1. Keeps the original cache architecture.
-     * 2. Detects false returns from Kokoro.
-     * 3. Detects eyt:speech-error events.
-     * 4. Stops bulk preload after structural failure.
-     * 5. Uses native speech instantly while Kokoro is down.
+     * We therefore reference the real lexical binding first.
      */
+    const speechApi =
+        typeof EYTSpeech !== "undefined"
+            ? EYTSpeech
+            : window.EYTSpeech;
 
-    const STATE = {
+    if (!speechApi) {
+        console.error(
+            "[EYTAudio V3] EYTSpeech binding was not found."
+        );
+        return;
+    }
+
+    /*
+     * Publish it explicitly so diagnostics and other scripts
+     * can always use window.EYTSpeech too.
+     */
+    window.EYTSpeech = speechApi;
+
+    if (
+        speechApi.__resilientAudioV3Installed
+    ) {
+        return;
+    }
+
+    const state = {
         kokoroHealthy: true,
         failures: 0,
         lastFailure: null,
-        lastSpeechError: null,
         nativeSpeaking: false,
-        nativeButton: null,
-        nativeUtterance: null
+        nativeButton: null
     };
 
-    function normalizeLanguage(
-        lang
-    ) {
+    function nativeAvailable() {
+        return (
+            "speechSynthesis" in window &&
+            typeof SpeechSynthesisUtterance !==
+                "undefined"
+        );
+    }
+
+    function cleanText(value) {
+        return String(value ?? "")
+            .replace(/\u00a0/g, " ")
+            .replace(/_{2,}/g, " blank ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function normalizeLang(lang) {
         const value =
             String(
-                lang ||
-                "en-US"
-            )
-                .trim()
-                .toLowerCase();
+                lang || "en-US"
+            ).toLowerCase();
 
-        if (
-            value.startsWith(
-                "pt"
-            )
-        ) {
+        if (value.startsWith("pt")) {
             return "pt-BR";
         }
 
-        if (
-            value.startsWith(
-                "en-gb"
-            )
-        ) {
+        if (value.startsWith("en-gb")) {
             return "en-GB";
         }
 
         return "en-US";
     }
 
-    function isEnglish(
-        options = {}
-    ) {
-        return !normalizeLanguage(
-            options.lang
-        ).startsWith(
-            "pt"
-        );
-    }
-
-    function hasNativeSpeech() {
-        return (
-            typeof window !==
-                "undefined" &&
-            "speechSynthesis" in
-                window &&
-            typeof SpeechSynthesisUtterance !==
-                "undefined"
-        );
-    }
-
-    function cleanText(
-        value
-    ) {
-        return String(
-            value ?? ""
-        )
-            .replace(
-                / /g,
-                " "
-            )
-            .replace(
-                /_{2,}/g,
-                " blank "
-            )
-            .replace(
-                /s+/g,
-                " "
-            )
-            .trim();
-    }
-
-    function getVoices() {
-        if (
-            !hasNativeSpeech()
-        ) {
-            return [];
+    function chooseVoice(lang) {
+        if (!nativeAvailable()) {
+            return null;
         }
 
-        return window
-            .speechSynthesis
-            .getVoices() || [];
-    }
-
-    function chooseNativeVoice(
-        lang
-    ) {
         const voices =
-            getVoices();
+            speechSynthesis.getVoices() || [];
 
-        const normalized =
-            normalizeLanguage(
-                lang
-            );
+        const desired =
+            normalizeLang(lang);
 
         const exact =
             voices.find(
                 voice =>
                     String(
-                        voice.lang ||
-                        ""
-                    )
-                        .toLowerCase() ===
-                    normalized
-                        .toLowerCase()
+                        voice.lang || ""
+                    ).toLowerCase() ===
+                    desired.toLowerCase()
             );
 
         if (exact) {
@@ -1828,7 +1784,7 @@ const EYTSpeech = (() => {
         }
 
         const prefix =
-            normalized
+            desired
                 .split("-")[0]
                 .toLowerCase();
 
@@ -1836,30 +1792,16 @@ const EYTSpeech = (() => {
             voices.filter(
                 voice =>
                     String(
-                        voice.lang ||
-                        ""
+                        voice.lang || ""
                     )
                         .toLowerCase()
-                        .startsWith(
-                            prefix
-                        )
+                        .startsWith(prefix)
             );
 
-        if (
-            !sameLanguage.length
-        ) {
-            return null;
-        }
-
-        /*
-         * Prefer higher quality voices when the browser
-         * provides names such as Microsoft / Google.
-         */
-        const preferredNames = [
+        const preferred = [
             "aria",
             "jenny",
             "guy",
-            "sara",
             "sonia",
             "ryan",
             "google",
@@ -1869,526 +1811,290 @@ const EYTSpeech = (() => {
         return (
             sameLanguage.find(
                 voice =>
-                    preferredNames.some(
+                    preferred.some(
                         name =>
                             String(
-                                voice.name ||
-                                ""
+                                voice.name || ""
                             )
                                 .toLowerCase()
-                                .includes(
-                                    name
-                                )
+                                .includes(name)
                     )
             ) ||
-            sameLanguage[0]
+            sameLanguage[0] ||
+            null
         );
     }
 
     function resetNativeButton() {
-        const button =
-            STATE.nativeButton;
-
-        if (button) {
-            button.classList.remove(
-                "is-speaking"
-            );
-
-            button.setAttribute(
-                "aria-pressed",
-                "false"
-            );
-
-            const original =
-                button.dataset
-                    .eytOriginalLabel ||
-                button.dataset
-                    .speechLabel ||
-                "Ouvir áudio";
-
-            button.setAttribute(
-                "aria-label",
-                original
-            );
-
-            button.setAttribute(
-                "title",
-                original
-            );
-        }
-
-        STATE.nativeButton =
-            null;
-    }
-
-    function stopNative() {
-        if (
-            hasNativeSpeech()
-        ) {
-            try {
-                window
-                    .speechSynthesis
-                    .cancel();
-            }
-            catch (_) {
-            }
-        }
-
-        STATE.nativeSpeaking =
-            false;
-
-        STATE.nativeUtterance =
-            null;
-
-        resetNativeButton();
-    }
-
-    function activateNativeButton(
-        button
-    ) {
-        if (!button) {
+        if (!state.nativeButton) {
             return;
         }
 
-        if (
-            !button.dataset
-                .eytOriginalLabel
-        ) {
-            button.dataset
-                .eytOriginalLabel =
-                button.getAttribute(
-                    "aria-label"
-                ) ||
-                button.getAttribute(
-                    "title"
-                ) ||
-                "Ouvir áudio";
+        state.nativeButton
+            .classList
+            .remove("is-speaking");
+
+        state.nativeButton.setAttribute(
+            "aria-pressed",
+            "false"
+        );
+
+        state.nativeButton = null;
+    }
+
+    function stopNative() {
+        if (nativeAvailable()) {
+            speechSynthesis.cancel();
         }
 
+        state.nativeSpeaking = false;
+
         resetNativeButton();
-
-        STATE.nativeButton =
-            button;
-
-        button.classList.add(
-            "is-speaking"
-        );
-
-        button.setAttribute(
-            "aria-pressed",
-            "true"
-        );
-
-        button.setAttribute(
-            "aria-label",
-            "Parar áudio"
-        );
-
-        button.setAttribute(
-            "title",
-            "Parar áudio"
-        );
     }
 
     function speakNative(
         text,
         options = {}
     ) {
-        if (
-            !hasNativeSpeech()
-        ) {
-            return Promise.resolve(
-                false
+        if (!nativeAvailable()) {
+            console.error(
+                "[EYTAudio V3] Native speech unavailable."
             );
+            return Promise.resolve(false);
         }
 
-        const value =
-            cleanText(
-                text
-            );
+        const content =
+            cleanText(text);
 
-        if (!value) {
-            return Promise.resolve(
-                false
-            );
+        if (!content) {
+            return Promise.resolve(false);
         }
 
         stopNative();
 
-        return new Promise(
-            resolve => {
-                try {
-                    const utterance =
-                        new SpeechSynthesisUtterance(
-                            value
-                        );
+        return new Promise(resolve => {
+            const utterance =
+                new SpeechSynthesisUtterance(
+                    content
+                );
 
-                    const lang =
-                        normalizeLanguage(
-                            options.lang
-                        );
+            const lang =
+                normalizeLang(
+                    options.lang
+                );
 
-                    utterance.lang =
-                        lang;
+            utterance.lang = lang;
 
-                    const voice =
-                        chooseNativeVoice(
-                            lang
-                        );
+            const voice =
+                chooseVoice(lang);
 
-                    if (voice) {
-                        utterance.voice =
-                            voice;
-                    }
+            if (voice) {
+                utterance.voice = voice;
+            }
 
-                    const requestedRate =
-                        Number(
-                            options.rate
-                        );
+            const requestedRate =
+                Number(options.rate);
 
-                    utterance.rate =
-                        Number.isFinite(
+            utterance.rate =
+                Number.isFinite(
+                    requestedRate
+                )
+                    ? Math.max(
+                        0.75,
+                        Math.min(
+                            1.12,
                             requestedRate
                         )
-                            ? Math.max(
-                                0.75,
-                                Math.min(
-                                    1.12,
-                                    requestedRate
-                                )
-                            )
-                            : 0.96;
+                    )
+                    : 0.96;
 
-                    utterance.pitch =
-                        1;
+            utterance.pitch = 1;
+            utterance.volume = 1;
 
-                    utterance.volume =
-                        1;
+            if (options.button) {
+                state.nativeButton =
+                    options.button;
 
-                    STATE.nativeUtterance =
-                        utterance;
+                options.button
+                    .classList
+                    .add("is-speaking");
 
-                    activateNativeButton(
-                        options.button ||
-                        null
-                    );
-
-                    utterance.onstart =
-                        () => {
-                            STATE.nativeSpeaking =
-                                true;
-
-                            window.dispatchEvent(
-                                new CustomEvent(
-                                    "eyt:speech-start",
-                                    {
-                                        detail: {
-                                            text:
-                                                value,
-                                            lang,
-                                            engine:
-                                                "native-fallback",
-                                            cached:
-                                                false
-                                        }
-                                    }
-                                )
-                            );
-                        };
-
-                    utterance.onend =
-                        () => {
-                            STATE.nativeSpeaking =
-                                false;
-
-                            STATE.nativeUtterance =
-                                null;
-
-                            resetNativeButton();
-
-                            window.dispatchEvent(
-                                new CustomEvent(
-                                    "eyt:speech-end",
-                                    {
-                                        detail: {
-                                            text:
-                                                value,
-                                            lang,
-                                            engine:
-                                                "native-fallback"
-                                        }
-                                    }
-                                )
-                            );
-
-                            resolve(
-                                true
-                            );
-                        };
-
-                    utterance.onerror =
-                        event => {
-                            STATE.nativeSpeaking =
-                                false;
-
-                            STATE.nativeUtterance =
-                                null;
-
-                            resetNativeButton();
-
-                            if (
-                                event.error ===
-                                    "canceled" ||
-                                event.error ===
-                                    "interrupted"
-                            ) {
-                                resolve(
-                                    false
-                                );
-
-                                return;
-                            }
-
-                            console.warn(
-                                "[EYTAudio] Native fallback error:",
-                                event.error
-                            );
-
-                            resolve(
-                                false
-                            );
-                        };
-
-                    window
-                        .speechSynthesis
-                        .speak(
-                            utterance
-                        );
-                }
-                catch (error) {
-                    console.warn(
-                        "[EYTAudio] Native fallback error:",
-                        error
-                    );
-
-                    STATE.nativeSpeaking =
-                        false;
-
-                    STATE.nativeUtterance =
-                        null;
-
-                    resetNativeButton();
-
-                    resolve(
-                        false
-                    );
-                }
+                options.button.setAttribute(
+                    "aria-pressed",
+                    "true"
+                );
             }
-        );
+
+            utterance.onstart = () => {
+                state.nativeSpeaking = true;
+            };
+
+            utterance.onend = () => {
+                state.nativeSpeaking = false;
+                resetNativeButton();
+                resolve(true);
+            };
+
+            utterance.onerror = event => {
+                state.nativeSpeaking = false;
+                resetNativeButton();
+
+                if (
+                    event.error === "canceled" ||
+                    event.error === "interrupted"
+                ) {
+                    resolve(false);
+                    return;
+                }
+
+                console.warn(
+                    "[EYTAudio V3] Native speech error:",
+                    event.error
+                );
+
+                resolve(false);
+            };
+
+            speechSynthesis.speak(
+                utterance
+            );
+        });
     }
 
-    function failureText(
-        error
-    ) {
-        if (
-            error &&
-            typeof error ===
-                "object"
-        ) {
-            return String(
-                error.message ||
-                error.error ||
-                error.detail?.error ||
-                error
-            );
-        }
-
+    function errorText(error) {
         return String(
+            error?.message ||
+            error?.error ||
             error ||
             ""
         );
     }
 
-    function isStructuralFailure(
-        error
-    ) {
-        const message =
-            failureText(
-                error
-            )
+    function isStructuralFailure(error) {
+        const text =
+            errorText(error)
                 .toLowerCase();
 
         return (
-            message.includes(
-                "failed to fetch"
-            ) ||
-            message.includes(
-                "cors"
-            ) ||
-            message.includes(
-                "model_quantized"
-            ) ||
-            message.includes(
-                "could not locate file"
-            ) ||
-            message.includes(
-                "huggingface"
-            ) ||
-            message.includes(
-                "onnx"
-            ) ||
-            message.includes(
-                "network"
-            ) ||
-            message.includes(
-                "tempo excedido"
-            )
+            text.includes("failed to fetch") ||
+            text.includes("cors") ||
+            text.includes("onnx") ||
+            text.includes("model_quantized") ||
+            text.includes("huggingface") ||
+            text.includes("network") ||
+            text.includes("could not locate")
         );
     }
 
-    function markKokoroFailure(
-        error
-    ) {
-        STATE.failures++;
+    function openCircuit(error) {
+        if (!state.kokoroHealthy) {
+            return;
+        }
 
-        STATE.lastFailure =
-            failureText(
-                error
-            ) ||
+        state.kokoroHealthy = false;
+        state.failures++;
+        state.lastFailure =
+            errorText(error) ||
             "Kokoro unavailable";
 
-        STATE.kokoroHealthy =
-            false;
-
         console.warn(
-            "[EYTAudio] Kokoro unavailable. Circuit OPEN. Native audio enabled.",
-            STATE.lastFailure
+            "[EYTAudio V3] KOKORO CIRCUIT OPEN:",
+            state.lastFailure
         );
     }
 
-    function resetKokoro() {
-        STATE.kokoroHealthy =
-            true;
-
-        STATE.failures =
-            0;
-
-        STATE.lastFailure =
-            null;
-
-        STATE.lastSpeechError =
-            null;
+    function closeCircuit() {
+        state.kokoroHealthy = true;
+        state.failures = 0;
+        state.lastFailure = null;
 
         console.info(
-            "[EYTAudio] Kokoro circuit reset."
+            "[EYTAudio V3] Kokoro circuit reset."
         );
     }
 
+    const original = {
+        speak:
+            speechApi.speak
+                .bind(speechApi),
+
+        toggle:
+            speechApi.toggle
+                .bind(speechApi),
+
+        preload:
+            speechApi.preload
+                .bind(speechApi),
+
+        preloadMany:
+            speechApi.preloadMany
+                .bind(speechApi),
+
+        warmup:
+            speechApi.warmup
+                .bind(speechApi),
+
+        stop:
+            speechApi.stop
+                .bind(speechApi),
+
+        getAudioState:
+            speechApi.getAudioState
+                .bind(speechApi)
+    };
+
     /*
-     * The ORIGINAL speech() catches its own error,
-     * dispatches this event and returns false.
-     *
-     * This event is therefore essential to distinguish:
-     *
-     * - toggle-off -> false
-     * - real Kokoro failure -> false + speech-error
+     * The original engine catches errors internally and often
+     * returns false, so we also listen to its error event.
      */
+    let lastInternalError = null;
+
     window.addEventListener(
         "eyt:speech-error",
         event => {
-            const message =
+            const error =
                 event?.detail?.error ||
                 "Speech error";
 
-            STATE.lastSpeechError =
-                message;
+            lastInternalError =
+                error;
 
             if (
-                isStructuralFailure(
-                    message
-                )
+                isStructuralFailure(error)
             ) {
-                markKokoroFailure(
-                    message
-                );
+                openCircuit(error);
             }
         }
     );
 
-    function install() {
+    async function resilientSpeak(
+        text,
+        options = {}
+    ) {
         if (
-            !window.EYTSpeech
+            !state.kokoroHealthy
         ) {
-            return false;
+            return speakNative(
+                text,
+                options
+            );
         }
 
-        if (
-            window.EYTSpeech
-                .__resilientAudioV2Installed
-        ) {
-            return true;
-        }
+        lastInternalError = null;
 
-        const original = {
-            speak:
-                window.EYTSpeech
-                    .speak
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            toggle:
-                window.EYTSpeech
-                    .toggle
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            stop:
-                window.EYTSpeech
-                    .stop
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            preload:
-                window.EYTSpeech
-                    .preload
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            preloadMany:
-                window.EYTSpeech
-                    .preloadMany
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            warmup:
-                window.EYTSpeech
-                    .warmup
-                    .bind(
-                        window.EYTSpeech
-                    ),
-
-            getAudioState:
-                window.EYTSpeech
-                    .getAudioState
-                    .bind(
-                        window.EYTSpeech
-                    )
-        };
-
-        async function resilientSpeak(
-            text,
-            options = {}
-        ) {
-            if (
-                isEnglish(
+        try {
+            const result =
+                await original.speak(
+                    text,
                     options
-                ) &&
-                !STATE.kokoroHealthy
+                );
+
+            if (
+                result === false &&
+                (
+                    lastInternalError ||
+                    !state.kokoroHealthy
+                )
             ) {
                 return speakNative(
                     text,
@@ -2396,726 +2102,399 @@ const EYTSpeech = (() => {
                 );
             }
 
-            STATE.lastSpeechError =
-                null;
-
-            let result =
-                false;
-
-            try {
-                result =
-                    await original.speak(
-                        text,
-                        options
-                    );
-            }
-            catch (error) {
-                STATE.lastSpeechError =
-                    error;
-
-                if (
-                    isEnglish(
-                        options
-                    ) &&
-                    isStructuralFailure(
-                        error
-                    )
-                ) {
-                    markKokoroFailure(
-                        error
-                    );
-                }
-            }
-
+            return result;
+        }
+        catch (error) {
             if (
-                result !== false
+                isStructuralFailure(error)
             ) {
-                return result;
+                openCircuit(error);
+
+                return speakNative(
+                    text,
+                    options
+                );
             }
 
-            if (
-                !isEnglish(
+            throw error;
+        }
+    }
+
+    async function resilientToggle(
+        text,
+        button,
+        options = {}
+    ) {
+        if (
+            state.nativeSpeaking &&
+            state.nativeButton === button
+        ) {
+            stopNative();
+            return false;
+        }
+
+        if (
+            !state.kokoroHealthy
+        ) {
+            return speakNative(
+                text,
+                {
+                    ...options,
+                    button
+                }
+            );
+        }
+
+        lastInternalError = null;
+
+        try {
+            const result =
+                await original.toggle(
+                    text,
+                    button,
                     options
+                );
+
+            if (
+                result === false &&
+                (
+                    lastInternalError ||
+                    !state.kokoroHealthy
                 )
             ) {
+                return speakNative(
+                    text,
+                    {
+                        ...options,
+                        button
+                    }
+                );
+            }
+
+            return result;
+        }
+        catch (error) {
+            if (
+                isStructuralFailure(error)
+            ) {
+                openCircuit(error);
+
+                return speakNative(
+                    text,
+                    {
+                        ...options,
+                        button
+                    }
+                );
+            }
+
+            throw error;
+        }
+    }
+
+    async function resilientPreload(
+        text,
+        options = {}
+    ) {
+        if (
+            !state.kokoroHealthy
+        ) {
+            return false;
+        }
+
+        try {
+            const result =
+                await original.preload(
+                    text,
+                    options
+                );
+
+            if (result === false) {
+                openCircuit(
+                    "Kokoro preload returned false"
+                );
                 return false;
             }
 
-            /*
-             * If original speech failed rather than being
-             * intentionally stopped, use fallback now.
-             */
-            if (
-                !STATE.kokoroHealthy ||
-                STATE.lastSpeechError
-            ) {
-                return speakNative(
-                    text,
-                    options
-                );
-            }
-
+            return true;
+        }
+        catch (error) {
+            openCircuit(error);
             return false;
         }
+    }
 
-        async function resilientToggle(
+    async function resilientPreloadMany(
+        items,
+        options = {}
+    ) {
+        const list =
+            Array.isArray(items)
+                ? items
+                : [];
+
+        if (!list.length) {
+            return {
+                total: 0,
+                loaded: 0,
+                failed: 0,
+                skipped: 0
+            };
+        }
+
+        if (
+            !state.kokoroHealthy
+        ) {
+            return {
+                total: list.length,
+                loaded: 0,
+                failed: 0,
+                skipped: list.length,
+                fallback: "native"
+            };
+        }
+
+        /*
+         * HEALTH PROBE:
+         * only ONE neural request is allowed before the
+         * mass-preload begins.
+         */
+        const first =
+            list[0];
+
+        const firstText =
+            typeof first === "string"
+                ? first
+                : first?.text;
+
+        const firstOptions =
+            typeof first === "string"
+                ? options
+                : {
+                    ...options,
+                    ...first
+                };
+
+        console.info(
+            "[EYTAudio V3] Kokoro health probe..."
+        );
+
+        const healthy =
+            await resilientPreload(
+                firstText,
+                firstOptions
+            );
+
+        if (
+            !healthy ||
+            !state.kokoroHealthy
+        ) {
+            console.warn(
+                "[EYTAudio V3] Kokoro preload disabled after health probe. Native fallback ready."
+            );
+
+            return {
+                total: list.length,
+                loaded: 0,
+                failed: 1,
+                skipped:
+                    Math.max(
+                        0,
+                        list.length - 1
+                    ),
+                fallback: "native"
+            };
+        }
+
+        /*
+         * Kokoro is alive.
+         * Use the ORIGINAL optimized parallel preload for
+         * the remaining items.
+         */
+        if (list.length === 1) {
+            return {
+                total: 1,
+                loaded: 1,
+                failed: 0,
+                skipped: 0
+            };
+        }
+
+        const remaining =
+            list.slice(1);
+
+        try {
+            const result =
+                await original.preloadMany(
+                    remaining,
+                    options
+                );
+
+            return result;
+        }
+        catch (error) {
+            openCircuit(error);
+
+            return {
+                total: list.length,
+                loaded: 1,
+                failed: 1,
+                skipped:
+                    Math.max(
+                        0,
+                        list.length - 2
+                    ),
+                fallback: "native"
+            };
+        }
+    }
+
+    function resilientStop() {
+        try {
+            original.stop();
+        }
+        catch (_) {
+        }
+
+        stopNative();
+    }
+
+    speechApi.speak =
+        resilientSpeak;
+
+    speechApi.speakEnglish =
+        (
+            text,
+            options = {}
+        ) =>
+            resilientSpeak(
+                text,
+                {
+                    ...options,
+                    lang:
+                        options.lang ||
+                        "en-US"
+                }
+            );
+
+    speechApi.speakEnglishSlow =
+        (
+            text,
+            options = {}
+        ) =>
+            resilientSpeak(
+                text,
+                {
+                    ...options,
+                    lang:
+                        options.lang ||
+                        "en-US",
+                    slow: true,
+                    rate:
+                        options.rate ||
+                        0.93
+                }
+            );
+
+    speechApi.toggle =
+        resilientToggle;
+
+    speechApi.toggleEnglish =
+        (
             text,
             button,
             options = {}
-        ) {
-            /*
-             * Clicking the SAME native button while speaking
-             * behaves exactly like the Kokoro toggle:
-             * stop playback.
-             */
-            if (
-                STATE.nativeSpeaking &&
-                STATE.nativeButton ===
-                    button
-            ) {
-                stopNative();
-
-                return false;
-            }
-
-            /*
-             * If native fallback is already speaking another
-             * sentence, stop it before the new one.
-             */
-            if (
-                STATE.nativeSpeaking
-            ) {
-                stopNative();
-            }
-
-            if (
-                isEnglish(
-                    options
-                ) &&
-                !STATE.kokoroHealthy
-            ) {
-                return speakNative(
-                    text,
-                    {
-                        ...options,
-                        button
-                    }
-                );
-            }
-
-            STATE.lastSpeechError =
-                null;
-
-            let result =
-                false;
-
-            try {
-                result =
-                    await original.toggle(
-                        text,
-                        button,
-                        options
-                    );
-            }
-            catch (error) {
-                STATE.lastSpeechError =
-                    error;
-
-                if (
-                    isStructuralFailure(
-                        error
-                    )
-                ) {
-                    markKokoroFailure(
-                        error
-                    );
-                }
-            }
-
-            if (
-                result !== false
-            ) {
-                return result;
-            }
-
-            /*
-             * false + no speech error means user probably
-             * clicked the same Kokoro button to stop.
-             */
-            if (
-                STATE.kokoroHealthy &&
-                !STATE.lastSpeechError
-            ) {
-                return false;
-            }
-
-            if (
-                isEnglish(
-                    options
-                )
-            ) {
-                return speakNative(
-                    text,
-                    {
-                        ...options,
-                        button
-                    }
-                );
-            }
-
-            return false;
-        }
-
-        async function resilientPreload(
-            text,
-            options = {}
-        ) {
-            if (
-                !isEnglish(
-                    options
-                )
-            ) {
-                return true;
-            }
-
-            if (
-                !STATE.kokoroHealthy
-            ) {
-                return false;
-            }
-
-            let result =
-                false;
-
-            try {
-                result =
-                    await original.preload(
-                        text,
-                        options
-                    );
-            }
-            catch (error) {
-                markKokoroFailure(
-                    error
-                );
-
-                return false;
-            }
-
-            /*
-             * ORIGINAL preload catches its own exception
-             * and returns false.
-             *
-             * This was the reason V1 did not open the circuit.
-             */
-            if (
-                result === false
-            ) {
-                markKokoroFailure(
-                    "Kokoro preload returned false"
-                );
-
-                return false;
-            }
-
-            return true;
-        }
-
-        async function resilientPreloadMany(
-            items,
-            options = {}
-        ) {
-            const source =
-                Array.isArray(
-                    items
-                )
-                    ? items
-                    : [];
-
-            const unique =
-                new Map();
-
-            for (
-                const rawItem of
-                source
-            ) {
-                if (!rawItem) {
-                    continue;
-                }
-
-                const item =
-                    typeof rawItem ===
-                    "string"
-                        ? {
-                            text:
-                                rawItem
-                        }
-                        : {
-                            ...rawItem
-                        };
-
-                const text =
-                    cleanText(
-                        item.text
-                    );
-
-                if (!text) {
-                    continue;
-                }
-
-                const lang =
-                    normalizeLanguage(
-                        item.lang ||
-                        options.lang ||
-                        "en-US"
-                    );
-
-                if (
-                    lang.startsWith(
-                        "pt"
-                    )
-                ) {
-                    continue;
-                }
-
-                const rate =
-                    Number(
-                        item.rate ||
-                        options.rate ||
-                        0.98
-                    );
-
-                const persona =
-                    item.persona ||
-                    options.persona ||
-                    "teacher";
-
-                const key =
-                    [
-                        lang,
-                        rate,
-                        persona,
-                        text
-                    ].join(
-                        "|"
-                    );
-
-                if (
-                    !unique.has(
-                        key
-                    )
-                ) {
-                    unique.set(
-                        key,
-                        {
-                            ...item,
-                            text,
-                            lang,
-                            rate,
-                            persona,
-                            priority:
-                                item.priority ||
-                                options.priority ||
-                                "background"
-                        }
-                    );
-                }
-            }
-
-            const queue =
-                Array.from(
-                    unique.values()
-                );
-
-            if (
-                !queue.length
-            ) {
-                return {
-                    total: 0,
-                    loaded: 0,
-                    failed: 0,
-                    skipped: 0
-                };
-            }
-
-            if (
-                !STATE.kokoroHealthy
-            ) {
-                return {
-                    total:
-                        queue.length,
-                    loaded:
-                        0,
-                    failed:
-                        0,
-                    skipped:
-                        queue.length,
-                    fallback:
-                        "native"
-                };
-            }
-
-            /*
-             * HEALTH PROBE
-             *
-             * Test ONE item before launching parallel preload.
-             *
-             * If the model cannot load, we stop here instead
-             * of firing another 78 failing requests.
-             */
-            const first =
-                queue.shift();
-
-            const firstSuccess =
-                await resilientPreload(
-                    first.text,
-                    first
-                );
-
-            if (
-                !firstSuccess ||
-                !STATE.kokoroHealthy
-            ) {
-                console.warn(
-                    "[EYTAudio] Neural preload aborted after health probe. Native fallback remains available."
-                );
-
-                return {
-                    total:
-                        queue.length +
-                        1,
-                    loaded:
-                        0,
-                    failed:
-                        1,
-                    skipped:
-                        queue.length,
-                    fallback:
-                        "native"
-                };
-            }
-
-            let loaded =
-                1;
-
-            let failed =
-                0;
-
-            let skipped =
-                0;
-
-            let index =
-                0;
-
-            const concurrency =
-                Math.max(
-                    1,
-                    Math.min(
-                        Number(
-                            options.concurrency
-                        ) || 6,
-                        6
-                    )
-                );
-
-            async function runner() {
-                while (
-                    STATE.kokoroHealthy
-                ) {
-                    const position =
-                        index++;
-
-                    if (
-                        position >=
-                        queue.length
-                    ) {
-                        return;
-                    }
-
-                    const item =
-                        queue[
-                            position
-                        ];
-
-                    const success =
-                        await resilientPreload(
-                            item.text,
-                            item
-                        );
-
-                    if (success) {
-                        loaded++;
-                    }
-                    else {
-                        failed++;
-
-                        if (
-                            !STATE.kokoroHealthy
-                        ) {
-                            return;
-                        }
-                    }
-                }
-            }
-
-            await Promise.all(
-                Array.from(
-                    {
-                        length:
-                            Math.min(
-                                concurrency,
-                                queue.length
-                            )
-                    },
-                    runner
-                )
-            );
-
-            if (
-                index <
-                queue.length
-            ) {
-                skipped =
-                    queue.length -
-                    index;
-            }
-
-            return {
-                total:
-                    queue.length +
-                    1,
-                loaded,
-                failed,
-                skipped,
-                fallback:
-                    STATE.kokoroHealthy
-                        ? null
-                        : "native"
-            };
-        }
-
-        function resilientWarmup() {
-            if (
-                !STATE.kokoroHealthy
-            ) {
-                return false;
-            }
-
-            try {
-                return original
-                    .warmup();
-            }
-            catch (error) {
-                markKokoroFailure(
-                    error
-                );
-
-                return false;
-            }
-        }
-
-        function resilientStop() {
-            try {
-                original.stop();
-            }
-            catch (_) {
-            }
-
-            stopNative();
-        }
-
-        window.EYTSpeech.speak =
-            resilientSpeak;
-
-        window.EYTSpeech.speakEnglish =
-            (
-                text,
-                options = {}
-            ) =>
-                resilientSpeak(
-                    text,
-                    {
-                        ...options,
-                        lang:
-                            options.lang ||
-                            "en-US"
-                    }
-                );
-
-        window.EYTSpeech.speakEnglishSlow =
-            (
-                text,
-                options = {}
-            ) =>
-                resilientSpeak(
-                    text,
-                    {
-                        ...options,
-                        lang:
-                            options.lang ||
-                            "en-US",
-                        slow:
-                            true,
-                        rate:
-                            options.rate ||
-                            0.93
-                    }
-                );
-
-        window.EYTSpeech.toggle =
-            resilientToggle;
-
-        window.EYTSpeech.toggleEnglish =
-            (
+        ) =>
+            resilientToggle(
                 text,
                 button,
-                options = {}
-            ) =>
-                resilientToggle(
-                    text,
-                    button,
-                    {
-                        ...options,
-                        lang:
-                            options.lang ||
-                            "en-US"
-                    }
-                );
+                {
+                    ...options,
+                    lang:
+                        options.lang ||
+                        "en-US"
+                }
+            );
 
-        window.EYTSpeech.preload =
-            resilientPreload;
+    speechApi.preload =
+        resilientPreload;
 
-        window.EYTSpeech.preloadMany =
-            resilientPreloadMany;
+    speechApi.preloadMany =
+        resilientPreloadMany;
 
-        window.EYTSpeech.warmup =
-            resilientWarmup;
+    speechApi.stop =
+        resilientStop;
 
-        window.EYTSpeech.stop =
-            resilientStop;
-
-        const originalGetAudioState =
-            original.getAudioState;
-
-        window.EYTSpeech.getAudioState =
-            function() {
-                return {
-                    ...originalGetAudioState(),
-                    kokoroHealthy:
-                        STATE.kokoroHealthy,
-                    nativeAvailable:
-                        hasNativeSpeech(),
-                    nativeSpeaking:
-                        STATE.nativeSpeaking,
-                    failures:
-                        STATE.failures,
-                    lastFailure:
-                        STATE.lastFailure
-                };
+    speechApi.getAudioState =
+        function() {
+            return {
+                ...original.getAudioState(),
+                kokoroHealthy:
+                    state.kokoroHealthy,
+                nativeAvailable:
+                    nativeAvailable(),
+                nativeSpeaking:
+                    state.nativeSpeaking,
+                failures:
+                    state.failures,
+                lastFailure:
+                    state.lastFailure
             };
-
-        window.EYTAudioHealth = {
-            getState() {
-                return {
-                    kokoroHealthy:
-                        STATE.kokoroHealthy,
-
-                    failures:
-                        STATE.failures,
-
-                    lastFailure:
-                        STATE.lastFailure,
-
-                    lastSpeechError:
-                        STATE.lastSpeechError,
-
-                    nativeAvailable:
-                        hasNativeSpeech(),
-
-                    nativeSpeaking:
-                        STATE.nativeSpeaking,
-
-                    originalAudioState:
-                        original
-                            .getAudioState()
-                };
-            },
-
-            retryKokoro() {
-                resetKokoro();
-
-                return true;
-            },
-
-            forceNative() {
-                STATE.kokoroHealthy =
-                    false;
-
-                STATE.lastFailure =
-                    "Native mode manually enabled";
-
-                return true;
-            },
-
-            speakNative,
-
-            stopNative
         };
 
-        window.EYTSpeech
-            .__resilientAudioInstalled =
-            true;
+    window.EYTAudioHealth = {
+        getState() {
+            return {
+                kokoroHealthy:
+                    state.kokoroHealthy,
 
-        window.EYTSpeech
-            .__resilientAudioV2Installed =
-            true;
+                failures:
+                    state.failures,
 
-        console.info(
-            "[EYTAudio] Resilient Audio V2 installed."
-        );
+                lastFailure:
+                    state.lastFailure,
 
-        return true;
-    }
+                nativeAvailable:
+                    nativeAvailable(),
 
-    if (
-        !install()
-    ) {
-        let attempts =
-            0;
+                nativeSpeaking:
+                    state.nativeSpeaking,
 
-        const timer =
-            setInterval(
-                () => {
-                    attempts++;
+                audioState:
+                    original.getAudioState()
+            };
+        },
 
-                    if (
-                        install() ||
-                        attempts >=
-                            200
-                    ) {
-                        clearInterval(
-                            timer
-                        );
-                    }
-                },
-                25
+        retryKokoro() {
+            closeCircuit();
+            return true;
+        },
+
+        forceNative() {
+            openCircuit(
+                "Native mode manually enabled"
             );
-    }
+            return true;
+        },
 
-    if (
-        hasNativeSpeech() &&
-        typeof window
-            .speechSynthesis
-            .addEventListener ===
-            "function"
-    ) {
-        window
-            .speechSynthesis
-            .addEventListener(
-                "voiceschanged",
-                getVoices
-            );
-    }
+        speakNative,
+
+        stopNative
+    };
+
+    speechApi.__resilientAudioInstalled =
+        true;
+
+    speechApi.__resilientAudioV3Installed =
+        true;
+
+    console.info(
+        "[EYTAudio V3] Installed successfully."
+    );
+
+    console.info(
+        "[EYTAudio V3] Native available:",
+        nativeAvailable()
+    );
 })();
-
 /* === EYT RESILIENT AUDIO FALLBACK END === */
