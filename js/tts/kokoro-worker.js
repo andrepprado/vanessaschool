@@ -2,8 +2,7 @@ import {
     KokoroTTS
 } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 
-const MODEL_ID =
-    "onnx-community/Kokoro-82M-v1.0-ONNX";
+const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
 const RUNTIME = {
     device: "wasm",
@@ -11,19 +10,13 @@ const RUNTIME = {
 };
 
 const VOICES = {
-    "en-GB": {
-        teacher: "bf_emma",
-        teacherMale: "bm_george"
-    },
-
     "en-US": {
         teacher: "af_heart",
         teacherMale: "am_michael"
     },
-
-    "pt-BR": {
-        teacher: "pf_dora",
-        teacherMale: "pm_alex"
+    "en-GB": {
+        teacher: "bf_emma",
+        teacherMale: "bm_george"
     }
 };
 
@@ -36,33 +29,19 @@ function cleanText(value) {
 }
 
 function normalizeLang(value) {
-    const lang =
-        String(value || "")
-            .trim()
-            .toLowerCase();
+    const lang = String(value || "")
+        .trim()
+        .toLowerCase();
 
-    if (lang.startsWith("pt")) {
-        return "pt-BR";
+    if (lang.startsWith("en-gb")) {
+        return "en-GB";
     }
 
-    if (
-        lang === "en-us" ||
-        lang.startsWith("en-us")
-    ) {
-        return "en-US";
-    }
-
-    return "en-GB";
+    return "en-US";
 }
 
-function clamp(
-    value,
-    min,
-    max,
-    fallback
-) {
-    const number =
-        Number(value);
+function clamp(value, min, max, fallback) {
+    const number = Number(value);
 
     if (!Number.isFinite(number)) {
         return fallback;
@@ -70,17 +49,11 @@ function clamp(
 
     return Math.min(
         max,
-        Math.max(
-            min,
-            number
-        )
+        Math.max(min, number)
     );
 }
 
-function postStatus(
-    status,
-    extra = {}
-) {
+function postStatus(status, extra = {}) {
     self.postMessage({
         type: "engine-status",
         status,
@@ -96,99 +69,84 @@ async function getTTS() {
         return ttsPromise;
     }
 
-    postStatus(
-        "model-loading"
-    );
+    postStatus("model-loading");
 
-    /*
-     * IMPORTANTE:
-     *
-     * Não desabilitamos modelos remotos.
-     * Não configuramos local_files_only.
-     * Não apontamos para um modelo local inexistente.
-     *
-     * O modelo oficial é baixado do Hugging Face
-     * e armazenado no cache do navegador.
-     */
+    ttsPromise = KokoroTTS.from_pretrained(
+        MODEL_ID,
+        {
+            device: RUNTIME.device,
+            dtype: RUNTIME.dtype,
+            progress_callback: progress => {
+                self.postMessage({
+                    type: "model-progress",
+                    progress
+                });
+            }
+        }
+    )
+        .then(instance => {
+            postStatus("ready");
 
-    ttsPromise =
-        KokoroTTS
-            .from_pretrained(
-                MODEL_ID,
+            return instance;
+        })
+        .catch(error => {
+            ttsPromise = null;
+
+            postStatus(
+                "error",
                 {
-                    device:
-                        RUNTIME.device,
-
-                    dtype:
-                        RUNTIME.dtype,
-
-                    progress_callback:
-                        progress => {
-                            self.postMessage({
-                                type:
-                                    "model-progress",
-
-                                progress
-                            });
-                        }
-                }
-            )
-            .then(
-                instance => {
-                    postStatus(
-                        "ready"
-                    );
-
-                    return instance;
-                }
-            )
-            .catch(
-                error => {
-                    ttsPromise =
-                        null;
-
-                    postStatus(
-                        "error",
-                        {
-                            error:
-                                error?.message ||
-                                String(error)
-                        }
-                    );
-
-                    throw error;
+                    error:
+                        error?.message ||
+                        String(error)
                 }
             );
+
+            throw error;
+        });
 
     return ttsPromise;
 }
 
-function getVoice(
-    lang,
-    persona
-) {
-    const language =
-        normalizeLang(lang);
+function resolveVoice(lang, persona, requestedVoice) {
+    const language = normalizeLang(lang);
 
-    const voices =
+    if (
+        requestedVoice &&
+        Object.values(VOICES)
+            .some(group =>
+                Object.values(group)
+                    .includes(requestedVoice)
+            )
+    ) {
+        return requestedVoice;
+    }
+
+    const group =
         VOICES[language] ||
-        VOICES["en-GB"];
+        VOICES["en-US"];
 
     return (
-        voices[persona] ||
-        voices.teacher
+        group[persona] ||
+        group.teacher
     );
 }
 
 async function generate(message) {
-    const text =
-        cleanText(
-            message.text
-        );
+    const text = cleanText(message.text);
 
     if (!text) {
         throw new Error(
             "Texto vazio para geração de áudio."
+        );
+    }
+
+    const originalLang =
+        String(message.lang || "")
+            .toLowerCase();
+
+    if (!originalLang.startsWith("en")) {
+        throw new Error(
+            "O Kokoro deste projeto deve ser usado somente para inglês."
         );
     }
 
@@ -203,33 +161,24 @@ async function generate(message) {
         ) ||
         "teacher";
 
-    const voice =
+    const requestedVoice =
         cleanText(
             message.voice
-        ) ||
-        getVoice(
-            lang,
-            persona
         );
 
-    /*
-     * Evita velocidades excessivamente lentas.
-     *
-     * Em TTS neural, reduzir demais a velocidade
-     * deixa vogais e transições artificiais.
-     */
-
-    const defaultSpeed =
-        lang === "pt-BR"
-            ? 1.00
-            : 0.98;
+    const voice =
+        resolveVoice(
+            lang,
+            persona,
+            requestedVoice
+        );
 
     const speed =
         clamp(
             message.speed,
-            0.90,
+            0.92,
             1.08,
-            defaultSpeed
+            1.00
         );
 
     const engine =
@@ -255,11 +204,10 @@ async function generate(message) {
 
     if (
         !audio ||
-        typeof audio.toBlob !==
-            "function"
+        typeof audio.toBlob !== "function"
     ) {
         throw new Error(
-            "O Kokoro não retornou áudio válido."
+            "O Kokoro não retornou um áudio válido."
         );
     }
 
@@ -271,7 +219,7 @@ async function generate(message) {
         blob.size === 0
     ) {
         throw new Error(
-            "O Kokoro retornou áudio vazio."
+            "O Kokoro retornou um áudio vazio."
         );
     }
 
@@ -289,22 +237,16 @@ self.addEventListener(
         const message =
             event.data || {};
 
-        if (
-            message.type ===
-            "warmup"
-        ) {
+        if (message.type === "warmup") {
             try {
                 await getTTS();
 
                 self.postMessage({
-                    type:
-                        "warmup-complete"
+                    type: "warmup-complete"
                 });
             } catch (error) {
                 self.postMessage({
-                    type:
-                        "warmup-error",
-
+                    type: "warmup-error",
                     error:
                         error?.message ||
                         String(error)
@@ -314,10 +256,7 @@ self.addEventListener(
             return;
         }
 
-        if (
-            message.type !==
-            "generate"
-        ) {
+        if (message.type !== "generate") {
             return;
         }
 
@@ -331,44 +270,23 @@ self.addEventListener(
                 );
 
             self.postMessage({
-                type:
-                    "generation-complete",
-
+                type: "generation-complete",
                 id,
-
-                blob:
-                    result.blob,
-
-                lang:
-                    result.lang,
-
-                voice:
-                    result.voice,
-
-                speed:
-                    result.speed,
-
+                blob: result.blob,
+                lang: result.lang,
+                voice: result.voice,
+                speed: result.speed,
                 runtime: {
-                    model:
-                        MODEL_ID,
-
-                    device:
-                        RUNTIME.device,
-
-                    dtype:
-                        RUNTIME.dtype,
-
-                    engine:
-                        "kokoro"
+                    engine: "kokoro",
+                    model: MODEL_ID,
+                    device: RUNTIME.device,
+                    dtype: RUNTIME.dtype
                 }
             });
         } catch (error) {
             self.postMessage({
-                type:
-                    "generation-error",
-
+                type: "generation-error",
                 id,
-
                 error:
                     error?.message ||
                     String(error)
@@ -377,6 +295,4 @@ self.addEventListener(
     }
 );
 
-postStatus(
-    "worker-ready"
-);
+postStatus("worker-ready");

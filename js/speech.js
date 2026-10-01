@@ -3,103 +3,70 @@ const EYTSpeech = (() => {
 
     const CONFIG = {
         workerPath:
-            "/js/tts/kokoro-worker.js?v=20260930-natural-1",
+            "/js/tts/kokoro-worker.js?v=20260930-natural-2",
 
         englishLang:
-            "en-GB",
+            "en-US",
 
         portugueseLang:
             "pt-BR",
 
         englishRate:
-            0.98,
+            1.00,
+
+        slowEnglishRate:
+            0.93,
 
         portugueseRate:
             1.00,
 
-        slowEnglishRate:
-            0.92,
-
-        requestTimeout:
+        timeout:
             180000,
 
         maxCacheEntries:
             100
     };
 
-    let worker =
-        null;
+    let worker = null;
+    let requestId = 0;
+    let sessionId = 0;
 
-    let requestId =
-        0;
+    let currentSession = null;
+    let currentButton = null;
+    let currentSource = null;
+    let currentUtterance = null;
 
-    let sessionId =
-        0;
-
-    let currentSession =
-        null;
-
-    let currentButton =
-        null;
-
-    let currentSource =
-        null;
-
-    let audioContext =
-        null;
-
-    let runtime =
-        null;
+    let audioContext = null;
+    let runtime = null;
 
     const pending =
         new Map();
 
-    const audioCache =
+    const cache =
         new Map();
 
     function cleanText(value) {
-        return String(
-            value ?? ""
-        )
-            .replace(
-                /\u00a0/g,
-                " "
-            )
-            .replace(
-                /\s+/g,
-                " "
-            )
+        return String(value ?? "")
+            .replace(/\u00a0/g, " ")
+            .replace(/\s+/g, " ")
             .trim();
     }
 
     function normalizeLang(value) {
         const lang =
-            String(
-                value || ""
-            )
+            String(value || "")
                 .trim()
                 .toLowerCase();
 
-        if (
-            lang.startsWith(
-                "pt"
-            )
-        ) {
-            return CONFIG
-                .portugueseLang;
+        if (lang.startsWith("pt")) {
+            return CONFIG.portugueseLang;
         }
 
-        if (
-            lang === "en-us" ||
-            lang.startsWith(
-                "en-us"
-            )
-        ) {
-            return "en-US";
+        if (lang.startsWith("en-gb")) {
+            return "en-GB";
         }
 
-        return CONFIG
-            .englishLang;
+        return CONFIG.englishLang;
     }
 
     function clamp(
@@ -111,11 +78,7 @@ const EYTSpeech = (() => {
         const number =
             Number(value);
 
-        if (
-            !Number.isFinite(
-                number
-            )
-        ) {
+        if (!Number.isFinite(number)) {
             return fallback;
         }
 
@@ -145,23 +108,8 @@ const EYTSpeech = (() => {
         }
     }
 
-    function isSupported() {
-        return (
-            typeof Worker !==
-                "undefined" &&
-            typeof WebAssembly !==
-                "undefined" &&
-            typeof AudioContext !==
-                "undefined" ||
-            typeof webkitAudioContext !==
-                "undefined"
-        );
-    }
-
     function getAudioContext() {
-        if (
-            audioContext
-        ) {
+        if (audioContext) {
             return audioContext;
         }
 
@@ -169,9 +117,7 @@ const EYTSpeech = (() => {
             window.AudioContext ||
             window.webkitAudioContext;
 
-        if (
-            !AudioContextClass
-        ) {
+        if (!AudioContextClass) {
             return null;
         }
 
@@ -200,11 +146,6 @@ const EYTSpeech = (() => {
                 await context.resume();
             }
 
-            /*
-             * Buffer silencioso curto.
-             * Mantém o AudioContext liberado pelo gesto do usuário.
-             */
-
             const buffer =
                 context.createBuffer(
                     1,
@@ -231,43 +172,30 @@ const EYTSpeech = (() => {
         }
     }
 
-    function rememberButton(
-        button
-    ) {
+    function rememberButton(button) {
         if (
             !button ||
-            button.dataset
-                .eytOriginalLabel
+            button.dataset.eytOriginalLabel
         ) {
             return;
         }
 
-        button.dataset
-            .eytOriginalLabel =
-            button.getAttribute(
-                "aria-label"
-            ) ||
-            button.getAttribute(
-                "title"
-            ) ||
+        button.dataset.eytOriginalLabel =
+            button.getAttribute("aria-label") ||
+            button.getAttribute("title") ||
             "Ouvir pronúncia";
     }
 
-    function activateButton(
-        button
-    ) {
+    function activateButton(button) {
         if (!button) {
             return;
         }
 
-        rememberButton(
-            button
-        );
+        rememberButton(button);
 
         if (
             currentButton &&
-            currentButton !==
-                button
+            currentButton !== button
         ) {
             resetButton(
                 currentButton
@@ -288,18 +216,16 @@ const EYTSpeech = (() => {
 
         button.setAttribute(
             "aria-label",
-            "Preparando pronúncia"
+            "Preparando áudio"
         );
 
         button.setAttribute(
             "title",
-            "Preparando pronúncia"
+            "Preparando áudio"
         );
     }
 
-    function setButtonPlaying(
-        button
-    ) {
+    function setButtonPlaying(button) {
         if (!button) {
             return;
         }
@@ -331,27 +257,24 @@ const EYTSpeech = (() => {
             "false"
         );
 
-        const original =
-            button.dataset
-                .eytOriginalLabel ||
+        const label =
+            button.dataset.eytOriginalLabel ||
             "Ouvir pronúncia";
 
         button.setAttribute(
             "aria-label",
-            original
+            label
         );
 
         button.setAttribute(
             "title",
-            original
+            label
         );
 
         if (
-            button ===
-            currentButton
+            button === currentButton
         ) {
-            currentButton =
-                null;
+            currentButton = null;
         }
     }
 
@@ -361,9 +284,7 @@ const EYTSpeech = (() => {
         }
 
         try {
-            currentSource.stop(
-                0
-            );
+            currentSource.stop(0);
         } catch (_) {
         }
 
@@ -372,19 +293,31 @@ const EYTSpeech = (() => {
         } catch (_) {
         }
 
-        currentSource =
-            null;
+        currentSource = null;
+    }
+
+    function stopNative() {
+        if (
+            "speechSynthesis" in window
+        ) {
+            try {
+                window.speechSynthesis
+                    .cancel();
+            } catch (_) {
+            }
+        }
+
+        currentUtterance = null;
     }
 
     function stop() {
         sessionId += 1;
 
         stopSource();
-
+        stopNative();
         resetButton();
 
-        currentSession =
-            null;
+        currentSession = null;
 
         dispatch(
             "eyt:speech-stop"
@@ -412,15 +345,11 @@ const EYTSpeech = (() => {
                 "ready"
             ) {
                 runtime = {
-                    engine:
-                        "kokoro",
-
+                    engine: "kokoro",
                     model:
                         message.model,
-
                     device:
                         message.device,
-
                     dtype:
                         message.dtype
                 };
@@ -445,8 +374,7 @@ const EYTSpeech = (() => {
         ) {
             dispatch(
                 "eyt:speech-model-progress",
-                message.progress ||
-                    {}
+                message.progress || {}
             );
 
             return;
@@ -505,15 +433,13 @@ const EYTSpeech = (() => {
             request.reject(
                 new Error(
                     message.error ||
-                    "Falha ao gerar pronúncia."
+                    "Falha ao gerar áudio."
                 )
             );
         }
     }
 
-    function handleWorkerError(
-        event
-    ) {
+    function handleWorkerError(event) {
         const error =
             new Error(
                 event?.message ||
@@ -540,20 +466,11 @@ const EYTSpeech = (() => {
         } catch (_) {
         }
 
-        worker =
-            null;
+        worker = null;
 
         console.error(
             "[EYTSpeech]",
             error
-        );
-
-        dispatch(
-            "eyt:speech-error",
-            {
-                error:
-                    error.message
-            }
         );
     }
 
@@ -566,9 +483,7 @@ const EYTSpeech = (() => {
             new Worker(
                 CONFIG.workerPath,
                 {
-                    type:
-                        "module",
-
+                    type: "module",
                     name:
                         "eyt-kokoro-neural"
                 }
@@ -587,76 +502,59 @@ const EYTSpeech = (() => {
         return worker;
     }
 
-    function buildCacheKey(
+    function cacheKey(
         text,
         options
     ) {
         return [
             options.lang,
             options.persona,
-            options.voice ||
-                "",
-            options.rate
-                .toFixed(2),
+            options.voice || "",
+            options.rate.toFixed(2),
             text
-        ].join(
-            "|"
-        );
+        ].join("|");
     }
 
     function trimCache() {
         while (
-            audioCache.size >
+            cache.size >
             CONFIG.maxCacheEntries
         ) {
             const first =
-                audioCache.keys()
+                cache.keys()
                     .next()
                     .value;
 
             if (
-                first ===
-                undefined
+                first === undefined
             ) {
                 break;
             }
 
-            audioCache.delete(
-                first
-            );
+            cache.delete(first);
         }
     }
 
-    function generateAudio(
+    function generateEnglish(
         text,
         options
     ) {
-        const cacheKey =
-            buildCacheKey(
+        const key =
+            cacheKey(
                 text,
                 options
             );
 
-        if (
-            audioCache.has(
-                cacheKey
-            )
-        ) {
+        if (cache.has(key)) {
             return Promise.resolve({
                 blob:
-                    audioCache.get(
-                        cacheKey
-                    ),
-
+                    cache.get(key),
                 lang:
                     options.lang,
-
                 voice:
                     options.voice ||
                     null,
-
                 runtime,
-
                 cached:
                     true
             });
@@ -679,12 +577,11 @@ const EYTSpeech = (() => {
 
                             reject(
                                 new Error(
-                                    "Tempo excedido ao carregar o motor neural."
+                                    "Tempo excedido ao gerar o áudio neural."
                                 )
                             );
                         },
-                        CONFIG
-                            .requestTimeout
+                        CONFIG.timeout
                     );
 
                 pending.set(
@@ -695,11 +592,10 @@ const EYTSpeech = (() => {
                         resolve:
                             result => {
                                 if (
-                                    result.blob instanceof
-                                    Blob
+                                    result.blob instanceof Blob
                                 ) {
-                                    audioCache.set(
-                                        cacheKey,
+                                    cache.set(
+                                        key,
                                         result.blob
                                     );
 
@@ -751,7 +647,7 @@ const EYTSpeech = (() => {
 
         if (!context) {
             throw new Error(
-                "AudioContext não disponível neste navegador."
+                "AudioContext não disponível."
             );
         }
 
@@ -762,19 +658,17 @@ const EYTSpeech = (() => {
             await context.resume();
         }
 
-        const arrayBuffer =
+        const bytes =
             await blob.arrayBuffer();
 
-        const audioBuffer =
+        const buffer =
             await context
                 .decodeAudioData(
-                    arrayBuffer
-                        .slice(0)
+                    bytes.slice(0)
                 );
 
         if (
-            currentSession
-                ?.id !==
+            currentSession?.id !==
             session.id
         ) {
             return false;
@@ -785,7 +679,7 @@ const EYTSpeech = (() => {
                 .createBufferSource();
 
         source.buffer =
-            audioBuffer;
+            buffer;
 
         source.connect(
             context.destination
@@ -803,16 +697,12 @@ const EYTSpeech = (() => {
             {
                 text:
                     session.text,
-
                 lang:
                     metadata.lang,
-
                 voice:
                     metadata.voice,
-
                 engine:
                     "kokoro",
-
                 runtime:
                     metadata.runtime ||
                     runtime
@@ -839,20 +729,213 @@ const EYTSpeech = (() => {
                         } catch (_) {
                         }
 
-                        resolve(
-                            true
-                        );
+                        resolve(true);
                     };
 
                 try {
-                    source.start(
-                        0
-                    );
+                    source.start(0);
                 } catch (error) {
-                    reject(
-                        error
-                    );
+                    reject(error);
                 }
+            }
+        );
+    }
+
+    function getPortugueseVoices() {
+        if (
+            !("speechSynthesis" in window)
+        ) {
+            return [];
+        }
+
+        return window
+            .speechSynthesis
+            .getVoices()
+            .filter(
+                voice =>
+                    String(
+                        voice.lang ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .startsWith("pt")
+            );
+    }
+
+    function selectPortugueseVoice() {
+        const voices =
+            getPortugueseVoices();
+
+        if (!voices.length) {
+            return null;
+        }
+
+        const preferredNames = [
+            "francisca",
+            "maria",
+            "luciana",
+            "fernanda",
+            "brasil",
+            "brazil"
+        ];
+
+        const ptBR =
+            voices.filter(
+                voice =>
+                    String(
+                        voice.lang ||
+                        ""
+                    )
+                        .toLowerCase()
+                        .startsWith(
+                            "pt-br"
+                        )
+            );
+
+        const pool =
+            ptBR.length
+                ? ptBR
+                : voices;
+
+        return (
+            pool.find(
+                voice =>
+                    preferredNames.some(
+                        name =>
+                            String(
+                                voice.name ||
+                                ""
+                            )
+                                .toLowerCase()
+                                .includes(name)
+                    )
+            ) ||
+            pool[0]
+        );
+    }
+
+    function speakPortugueseNative(
+        text,
+        options,
+        session
+    ) {
+        if (
+            !(
+                "speechSynthesis" in
+                window
+            ) ||
+            typeof SpeechSynthesisUtterance ===
+                "undefined"
+        ) {
+            return Promise.reject(
+                new Error(
+                    "Voz em português não disponível."
+                )
+            );
+        }
+
+        return new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+                const utterance =
+                    new SpeechSynthesisUtterance(
+                        text
+                    );
+
+                const voice =
+                    selectPortugueseVoice();
+
+                utterance.lang =
+                    voice?.lang ||
+                    "pt-BR";
+
+                utterance.rate =
+                    options.rate;
+
+                utterance.pitch = 1;
+                utterance.volume = 1;
+
+                if (voice) {
+                    utterance.voice =
+                        voice;
+                }
+
+                currentUtterance =
+                    utterance;
+
+                utterance.onstart =
+                    () => {
+                        if (
+                            currentSession?.id !==
+                            session.id
+                        ) {
+                            return;
+                        }
+
+                        setButtonPlaying(
+                            session.button
+                        );
+
+                        dispatch(
+                            "eyt:speech-start",
+                            {
+                                text,
+                                lang:
+                                    "pt-BR",
+                                voice:
+                                    voice?.name ||
+                                    null,
+                                engine:
+                                    "browser-pt"
+                            }
+                        );
+                    };
+
+                utterance.onend =
+                    () => {
+                        if (
+                            currentUtterance ===
+                            utterance
+                        ) {
+                            currentUtterance =
+                                null;
+                        }
+
+                        resolve(true);
+                    };
+
+                utterance.onerror =
+                    event => {
+                        if (
+                            event.error ===
+                                "canceled" ||
+                            event.error ===
+                                "interrupted"
+                        ) {
+                            resolve(false);
+
+                            return;
+                        }
+
+                        reject(
+                            new Error(
+                                event.error ||
+                                "Falha no áudio em português."
+                            )
+                        );
+                    };
+
+                window
+                    .speechSynthesis
+                    .cancel();
+
+                window
+                    .speechSynthesis
+                    .speak(
+                        utterance
+                    );
             }
         );
     }
@@ -872,33 +955,27 @@ const EYTSpeech = (() => {
             CONFIG.portugueseLang
         ) {
             defaultRate =
-                CONFIG
-                    .portugueseRate;
+                CONFIG.portugueseRate;
         } else if (
             options.slow
         ) {
             defaultRate =
-                CONFIG
-                    .slowEnglishRate;
+                CONFIG.slowEnglishRate;
         } else {
             defaultRate =
-                CONFIG
-                    .englishRate;
+                CONFIG.englishRate;
         }
 
         return {
             lang,
 
-            /*
-             * Mantém velocidade em uma faixa natural.
-             * Isso é proposital para preservar ritmo,
-             * vogais e connected speech.
-             */
-
             rate:
                 clamp(
                     options.rate,
-                    0.90,
+                    lang ===
+                        CONFIG.portugueseLang
+                        ? 0.85
+                        : 0.92,
                     1.08,
                     defaultRate
                 ),
@@ -925,14 +1002,9 @@ const EYTSpeech = (() => {
         options = {}
     ) {
         const value =
-            cleanText(
-                text
-            );
+            cleanText(text);
 
-        if (
-            !value ||
-            !isSupported()
-        ) {
+        if (!value) {
             return false;
         }
 
@@ -961,52 +1033,45 @@ const EYTSpeech = (() => {
             session.button
         );
 
-        /*
-         * Executado antes do download/geração para aproveitar
-         * o gesto do clique e liberar o áudio no navegador.
-         */
-
         void unlockAudio();
 
-        dispatch(
-            "eyt:speech-loading",
-            {
-                text:
-                    value,
-
-                lang:
-                    resolved.lang,
-
-                engine:
-                    "kokoro"
-            }
-        );
-
         try {
-            const generated =
-                await generateAudio(
-                    value,
-                    resolved
-                );
+            let result;
 
             if (
-                currentSession
-                    ?.id !==
-                id
+                resolved.lang ===
+                CONFIG.portugueseLang
             ) {
-                return false;
+                result =
+                    await speakPortugueseNative(
+                        value,
+                        resolved,
+                        session
+                    );
+            } else {
+                const generated =
+                    await generateEnglish(
+                        value,
+                        resolved
+                    );
+
+                if (
+                    currentSession?.id !==
+                    id
+                ) {
+                    return false;
+                }
+
+                result =
+                    await playBlob(
+                        generated.blob,
+                        session,
+                        generated
+                    );
             }
 
-            const played =
-                await playBlob(
-                    generated.blob,
-                    session,
-                    generated
-                );
-
             if (
-                currentSession
-                    ?.id ===
+                currentSession?.id ===
                 id
             ) {
                 resetButton(
@@ -1021,21 +1086,16 @@ const EYTSpeech = (() => {
                     {
                         text:
                             value,
-
                         lang:
-                            resolved.lang,
-
-                        engine:
-                            "kokoro"
+                            resolved.lang
                     }
                 );
             }
 
-            return played;
+            return result !== false;
         } catch (error) {
             if (
-                currentSession
-                    ?.id ===
+                currentSession?.id ===
                 id
             ) {
                 resetButton(
@@ -1046,16 +1106,8 @@ const EYTSpeech = (() => {
                     null;
             }
 
-            /*
-             * Não usamos a voz nativa do navegador como fallback.
-             *
-             * Se Kokoro falhar, mostramos o erro.
-             * Assim o aluno nunca recebe uma voz robótica
-             * do Windows/Chrome no lugar da pronúncia neural.
-             */
-
             console.error(
-                "[EYTSpeech] Kokoro:",
+                "[EYTSpeech]",
                 error
             );
 
@@ -1065,10 +1117,8 @@ const EYTSpeech = (() => {
                     error:
                         error?.message ||
                         String(error),
-
                     text:
                         value,
-
                     lang:
                         resolved.lang
                 }
@@ -1085,8 +1135,7 @@ const EYTSpeech = (() => {
     ) {
         if (
             currentSession &&
-            currentButton ===
-                button
+            currentButton === button
         ) {
             stop();
 
@@ -1114,8 +1163,7 @@ const EYTSpeech = (() => {
                 ...options,
                 lang:
                     options.lang ||
-                    CONFIG
-                        .englishLang
+                    CONFIG.englishLang
             }
         );
     }
@@ -1130,9 +1178,7 @@ const EYTSpeech = (() => {
                 ...options,
                 lang:
                     options.lang ||
-                    CONFIG
-                        .englishLang,
-
+                    CONFIG.englishLang,
                 slow:
                     true
             }
@@ -1148,30 +1194,95 @@ const EYTSpeech = (() => {
             {
                 ...options,
                 lang:
-                    CONFIG
-                        .portugueseLang
+                    CONFIG.portugueseLang
             }
         );
     }
 
-    function warmup() {
-        if (
-            !isSupported()
-        ) {
+    function toggleEnglish(
+        text,
+        button,
+        options = {}
+    ) {
+        return toggle(
+            text,
+            button,
+            {
+                ...options,
+                lang:
+                    options.lang ||
+                    CONFIG.englishLang
+            }
+        );
+    }
+
+    function togglePortuguese(
+        text,
+        button,
+        options = {}
+    ) {
+        return toggle(
+            text,
+            button,
+            {
+                ...options,
+                lang:
+                    CONFIG.portugueseLang
+            }
+        );
+    }
+
+    async function preload(
+        text,
+        options = {}
+    ) {
+        const value =
+            cleanText(text);
+
+        if (!value) {
             return false;
         }
 
-        getWorker()
-            .postMessage({
-                type:
-                    "warmup"
-            });
+        const resolved =
+            resolveOptions(
+                options
+            );
 
-        return true;
+        if (
+            resolved.lang ===
+            CONFIG.portugueseLang
+        ) {
+            return true;
+        }
+
+        try {
+            await generateEnglish(
+                value,
+                resolved
+            );
+
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function warmup() {
+        try {
+            getWorker()
+                .postMessage({
+                    type:
+                        "warmup"
+                });
+
+            return true;
+        } catch (_) {
+            return false;
+        }
     }
 
     function clearCache() {
-        audioCache.clear();
+        cache.clear();
 
         return true;
     }
@@ -1180,23 +1291,79 @@ const EYTSpeech = (() => {
         return runtime;
     }
 
+    function getConfig() {
+        return {
+            ...CONFIG
+        };
+    }
+
+    function getAudioState() {
+        return {
+            speaking:
+                isSpeaking(),
+            runtime,
+            currentLanguage:
+                currentSession?.lang ||
+                null
+        };
+    }
+
+    if (
+        "speechSynthesis" in window
+    ) {
+        window.speechSynthesis
+            .getVoices();
+
+        window.speechSynthesis
+            .addEventListener?.(
+                "voiceschanged",
+                () => {
+                    window
+                        .speechSynthesis
+                        .getVoices();
+                }
+            );
+    }
+
     window.addEventListener(
         "pagehide",
         stop
     );
 
     return {
-        isSupported,
+        isSupported:
+            () => true,
+
         isSpeaking,
+
         speak,
+
         speakEnglish,
+
         speakEnglishSlow,
+
         speakPortuguese,
+
         toggle,
+
+        toggleEnglish,
+
+        togglePortuguese,
+
         stop,
+
+        preload,
+
         warmup,
+
         clearCache,
+
         getRuntime,
+
+        getConfig,
+
+        getAudioState,
+
         unlockAudio
     };
 })();
