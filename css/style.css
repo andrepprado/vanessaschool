@@ -5202,21 +5202,6 @@ select:focus-visible {
     text-align: center;
 }
 
-.admin-access-link {
-    margin-top: 23px;
-    text-align: center;
-}
-
-.admin-access-link a {
-    color: #7a8598;
-    font-size: 9px;
-    text-decoration: none;
-}
-
-.admin-access-link i {
-    margin-right: 5px;
-}
-
 .auth-message {
     min-height: 18px;
     margin: 7px 0;
@@ -8141,19 +8126,7 @@ header.topbar.demo-public-topbar {
         line-height: 1.35;
     }
 
-    .admin-access-link {
-        margin: 12px 0 0 !important;
-    }
-
-    .admin-access-link a {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 26px;
-        font-size: 9px;
-    }
-
-    .student-access-card .login-divider {
+.student-access-card .login-divider {
         margin: 13px 0 12px !important;
     }
 
@@ -8251,9 +8224,6 @@ header.topbar.demo-public-topbar {
         margin-bottom: 10px !important;
     }
 
-    .admin-access-link {
-        margin-top: 10px !important;
-    }
 }
 
 /* VERY SMALL MOBILE */
@@ -8353,11 +8323,7 @@ header.topbar.demo-public-topbar {
         margin-top: 4px !important;
     }
 
-    .admin-access-link {
-        margin-top: 7px !important;
-    }
-
-    .student-access-card .login-divider {
+.student-access-card .login-divider {
         margin-top: 8px !important;
         margin-bottom: 8px !important;
     }
