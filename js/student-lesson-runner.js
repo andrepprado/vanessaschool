@@ -1139,6 +1139,15 @@ window.EYTStudentLessonMain = () => {
 
                 </div>
 
+                ${
+                    window.EYTExerciseContext
+                        ? window.EYTExerciseContext.html(
+                            exercise,
+                            EYTApp.escapeHTML
+                        )
+                        : ""
+                }
+
                 ${coachHTML()}
 
                 ${answerHTML}

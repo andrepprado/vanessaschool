@@ -9347,3 +9347,60 @@ header.topbar.demo-public-topbar {
 
 /* === ADMIN DASHBOARD RESPONSIVE OPTIMIZATION END === */
 
+
+
+/* === EYT EXERCISE CONTEXT PT-BR START === */
+
+.eyt-answer-context {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 14px 0 20px;
+    padding: 13px 15px;
+    border: 1px solid rgba(7, 35, 73, 0.10);
+    border-left: 3px solid #072349;
+    border-radius: 10px;
+    background: rgba(7, 35, 73, 0.035);
+}
+
+.eyt-answer-context-label {
+    display: block;
+    margin: 0 0 5px;
+    color: #072349;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+}
+
+.eyt-answer-context p {
+    margin: 0;
+    color: #4f5d70;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.demo-question-card .eyt-answer-context {
+    margin-top: 14px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 700px) {
+    .eyt-answer-context {
+        margin-top: 12px;
+        margin-bottom: 17px;
+        padding: 11px 13px;
+    }
+
+    .eyt-answer-context-label {
+        font-size: 8px;
+    }
+
+    .eyt-answer-context p {
+        font-size: 11px;
+        line-height: 1.45;
+    }
+}
+
+/* === EYT EXERCISE CONTEXT PT-BR END === */

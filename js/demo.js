@@ -382,6 +382,15 @@ document.addEventListener(
                     </h2>
 
                     ${
+                        window.EYTExerciseContext
+                            ? window.EYTExerciseContext.html(
+                                exercise,
+                                escapeHtml
+                            )
+                            : ""
+                    }
+
+                    ${
                         exercise.type ===
                             "choice"
                             ? renderChoice(
