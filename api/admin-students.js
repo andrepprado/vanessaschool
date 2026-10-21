@@ -1,674 +1,333 @@
-import { createClient } from "@supabase/supabase-js";
+import { adminAuth, adminDb } from "./firebase-admin.js";
 
-function createAdminClient() {
-    const url =
-        process.env.SUPABASE_URL ||
-        process.env.NEXT_PUBLIC_SUPABASE_URL;
+const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
-    const secret =
-        process.env.SUPABASE_SECRET_KEY ||
-        process.env.SUPABASE_SERVICE_ROLE_KEY;
+function normalizeLevel(value) {
+    const level = String(value || "").trim().toUpperCase();
+    return LEVELS.includes(level) ? level : "A1";
+}
 
-    if (!url || !secret) {
-        throw new Error(
-            "Supabase server configuration is missing."
-        );
+function normalizeEmail(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function numberRange(value, max = Infinity) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(max, Math.max(0, n)) : 0;
+}
+
+function errorResponse(res, status, message) {
+    return res.status(status).json({ error: message });
+}
+
+function getBody(req) {
+    if (typeof req.body === "string") {
+        return JSON.parse(req.body);
+    }
+    return req.body && typeof req.body === "object" ? req.body : {};
+}
+
+async function requireAdmin(req) {
+    const header = String(req.headers.authorization || "");
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+
+    if (!match) {
+        return { ok: false, status: 401, message: "Authentication required." };
     }
 
-    return createClient(
-        url,
-        secret,
-        {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false
-            }
+    let decoded;
+
+    try {
+        decoded = await adminAuth.verifyIdToken(match[1], true);
+    } catch {
+        return { ok: false, status: 401, message: "Invalid or expired session." };
+    }
+
+    const snapshot = await adminDb.collection("profiles").doc(decoded.uid).get();
+    const profile = snapshot.data();
+
+    if (!profile || profile.role !== "admin" || profile.active !== true) {
+        return { ok: false, status: 403, message: "Administrator access required." };
+    }
+
+    return { ok: true, uid: decoded.uid };
+}
+
+async function requireStudent(id) {
+    if (!id || id.includes("/")) {
+        const error = new Error("Invalid student id.");
+        error.status = 400;
+        throw error;
+    }
+
+    const ref = adminDb.collection("profiles").doc(id);
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists || snapshot.data().role !== "student") {
+        const error = new Error("Student not found.");
+        error.status = 404;
+        throw error;
+    }
+
+    return { ref, profile: snapshot.data() };
+}
+
+export default async function handler(req, res) {
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Allow", "GET,POST,PATCH,DELETE");
+
+    if (!["GET", "POST", "PATCH", "DELETE"].includes(req.method)) {
+        return errorResponse(res, 405, "Method not allowed.");
+    }
+
+    try {
+        const permission = await requireAdmin(req);
+
+        if (!permission.ok) {
+            return errorResponse(res, permission.status, permission.message);
         }
-    );
-}
 
-function bearer(req) {
-    const authorization =
-        String(
-            req.headers.authorization ||
-            ""
-        );
-
-    if (
-        !authorization.startsWith(
-            "Bearer "
-        )
-    ) {
-        return null;
-    }
-
-    return authorization
-        .slice(7)
-        .trim();
-}
-
-async function requireAdmin(
-    req,
-    supabase
-) {
-    const token =
-        bearer(req);
-
-    if (!token) {
-        return {
-            ok: false,
-            status: 401,
-            message:
-                "Authentication required."
-        };
-    }
-
-    const {
-        data,
-        error
-    } = await supabase.auth.getUser(
-        token
-    );
-
-    if (
-        error ||
-        !data ||
-        !data.user
-    ) {
-        return {
-            ok: false,
-            status: 401,
-            message:
-                "Invalid or expired session."
-        };
-    }
-
-    const {
-        data: profile,
-        error: profileError
-    } = await supabase
-        .from("profiles")
-        .select(
-            "id,role,active"
-        )
-        .eq(
-            "id",
-            data.user.id
-        )
-        .single();
-
-    if (
-        profileError ||
-        !profile ||
-        profile.role !== "admin" ||
-        !profile.active
-    ) {
-        return {
-            ok: false,
-            status: 403,
-            message:
-                "Administrator access required."
-        };
-    }
-
-    return {
-        ok: true,
-        profile
-    };
-}
-
-function normalizeLevel(level) {
-    const levels =
-        [
-            "A1",
-            "A2",
-            "B1",
-            "B2",
-            "C1"
-        ];
-
-    const value =
-        String(level || "")
-            .trim()
-            .toUpperCase();
-
-    return levels.includes(value)
-        ? value
-        : "A1";
-}
-
-export default async function handler(
-    req,
-    res
-) {
-    res.setHeader(
-        "Cache-Control",
-        "no-store"
-    );
-
-    let supabase;
-
-    try {
-        supabase =
-            createAdminClient();
-    } catch (error) {
-        return res.status(500).json({
-            error: error.message
-        });
-    }
-
-    const permission =
-        await requireAdmin(
-            req,
-            supabase
-        );
-
-    if (!permission.ok) {
-        return res
-            .status(permission.status)
-            .json({
-                error:
-                    permission.message
-            });
-    }
-
-    try {
         if (req.method === "GET") {
-            const {
-                data: profiles,
-                error: profilesError
-            } = await supabase
-                .from("profiles")
-                .select(
-                    "id,email,name,role,level,active,created_at,updated_at"
-                )
-                .eq(
-                    "role",
-                    "student"
-                )
-                .order(
-                    "name",
-                    {
-                        ascending: true
-                    }
-                );
+            const [profiles, progress] = await Promise.all([
+                adminDb.collection("profiles").where("role", "==", "student").get(),
+                adminDb.collection("student_progress").get()
+            ]);
 
-            if (profilesError) {
-                throw profilesError;
-            }
+            const progressMap = new Map(
+                progress.docs.map(doc => [doc.id, doc.data()])
+            );
 
-            const {
-                data: progress,
-                error: progressError
-            } = await supabase
-                .from(
-                    "student_progress"
-                )
-                .select(
-                    "student_id,progress_percent,xp,streak,teacher_notes,updated_at"
-                );
+            const students = profiles.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id,
+                progress: {
+                    progress_percent: 0,
+                    xp: 0,
+                    streak: 0,
+                    teacher_notes: "",
+                    ...(progressMap.get(doc.id) || {})
+                }
+            }));
 
-            if (progressError) {
-                throw progressError;
-            }
+            students.sort((a, b) =>
+                String(a.name || "").localeCompare(String(b.name || ""), "pt-BR")
+            );
 
-            const progressMap =
-                new Map(
-                    (progress || []).map(
-                        row => [
-                            row.student_id,
-                            row
-                        ]
-                    )
-                );
-
-            const students =
-                (profiles || []).map(
-                    profile => ({
-                        ...profile,
-                        progress:
-                            progressMap.get(
-                                profile.id
-                            ) || {
-                                progress_percent: 0,
-                                xp: 0,
-                                streak: 0,
-                                teacher_notes: ""
-                            }
-                    })
-                );
-
-            return res
-                .status(200)
-                .json({
-                    students
-                });
+            return res.status(200).json({ students });
         }
+
+        const body = getBody(req);
 
         if (req.method === "POST") {
-            const body =
-                req.body || {};
+            const email = normalizeEmail(body.email);
+            const password = String(body.password || "");
+            const name = String(body.name || "").trim();
+            const level = normalizeLevel(body.level);
 
-            const email =
-                String(
-                    body.email || ""
-                )
-                    .trim()
-                    .toLowerCase();
-
-            const password =
-                String(
-                    body.password || ""
+            if (!email || !name || password.length < 6) {
+                return errorResponse(
+                    res,
+                    400,
+                    "Informe nome, e-mail e senha com pelo menos 6 caracteres."
                 );
-
-            const name =
-                String(
-                    body.name || ""
-                ).trim();
-
-            const level =
-                normalizeLevel(
-                    body.level
-                );
-
-            if (
-                !email ||
-                !password ||
-                !name
-            ) {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Name, email and password are required."
-                    });
             }
 
-            if (
-                password.length < 8
-            ) {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Password must have at least 8 characters."
-                    });
-            }
+            const user = await adminAuth.createUser({
+                email,
+                password,
+                displayName: name,
+                emailVerified: true,
+                disabled: false
+            });
 
-            const {
-                data,
-                error
-            } = await supabase
-                .auth
-                .admin
-                .createUser({
+            try {
+                const now = new Date().toISOString();
+                const batch = adminDb.batch();
+
+                batch.set(adminDb.collection("profiles").doc(user.uid), {
+                    id: user.uid,
                     email,
-                    password,
-                    email_confirm: true,
-                    user_metadata: {
-                        name
-                    }
+                    name,
+                    role: "student",
+                    level,
+                    active: true,
+                    created_at: now,
+                    updated_at: now
                 });
 
-            if (
-                error ||
-                !data.user
-            ) {
-                throw (
-                    error ||
-                    new Error(
-                        "Could not create student."
-                    )
-                );
-            }
-
-            const userId =
-                data.user.id;
-
-            const {
-                error: profileError
-            } = await supabase
-                .from("profiles")
-                .upsert(
-                    {
-                        id: userId,
-                        email,
-                        name,
-                        role: "student",
-                        level,
-                        active: true
-                    },
-                    {
-                        onConflict: "id"
-                    }
-                );
-
-            if (profileError) {
-                await supabase
-                    .auth
-                    .admin
-                    .deleteUser(
-                        userId
-                    );
-
-                throw profileError;
-            }
-
-            const {
-                error: progressError
-            } = await supabase
-                .from(
-                    "student_progress"
-                )
-                .upsert(
-                    {
-                        student_id:
-                            userId,
-                        progress_percent: 0,
-                        xp: 0,
-                        streak: 0,
-                        teacher_notes: ""
-                    },
-                    {
-                        onConflict:
-                            "student_id"
-                    }
-                );
-
-            if (progressError) {
-                throw progressError;
-            }
-
-            return res
-                .status(201)
-                .json({
-                    success: true,
-                    id: userId
+                batch.set(adminDb.collection("student_progress").doc(user.uid), {
+                    student_id: user.uid,
+                    progress_percent: 0,
+                    xp: 0,
+                    streak: 0,
+                    teacher_notes: "",
+                    completed_lessons: [],
+                    lesson_progress: {},
+                    correct_answers: 0,
+                    total_answers: 0,
+                    xp_today: 0,
+                    last_study_date: null,
+                    updated_at: now
                 });
-        }
 
-        if (req.method === "PATCH") {
-            const body =
-                req.body || {};
-
-            const id =
-                String(
-                    body.id || ""
-                );
-
-            if (!id) {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Student id is required."
-                    });
-            }
-
-            const authUpdate = {};
-
-            if (
-                body.email !== undefined
-            ) {
-                authUpdate.email =
-                    String(
-                        body.email || ""
-                    )
-                        .trim()
-                        .toLowerCase();
-
-                authUpdate.email_confirm =
-                    true;
-            }
-
-            if (
-                body.password !== undefined &&
-                body.password !== ""
-            ) {
-                const password =
-                    String(body.password);
-
-                if (
-                    password.length < 8
-                ) {
-                    return res
-                        .status(400)
-                        .json({
-                            error:
-                                "Password must have at least 8 characters."
-                        });
+                await batch.commit();
+            } catch (error) {
+                try {
+                    await adminAuth.deleteUser(user.uid);
+                } catch (cleanupError) {
+                    console.error("Firebase cleanup failed:", cleanupError);
                 }
-
-                authUpdate.password =
-                    password;
-            }
-
-            if (
-                Object.keys(
-                    authUpdate
-                ).length > 0
-            ) {
-                const {
-                    error
-                } = await supabase
-                    .auth
-                    .admin
-                    .updateUserById(
-                        id,
-                        authUpdate
-                    );
-
-                if (error) {
-                    throw error;
-                }
-            }
-
-            const profileUpdate = {};
-
-            if (
-                body.name !== undefined
-            ) {
-                profileUpdate.name =
-                    String(
-                        body.name || ""
-                    ).trim();
-            }
-
-            if (
-                body.email !== undefined
-            ) {
-                profileUpdate.email =
-                    String(
-                        body.email || ""
-                    )
-                        .trim()
-                        .toLowerCase();
-            }
-
-            if (
-                body.level !== undefined
-            ) {
-                profileUpdate.level =
-                    normalizeLevel(
-                        body.level
-                    );
-            }
-
-            if (
-                body.active !== undefined
-            ) {
-                profileUpdate.active =
-                    Boolean(
-                        body.active
-                    );
-            }
-
-            if (
-                Object.keys(
-                    profileUpdate
-                ).length > 0
-            ) {
-                const {
-                    error
-                } = await supabase
-                    .from("profiles")
-                    .update(
-                        profileUpdate
-                    )
-                    .eq(
-                        "id",
-                        id
-                    )
-                    .eq(
-                        "role",
-                        "student"
-                    );
-
-                if (error) {
-                    throw error;
-                }
-            }
-
-            const progressUpdate = {
-                student_id: id
-            };
-
-            if (
-                body.progress_percent !==
-                undefined
-            ) {
-                progressUpdate.progress_percent =
-                    Math.max(
-                        0,
-                        Math.min(
-                            100,
-                            Number(
-                                body.progress_percent
-                            ) || 0
-                        )
-                    );
-            }
-
-            if (
-                body.xp !== undefined
-            ) {
-                progressUpdate.xp =
-                    Math.max(
-                        0,
-                        Number(body.xp) ||
-                        0
-                    );
-            }
-
-            if (
-                body.streak !== undefined
-            ) {
-                progressUpdate.streak =
-                    Math.max(
-                        0,
-                        Number(
-                            body.streak
-                        ) || 0
-                    );
-            }
-
-            if (
-                body.teacher_notes !==
-                undefined
-            ) {
-                progressUpdate.teacher_notes =
-                    String(
-                        body.teacher_notes ||
-                        ""
-                    );
-            }
-
-            if (
-                Object.keys(
-                    progressUpdate
-                ).length > 1
-            ) {
-                const {
-                    error
-                } = await supabase
-                    .from(
-                        "student_progress"
-                    )
-                    .upsert(
-                        progressUpdate,
-                        {
-                            onConflict:
-                                "student_id"
-                        }
-                    );
-
-                if (error) {
-                    throw error;
-                }
-            }
-
-            return res
-                .status(200)
-                .json({
-                    success: true
-                });
-        }
-
-        if (req.method === "DELETE") {
-            const id =
-                String(
-                    req.query.id ||
-                    req.body?.id ||
-                    ""
-                );
-
-            if (!id) {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Student id is required."
-                    });
-            }
-
-            const {
-                error
-            } = await supabase
-                .auth
-                .admin
-                .deleteUser(id);
-
-            if (error) {
                 throw error;
             }
 
-            return res
-                .status(200)
-                .json({
-                    success: true
-                });
+            return res.status(201).json({
+                success: true,
+                id: user.uid
+            });
         }
 
-        res.setHeader(
-            "Allow",
-            "GET,POST,PATCH,DELETE"
-        );
+        const id = String(
+            req.method === "DELETE"
+                ? (req.query?.id || body.id || "")
+                : (body.id || "")
+        ).trim();
 
-        return res
-            .status(405)
-            .json({
-                error:
-                    "Method not allowed."
+        const { ref, profile } = await requireStudent(id);
+
+        if (req.method === "PATCH") {
+            const authUpdate = {};
+            const profileUpdate = {};
+            const progressUpdate = {};
+
+            if (body.email !== undefined) {
+                const email = normalizeEmail(body.email);
+                if (!email) return errorResponse(res, 400, "Invalid email.");
+                authUpdate.email = email;
+                profileUpdate.email = email;
+            }
+
+            if (body.password !== undefined && body.password !== "") {
+                const password = String(body.password);
+                if (password.length < 6) {
+                    return errorResponse(res, 400, "Password too short.");
+                }
+                authUpdate.password = password;
+            }
+
+            if (body.name !== undefined) {
+                const name = String(body.name || "").trim();
+                if (!name) return errorResponse(res, 400, "Invalid name.");
+                authUpdate.displayName = name;
+                profileUpdate.name = name;
+            }
+
+            if (body.level !== undefined) {
+                profileUpdate.level = normalizeLevel(body.level);
+            }
+
+            if (body.active !== undefined) {
+                if (typeof body.active !== "boolean") {
+                    return errorResponse(res, 400, "Invalid active value.");
+                }
+                authUpdate.disabled = !body.active;
+                profileUpdate.active = body.active;
+            }
+
+            if (body.progress_percent !== undefined) {
+                progressUpdate.progress_percent = numberRange(body.progress_percent, 100);
+            }
+            if (body.xp !== undefined) {
+                progressUpdate.xp = numberRange(body.xp);
+            }
+            if (body.streak !== undefined) {
+                progressUpdate.streak = numberRange(body.streak);
+            }
+            if (body.teacher_notes !== undefined) {
+                progressUpdate.teacher_notes = String(body.teacher_notes || "");
+            }
+
+            if (Object.keys(authUpdate).length > 0) {
+                await adminAuth.updateUser(id, authUpdate);
+            }
+
+            const batch = adminDb.batch();
+            const now = new Date().toISOString();
+
+            if (Object.keys(profileUpdate).length > 0) {
+                batch.update(ref, {
+                    ...profileUpdate,
+                    updated_at: now
+                });
+            }
+
+            if (Object.keys(progressUpdate).length > 0) {
+                batch.set(
+                    adminDb.collection("student_progress").doc(id),
+                    {
+                        ...progressUpdate,
+                        student_id: id,
+                        updated_at: now
+                    },
+                    { merge: true }
+                );
+            }
+
+            if (
+                Object.keys(profileUpdate).length > 0 ||
+                Object.keys(progressUpdate).length > 0
+            ) {
+                await batch.commit();
+            }
+
+            return res.status(200).json({ success: true });
+        }
+
+        if (req.method === "DELETE") {
+            // Remove o acesso imediatamente, preservando os documentos
+            // ate que a exclusao dos dados seja concluida.
+            await adminAuth.updateUser(id, { disabled: true });
+            await ref.update({
+                active: false,
+                updated_at: new Date().toISOString()
             });
+
+            await adminAuth.deleteUser(id);
+
+            // Exclusao recursiva contempla documentos e subcolecoes.
+            for (const collection of [
+                "student_exercise_progress",
+                "student_assignments"
+            ]) {
+                const snapshot = await adminDb.collection(collection)
+                    .where("student_id", "==", id)
+                    .get();
+
+                for (const doc of snapshot.docs) {
+                    await adminDb.recursiveDelete(doc.ref);
+                }
+            }
+
+            await adminDb.recursiveDelete(
+                adminDb.collection("student_progress").doc(id)
+            );
+            await adminDb.recursiveDelete(ref);
+
+            return res.status(200).json({ success: true });
+        }
+
+        return errorResponse(res, 405, "Method not allowed.");
     } catch (error) {
-        console.error(error);
+        console.error("Admin students API:", error);
 
-        return res
-            .status(500)
-            .json({
-                error:
-                    error.message ||
-                    "Unexpected server error."
-            });
+        const status = error.status ||
+            (error.code === "auth/email-already-exists" ? 409 :
+            error.code === "auth/invalid-email" ? 400 :
+            error.code === "auth/invalid-password" ? 400 : 500);
+
+        return errorResponse(
+            res,
+            status,
+            status === 500 ? "Internal server error." : error.message
+        );
     }
 }
