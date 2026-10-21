@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -25,14 +25,14 @@ Voltar para o site
 <span class="eyebrow">ENGLISH IN YOUR TIME</span>
 
 <h1>
-Seu inglês.<br>
+Seu inglÃªs.<br>
 Seu ritmo.<br>
 Seu momento.
 </h1>
 
 <p>
-Entre na sua área exclusiva para acessar os conteúdos,
-materiais e atividades destinados ao seu nível.
+Entre na sua Ã¡rea exclusiva para acessar os conteÃºdos,
+materiais e atividades destinados ao seu nÃ­vel.
 </p>
 
 <div class="student-access-benefits">
@@ -40,14 +40,14 @@ materiais e atividades destinados ao seu nível.
 <span>01</span>
 <div>
 <strong>Ambiente individual</strong>
-<p>Cada aluno possui seu próprio acesso.</p>
+<p>Cada aluno possui seu prÃ³prio acesso.</p>
 </div>
 </div>
 
 <div class="student-access-benefit">
 <span>02</span>
 <div>
-<strong>Conteúdo por nível</strong>
+<strong>ConteÃºdo por nÃ­vel</strong>
 <p>A1, A2, B1, B2 ou C1.</p>
 </div>
 </div>
@@ -56,7 +56,7 @@ materiais e atividades destinados ao seu nível.
 <span>03</span>
 <div>
 <strong>Acompanhamento</strong>
-<p>Sua evolução é acompanhada individualmente.</p>
+<p>Sua evoluÃ§Ã£o Ã© acompanhada individualmente.</p>
 </div>
 </div>
 </div>
@@ -73,7 +73,7 @@ Teacher Vanessa Ghiringhelli
 <img src="img/logoFullMonoBlue.png" alt="English in Your Time">
 </div>
 
-<span class="login-card-kicker">ÁREA DO ALUNO</span>
+<span class="login-card-kicker">ÃREA DO ALUNO</span>
 
 <h2>Entrar na plataforma</h2>
 
@@ -128,7 +128,7 @@ Conhecer ambiente demonstrativo
 </a>
 
 <p class="demo-access-note">
-Conheça a plataforma sem login e sem registrar progresso.
+ConheÃ§a a plataforma sem login e sem registrar progresso.
 </p>
 
 <div class="login-divider">
@@ -153,7 +153,7 @@ Voltar para o site
 </a>
 
 <span>
-© <span id="currentYear"></span> English in Your Time
+Â© <span id="currentYear"></span> English in Your Time
 </span>
 </footer>
 </section>
@@ -163,5 +163,30 @@ Voltar para o site
 <script src="js/supabase-client.js?v=20261001-db1"></script>
 <script src="js/access-db.js?v=20261001-db1"></script>
     <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
+<script type="module">
+    import { auth } from "./js/firebase-config.js";
+    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
+    const studentForm = document.querySelector("form");
+    const emailInput = document.querySelector("input[type='email']");
+    const passwordInput = document.querySelector("input[type='password']");
+
+    if (studentForm) {
+        studentForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = emailInput ? emailInput.value.trim() : "";
+            const password = passwordInput ? passwordInput.value : "";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.href = "dashboard.html";
+            } catch (error) {
+                console.error("Erro no login:", error);
+                alert("E-mail ou senha incorretos.");
+            }
+        });
+    }
+</script>
 </body>
 </html>
+
