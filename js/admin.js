@@ -1,72 +1,41 @@
 let students = [];
 
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-        try {
-            await requireAdmin();
-            bindEvents();
-            await loadStudents();
-        } catch (error) {
-            console.error(error);
-            location.href =
-                "/admin-login";
-        }
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        await requireAdmin();
+    } catch (error) {
+        console.error("Admin authentication:", error);
+        location.replace("/admin-login");
+        return;
     }
-);
+
+    bindEvents();
+
+    try {
+        await loadStudents();
+    } catch (error) {
+        console.error("Admin student loading:", error);
+    }
+});
 
 async function requireAdmin() {
-    const session =
-        await EYTSupabase
-            .getSession();
+    const bridge = window.EYTAdminFirebase;
 
-    if (!session) {
-        throw new Error(
-            "Authentication required."
-        );
+    if (!bridge) {
+        throw new Error("Firebase ainda não carregado.");
     }
 
-    const profile =
-        await EYTSupabase
-            .getProfile();
+    const profile = await bridge.verifyAdmin();
 
-    if (
-        !profile ||
-        profile.role !== "admin" ||
-        !profile.active
-    ) {
-        throw new Error(
-            "Administrator required."
-        );
-    }
-
-    const name =
-        document.getElementById(
-            "adminName"
-        );
-
-    if (name) {
-        name.textContent =
-            profile.name;
-    }
+    const name = document.getElementById("adminName");
+    if (name) name.textContent = profile.name;
 
     return profile;
 }
 
 async function token() {
-    const session =
-        await EYTSupabase
-            .getSession();
-
-    if (!session) {
-        throw new Error(
-            "Session expired."
-        );
-    }
-
-    return session.access_token;
+    return window.EYTAdminFirebase.token();
 }
-
 async function api(
     url,
     options = {}
@@ -112,8 +81,7 @@ function bindEvents() {
     ).addEventListener(
         "click",
         async () => {
-            await EYTSupabase
-                .logout();
+            await window.EYTAdminFirebase.logout();
 
             location.href =
                 "/admin-login";

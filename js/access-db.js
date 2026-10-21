@@ -1,166 +1,91 @@
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-        const form =
-            document.getElementById(
-                "studentLoginForm"
-            );
+import { auth } from "./firebase-config.js";
 
-        const email =
-            document.getElementById(
-                "loginEmail"
-            );
+import {
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-        const password =
-            document.getElementById(
-                "loginPassword"
-            );
+const form = document.getElementById("studentLoginForm");
+const email = document.getElementById("loginEmail");
+const password = document.getElementById("loginPassword");
+const message = document.getElementById("loginMessage");
+const button = document.getElementById("loginButton");
+const year = document.getElementById("currentYear");
 
-        const message =
-            document.getElementById(
-                "loginMessage"
-            );
+if (year) year.textContent = new Date().getFullYear();
 
-        const button =
-            document.getElementById(
-                "loginButton"
-            );
+async function getProfile(user) {
+    const token = await user.getIdToken();
 
-        const year =
-            document.getElementById(
-                "currentYear"
-            );
+    const response = await fetch("/api/session-profile", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+    });
 
-        if (year) {
-            year.textContent =
-                new Date().getFullYear();
-        }
+    const data = await response.json().catch(() => ({}));
 
-        async function redirectExistingSession() {
-            try {
-                const session =
-                    await EYTSupabase
-                        .getSession();
-
-                if (!session) {
-                    return;
-                }
-
-                const profile =
-                    await EYTSupabase
-                        .getProfile();
-
-                if (
-                    !profile ||
-                    !profile.active
-                ) {
-                    return;
-                }
-
-                location.href =
-                    profile.role === "admin"
-                        ? "/admin"
-                        : "/dashboard";
-            } catch (error) {
-                console.error(error);
-            }
-        }
-
-        form.addEventListener(
-            "submit",
-            async event => {
-                event.preventDefault();
-
-                message.textContent = "";
-                message.className =
-                    "auth-message";
-
-                button.disabled = true;
-                button.innerHTML =
-                    '<span class="auth-spinner"></span> Entrando...';
-
-                try {
-                    const client =
-                        await EYTSupabase
-                            .getClient();
-
-                    const {
-                        data,
-                        error
-                    } = await client
-                        .auth
-                        .signInWithPassword({
-                            email:
-                                email
-                                    .value
-                                    .trim(),
-                            password:
-                                password
-                                    .value
-                        });
-
-                    if (error) {
-                        throw error;
-                    }
-
-                    if (
-                        !data ||
-                        !data.session
-                    ) {
-                        throw new Error(
-                            "Sessão não criada."
-                        );
-                    }
-
-                    const profile =
-                        await EYTSupabase
-                            .getProfile();
-
-                    if (!profile) {
-                        throw new Error(
-                            "Perfil não encontrado."
-                        );
-                    }
-
-                    if (!profile.active) {
-                        await client
-                            .auth
-                            .signOut();
-
-                        throw new Error(
-                            "Este usuário está desativado."
-                        );
-                    }
-
-                    location.href =
-                        profile.role === "admin"
-                            ? "/admin"
-                            : "/dashboard";
-                } catch (error) {
-                    console.error(error);
-
-                    message.textContent =
-                        String(
-                            error.message ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(
-                                "invalid login"
-                            )
-                            ? "E-mail ou senha inválidos."
-                            : error.message;
-
-                    message.className =
-                        "auth-message error";
-                } finally {
-                    button.disabled = false;
-                    button.innerHTML =
-                        'Entrar na plataforma <i class="bi bi-arrow-right"></i>';
-                }
-            }
-        );
-
-        redirectExistingSession();
+    if (!response.ok) {
+        throw new Error(data.error || "Não foi possível carregar o perfil.");
     }
-);
+
+    return data;
+}
+
+function redirect(profile) {
+    window.location.replace(
+        profile.role === "admin" ? "/admin" : "/dashboard"
+    );
+}
+
+let submitting = false;
+
+onAuthStateChanged(auth, async user => {
+    if (!user || submitting) return;
+
+    try {
+        redirect(await getProfile(user));
+    } catch (error) {
+        console.warn("Sessão existente:", error.message);
+    }
+});
+
+if (form && email && password && message && button) {
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        if (submitting) return;
+        submitting = true;
+        button.disabled = true;
+        message.textContent = "";
+
+        try {
+            const result = await signInWithEmailAndPassword(
+                auth, email.value.trim(), password.value
+            );
+
+            const profile = await getProfile(result.user);
+            redirect(profile);
+        } catch (error) {
+            console.error("Firebase access:", error.code || error.message);
+
+            message.textContent = [
+                "auth/invalid-credential",
+                "auth/user-not-found",
+                "auth/wrong-password",
+                "auth/invalid-email"
+            ].includes(error.code)
+                ? "E-mail ou senha inválidos."
+                : (error.message || "Falha ao entrar.");
+
+            message.className = "auth-message error";
+
+            if (auth.currentUser) {
+                await signOut(auth).catch(console.error);
+            }
+        } finally {
+            submitting = false;
+            button.disabled = false;
+        }
+    });
+}

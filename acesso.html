@@ -159,34 +159,9 @@ Voltar para o site
 </section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-client.js?v=20261001-db1"></script>
-<script src="js/access-db.js?v=20261001-db1"></script>
+<script type="module" src="js/access-db.js?v=20261021-firebase3"></script>
     <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
-<script type="module">
-    import { auth } from "./js/firebase-config.js";
-    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-    const studentForm = document.querySelector("form");
-    const emailInput = document.querySelector("input[type='email']");
-    const passwordInput = document.querySelector("input[type='password']");
-
-    if (studentForm) {
-        studentForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const email = emailInput ? emailInput.value.trim() : "";
-            const password = passwordInput ? passwordInput.value : "";
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                window.location.href = "dashboard.html";
-            } catch (error) {
-                console.error("Erro no login:", error);
-                alert("E-mail ou senha incorretos.");
-            }
-        });
-    }
-</script>
 </body>
 </html>
 
