@@ -13,86 +13,55 @@ document.addEventListener(
             `<i class="bi ${name}" aria-hidden="true"></i>`;
 
         try {
-            const client =
-                await EYTSupabase
-                    .getClient();
+            const { studentAuth } = await import("./firebase-config.js");
 
-            const session =
-                await EYTSupabase
-                    .getSession();
+            await studentAuth.authStateReady();
 
-            if (!session) {
-                location.href =
-                    "/acesso";
+            const user = studentAuth.currentUser;
 
+            if (!user) {
+                window.location.replace("/acesso");
                 return;
             }
 
-            const profile =
-                await EYTSupabase
-                    .getProfile();
+            const token = await user.getIdToken();
 
-            if (!profile) {
+            const response = await fetch("/api/student-dashboard", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                cache: "no-store"
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.replace("/acesso");
+                    return;
+                }
+
                 throw new Error(
-                    "Perfil do aluno não encontrado."
+                    data.error || `Dashboard error: HTTP ${response.status}`
                 );
             }
 
-            if (
-                profile.role ===
-                "admin"
-            ) {
-                location.href =
-                    "/admin";
+            const profile = data.profile;
+            const progress = data.progress;
 
-                return;
+            if (!profile || profile.role !== "student" || !profile.active) {
+                throw new Error("Perfil de aluno inválido ou desativado.");
             }
 
-            if (!profile.active) {
-                await EYTSupabase
-                    .logout();
+            const level = String(profile.level || "A1").toUpperCase();
 
-                location.href =
-                    "/acesso";
-
-                return;
-            }
-
-            const level =
-                String(
-                    profile.level ||
-                    "A1"
-                ).toUpperCase();
-
-            const levelData =
-                window.EYTLevelContent[
-                    level
-                ];
+            const levelData = window.EYTLevelContent?.[level];
 
             if (!levelData) {
                 throw new Error(
                     `Nenhum conteúdo disponível para o nível ${level}.`
                 );
-            }
-
-            const {
-                data: progress,
-                error
-            } = await client
-                .from(
-                    "student_progress"
-                )
-                .select(
-                    "progress_percent,xp,streak,completed_lessons,lesson_progress,correct_answers,total_answers,last_study_date,xp_today"
-                )
-                .eq(
-                    "student_id",
-                    profile.id
-                )
-                .single();
-
-            if (error) {
-                throw error;
             }
 
             const completed =

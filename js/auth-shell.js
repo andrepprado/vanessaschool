@@ -1,56 +1,50 @@
-/* === AUTHENTICATED AREA GUARD START === */
+/* === FIREBASE STUDENT AREA GUARD === */
 
 async function EYTRequireAuthenticatedArea() {
     try {
-        if (
-            typeof EYTSupabase !== "undefined" &&
-            typeof EYTSupabase.getSession === "function"
-        ) {
-            const session =
-                await EYTSupabase.getSession();
+        const { studentAuth } = await import("./firebase-config.js");
 
-            if (session) {
-                return true;
-            }
+        await studentAuth.authStateReady();
+
+        const user = studentAuth.currentUser;
+
+        if (!user) {
+            window.location.replace("/acesso");
+            return false;
         }
-    }
-    catch (error) {
-        console.warn(
-            "[EYTAuthShell] Supabase session check:",
-            error
-        );
-    }
 
-    /*
-     * Keep compatibility with older local sessions.
-     */
-    try {
-        if (
-            typeof EYTStorage !== "undefined" &&
-            typeof EYTStorage.getUser === "function" &&
-            EYTStorage.getUser()
-        ) {
-            return true;
+        const token = await user.getIdToken();
+
+        const response = await fetch("/api/session-profile", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            window.location.replace("/acesso");
+            return false;
         }
-    }
-    catch (_) {
-    }
 
-    /*
-     * Authenticated pages NEVER redirect to public index.html.
-     */
-    location.replace(
-        "acesso.html"
-    );
+        const profile = await response.json();
 
-    return false;
+        if (profile.role !== "student" || profile.active !== true) {
+            window.location.replace("/acesso");
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.warn("[EYTAuthShell] Firebase authorization:", error);
+        window.location.replace("/acesso");
+        return false;
+    }
 }
 
-window.EYTRequireAuthenticatedArea =
-    EYTRequireAuthenticatedArea;
+window.EYTRequireAuthenticatedArea = EYTRequireAuthenticatedArea;
 
-/* === AUTHENTICATED AREA GUARD END === */
-
+/* === FIREBASE STUDENT AREA GUARD END === */
 (() => {
     "use strict";
 
