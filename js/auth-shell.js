@@ -216,51 +216,33 @@ window.EYTRequireAuthenticatedArea = EYTRequireAuthenticatedArea;
     }
 
     async function logout() {
-        const buttons =
-            document.querySelectorAll(
-                "[data-eyt-logout]"
-            );
-
-        buttons.forEach(
-            button => {
-                button.disabled =
-                    true;
-            }
+        const buttons = document.querySelectorAll(
+            "[data-eyt-logout]"
         );
 
+        buttons.forEach(button => {
+            button.disabled = true;
+        });
+
         try {
-            if (
-                typeof EYTSupabase !==
-                    "undefined" &&
-                typeof EYTSupabase.logout ===
-                    "function"
-            ) {
-                await EYTSupabase
-                    .logout();
-            }
-        }
-        catch (error) {
-            console.warn(
-                "[EYTAuthShell] Supabase logout:",
-                error
+            const { studentAuth } =
+                await import("./firebase-config.js");
+
+            const { signOut } = await import(
+                "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js"
             );
-        }
 
-        try {
-            if (
-                typeof EYTStorage !==
-                    "undefined" &&
-                typeof EYTStorage.logout ===
-                    "function"
-            ) {
-                EYTStorage.logout();
-            }
-        }
-        catch (_) {
-        }
+            await studentAuth.authStateReady();
+            await signOut(studentAuth);
 
-        location.href =
-            "acesso.html";
+            window.location.replace("/acesso");
+        } catch (error) {
+            console.error("[EYTAuthShell] Logout failed:", error);
+
+            buttons.forEach(button => {
+                button.disabled = false;
+            });
+        }
     }
 
     function createLogoutButton() {
