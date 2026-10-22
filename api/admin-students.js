@@ -46,7 +46,7 @@ async function requireAdmin(req) {
     const snapshot = await adminDb.collection("profiles").doc(decoded.uid).get();
     const profile = snapshot.data();
 
-    if (!profile || profile.role !== "admin" || profile.active !== true) {
+    if (!profile || profile.role !== "admin" || profile.active !== true || decoded.uid !== "jvkBb2WgRyezmlVCMSjRyCaR7d82") {
         return { ok: false, status: 403, message: "Administrator access required." };
     }
 

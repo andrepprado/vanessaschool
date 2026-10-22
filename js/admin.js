@@ -1,3 +1,5 @@
+import "./admin-firebase-bridge.js";
+
 let students = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -10,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     bindEvents();
+    document.body.classList.remove("admin-auth-pending");
 
     try {
         await loadStudents();
@@ -134,6 +137,11 @@ async function loadStudents() {
             "error"
         );
 
+        const table = document.getElementById("studentsTableBody");
+        if (table) {
+            table.innerHTML =
+                '<tr><td colspan="8">Erro ao carregar alunos. Consulte a mensagem acima.</td></tr>';
+        }
         throw error;
     }
 }

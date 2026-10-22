@@ -8,8 +8,15 @@
 <title>Gerenciamento de Alunos | English in Your Time</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="css/style.css?v=20261001-db1">
+<style>
+body.admin-auth-pending .admin-sidebar,
+body.admin-auth-pending .admin-main,
+body.admin-auth-pending .admin-dialog {
+    visibility: hidden !important;
+}
+</style>
 </head>
-<body class="admin-body">
+<body class="admin-body admin-auth-pending">
 <aside class="admin-sidebar">
 <a href="/admin" class="admin-sidebar-logo">
 <img src="img/logoFullMonoWhite.png" alt="English in Your Time">
@@ -314,7 +321,7 @@ Salvar alterações
 </form>
 </dialog>
 
-<script type="module" src="js/admin-firebase-bridge.js?v=20261021-firebase3"></script>
+<script type="module" src="js/admin.js?v=20261022-firebase-admin9"></script>
     <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
 </body>
 </html>

@@ -1,27 +1,11 @@
 import { auth } from "./firebase-config.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-import {
-    onAuthStateChanged,
-    signOut
-} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+const ADMIN_UID = "jvkBb2WgRyezmlVCMSjRyCaR7d82";
 
-let cachedUserPromise = null;
-
-function getUser() {
-    if (!cachedUserPromise) {
-        cachedUserPromise = new Promise((resolve, reject) => {
-            const unsubscribe = onAuthStateChanged(
-                auth,
-                user => {
-                    unsubscribe();
-                    resolve(user);
-                },
-                reject
-            );
-        });
-    }
-
-    return cachedUserPromise;
+async function getUser() {
+    await auth.authStateReady();
+    return auth.currentUser;
 }
 
 async function verifyAdmin() {
@@ -34,6 +18,7 @@ async function verifyAdmin() {
     const token = await user.getIdToken();
 
     const response = await fetch("/api/admin-session", {
+        method: "GET",
         headers: {
             Authorization: `Bearer ${token}`
         },
@@ -43,7 +28,16 @@ async function verifyAdmin() {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-        throw new Error(data.error || "Administrator access denied.");
+        throw new Error(data.error || "Acesso administrativo negado.");
+    }
+
+    if (
+        data.authenticated !== true ||
+        data.role !== "admin" ||
+        data.uid !== ADMIN_UID ||
+        user.uid !== ADMIN_UID
+    ) {
+        throw new Error("Administrador nao autorizado.");
     }
 
     return {
@@ -56,10 +50,16 @@ async function verifyAdmin() {
 window.EYTAdminFirebase = {
     getUser,
     verifyAdmin,
+
     async token() {
         const user = await getUser();
-        if (!user) throw new Error("Session expired.");
+
+        if (!user) {
+            throw new Error("Session expired.");
+        }
+
         return user.getIdToken();
     },
+
     logout: () => signOut(auth)
 };
