@@ -18,4 +18,8 @@ const app = initializeApp(firebaseConfig);
 
 // Exporta serviços de autenticação e banco de dados
 export const auth = getAuth(app);
+
+// Independent student session using the same Firebase project.
+const studentApp = initializeApp(firebaseConfig, "student-session");
+export const studentAuth = getAuth(studentApp);
 export const db = getFirestore(app);

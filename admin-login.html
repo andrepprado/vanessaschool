@@ -72,33 +72,9 @@
         </section>
     </main>
 
-    <script type="module" src="js/admin-login.js?v=20261021-firebase2"></script>
+    <script type="module" src="js/admin-login.js?v=20261022-auth-fix4"></script>
     <script src="js/offline-register.js?v=20261001-static-offline-2"></script>
-    <script type="module">
-        import { auth } from "./js/firebase-config.js";
-        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-        const adminForm = document.querySelector("form");
-        const emailInput = document.querySelector("input[type='email']");
-        const passwordInput = document.querySelector("input[type='password']");
-
-        if (adminForm) {
-            adminForm.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                const email = emailInput ? emailInput.value.trim() : "";
-                const password = passwordInput ? passwordInput.value : "";
-
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    localStorage.setItem("vanessa_admin_logged", "true");
-                    window.location.href = "admin.html";
-                } catch (error) {
-                    console.error("Erro no login:", error);
-                    alert("E-mail ou senha incorretos.");
-                }
-            });
-        }
-    </script>
 </body>
 
 </html>

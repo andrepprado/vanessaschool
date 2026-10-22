@@ -1,4 +1,4 @@
-import { auth } from "./firebase-config.js";
+import { studentAuth } from "./firebase-config.js";
 
 import {
     signInWithEmailAndPassword,
@@ -33,14 +33,16 @@ async function getProfile(user) {
 }
 
 function redirect(profile) {
-    window.location.replace(
-        profile.role === "admin" ? "/admin" : "/dashboard"
-    );
+    if (!profile || profile.role !== "student" || profile.active === false) {
+        throw new Error("Esta conta nao possui perfil de aluno ativo.");
+    }
+
+    window.location.replace("/dashboard");
 }
 
 let submitting = false;
 
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(studentAuth, async user => {
     if (!user || submitting) return;
 
     try {
@@ -60,8 +62,7 @@ if (form && email && password && message && button) {
         message.textContent = "";
 
         try {
-            const result = await signInWithEmailAndPassword(
-                auth, email.value.trim(), password.value
+            const result = await signInWithEmailAndPassword(studentAuth, email.value.trim(), password.value
             );
 
             const profile = await getProfile(result.user);
@@ -80,8 +81,8 @@ if (form && email && password && message && button) {
 
             message.className = "auth-message error";
 
-            if (auth.currentUser) {
-                await signOut(auth).catch(console.error);
+            if (studentAuth.currentUser) {
+                await signOut(studentAuth).catch(console.error);
             }
         } finally {
             submitting = false;
