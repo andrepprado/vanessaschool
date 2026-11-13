@@ -52,7 +52,7 @@ document.addEventListener(
         const state = {
             levelIndex: 1,
             questionNumber: 0,
-            maxQuestions: 10,
+            maxQuestions: 60,
             correct: 0,
             history: [],
             used: new Set(),
@@ -1119,7 +1119,7 @@ document.addEventListener(
         function resetState() {
             state.levelIndex = 1;
             state.questionNumber = 0;
-            state.maxQuestions = 10;
+            state.maxQuestions = 60;
             state.correct = 0;
             state.history = [];
             state.used =
