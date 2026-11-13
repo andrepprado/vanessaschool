@@ -1,15 +1,184 @@
-.vs-app{max-width:1050px;margin:30px auto;padding:24px;color:#17243b}
-.vs-app h1{font-size:clamp(28px,4vw,42px);margin-bottom:12px}
-.vs-app h2{font-size:25px;margin:18px 0}
-.vs-app h3{font-size:19px;margin:0 0 8px}
-.vs-app p{line-height:1.6}
-.vs-card{padding:22px;margin:14px 0;border:1px solid #dce5ef;border-radius:16px;background:#fff;box-shadow:0 5px 20px #091e4210}
-.vs-btn,.vs-source{display:inline-block;cursor:pointer;border:0;border-radius:10px;padding:13px 19px;margin:7px 8px 7px 0;background:#153d73;color:#fff;font-weight:700;font-size:15px;text-decoration:none}
-.vs-btn:hover,.vs-source:hover{background:#2463a6}
-.vs-btn:disabled{opacity:.4;cursor:not-allowed}
-.vs-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
-.vs-options .vs-btn{text-align:left}
-.vs-units{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.vs-library{margin-top:35px;border-top:1px solid #ddd;padding-top:20px}
-.vs-app input{display:block;width:100%;max-width:450px;padding:14px;border:1px solid #bcc8d6;border-radius:10px;font-size:16px}
-@media(max-width:600px){.vs-app{padding:15px}.vs-options{grid-template-columns:1fr}}
+/*
+ * ENGLISH IN YOUR TIME
+ * Identidade visual: Teacher Vanessa Ghiringhelli
+ * Referencia: vanessaschool.vercel.app
+ */
+
+.vs-app {
+    --vs-navy: #0B1F3F;
+    --vs-navy-deep: #071229;
+    --vs-pink: #E91E8C;
+    --vs-pink-hover: #C71572;
+    --vs-white: #FFFFFF;
+    --vs-text: #25324A;
+    --vs-muted: #64748B;
+    --vs-border: #E5EAF2;
+    --vs-background: #F7F9FC;
+
+    max-width: 1100px;
+    margin: 30px auto;
+    padding: 28px;
+    color: var(--vs-text);
+    font-family: "Work Sans", Arial, sans-serif;
+}
+
+.vs-app h1,
+.vs-app h2,
+.vs-app h3 {
+    color: var(--vs-navy);
+    line-height: 1.2;
+}
+
+.vs-app h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(30px, 4vw, 46px);
+    font-weight: 700;
+    margin-bottom: 18px;
+}
+
+.vs-app h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(24px, 3vw, 32px);
+    margin: 22px 0 12px;
+}
+
+.vs-app h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 10px;
+}
+
+.vs-app p {
+    color: var(--vs-muted);
+    line-height: 1.7;
+}
+
+.vs-card {
+    padding: 25px;
+    margin: 14px 0;
+    border: 1px solid var(--vs-border);
+    border-radius: 18px;
+    background: var(--vs-white);
+    box-shadow: 0 8px 28px rgba(11,31,63,.06);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.vs-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(11,31,63,.1);
+}
+
+.vs-app .vs-btn,
+.vs-app .vs-source {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 21px;
+    margin: 7px 8px 7px 0;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: var(--vs-pink);
+    color: var(--vs-white);
+    font-family: "Work Sans", Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+}
+
+.vs-app .vs-btn:hover,
+.vs-app .vs-source:hover {
+    background: var(--vs-pink-hover);
+    color: var(--vs-white);
+    transform: translateY(-1px);
+}
+
+.vs-app .vs-btn:focus-visible,
+.vs-app .vs-source:focus-visible,
+.vs-app input:focus-visible {
+    outline: 3px solid var(--vs-pink);
+    outline-offset: 3px;
+}
+
+.vs-app .vs-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.vs-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(190px,1fr));
+    gap: 10px;
+}
+
+.vs-options .vs-btn {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-start;
+    text-align: left;
+    background: var(--vs-white);
+    color: var(--vs-navy);
+    border-color: var(--vs-border);
+}
+
+.vs-options .vs-btn:hover {
+    background: #FFF0F8;
+    color: var(--vs-navy);
+    border-color: var(--vs-pink);
+}
+
+.vs-units {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(260px,1fr));
+    gap: 14px;
+}
+
+.vs-library {
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--vs-border);
+}
+
+.vs-app input {
+    display: block;
+    width: 100%;
+    max-width: 460px;
+    padding: 14px 16px;
+    border: 1px solid var(--vs-border);
+    border-radius: 11px;
+    background: var(--vs-white);
+    color: var(--vs-navy);
+    font-family: inherit;
+    font-size: 16px;
+}
+
+@media (max-width: 600px) {
+    .vs-app {
+        padding: 16px;
+        margin: 12px auto;
+    }
+
+    .vs-card {
+        padding: 19px;
+    }
+
+    .vs-options {
+        grid-template-columns: 1fr;
+    }
+
+    .vs-app .vs-btn {
+        min-height: 46px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vs-card,
+    .vs-app .vs-btn,
+    .vs-app .vs-source {
+        transition: none;
+    }
+}
