@@ -1,0 +1,15 @@
+.vs-app{max-width:1050px;margin:30px auto;padding:24px;color:#17243b}
+.vs-app h1{font-size:clamp(28px,4vw,42px);margin-bottom:12px}
+.vs-app h2{font-size:25px;margin:18px 0}
+.vs-app h3{font-size:19px;margin:0 0 8px}
+.vs-app p{line-height:1.6}
+.vs-card{padding:22px;margin:14px 0;border:1px solid #dce5ef;border-radius:16px;background:#fff;box-shadow:0 5px 20px #091e4210}
+.vs-btn,.vs-source{display:inline-block;cursor:pointer;border:0;border-radius:10px;padding:13px 19px;margin:7px 8px 7px 0;background:#153d73;color:#fff;font-weight:700;font-size:15px;text-decoration:none}
+.vs-btn:hover,.vs-source:hover{background:#2463a6}
+.vs-btn:disabled{opacity:.4;cursor:not-allowed}
+.vs-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.vs-options .vs-btn{text-align:left}
+.vs-units{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.vs-library{margin-top:35px;border-top:1px solid #ddd;padding-top:20px}
+.vs-app input{display:block;width:100%;max-width:450px;padding:14px;border:1px solid #bcc8d6;border-radius:10px;font-size:16px}
+@media(max-width:600px){.vs-app{padding:15px}.vs-options{grid-template-columns:1fr}}
