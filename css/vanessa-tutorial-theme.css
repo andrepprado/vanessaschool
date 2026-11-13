@@ -1,0 +1,49 @@
+/* English in Your Time — tutorial */
+:root {
+    --vanessa-primary: #E91E8C;
+    --vanessa-primary-hover: #C71572;
+    --vanessa-secondary: #0B1F3F;
+    --vanessa-secondary-hover: #17345F;
+}
+
+/* Botoes do tutorial de acesso */
+#vanessaLearningApp .vs-btn,
+#vanessaLearningApp .vs-source {
+    background: var(--vanessa-primary);
+    border-color: var(--vanessa-primary);
+    color: #fff;
+}
+
+#vanessaLearningApp .vs-btn:hover,
+#vanessaLearningApp .vs-source:hover {
+    background: var(--vanessa-primary-hover);
+    border-color: var(--vanessa-primary-hover);
+}
+
+/* Tutorial legado: botoes identificados por seus textos */
+.vanessa-tutorial-primary {
+    background: var(--vanessa-primary) !important;
+    border-color: var(--vanessa-primary) !important;
+    color: #fff !important;
+}
+
+.vanessa-tutorial-primary:hover {
+    background: var(--vanessa-primary-hover) !important;
+    border-color: var(--vanessa-primary-hover) !important;
+}
+
+.vanessa-tutorial-secondary {
+    background: var(--vanessa-secondary) !important;
+    border-color: var(--vanessa-secondary) !important;
+    color: #fff !important;
+}
+
+.vanessa-tutorial-secondary:hover {
+    background: var(--vanessa-secondary-hover) !important;
+    border-color: var(--vanessa-secondary-hover) !important;
+}
+
+.vanessa-tutorial-secondary:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
