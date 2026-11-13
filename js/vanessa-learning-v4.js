@@ -133,23 +133,43 @@ function escapeHtml(value) {
  }[c]));
 }
 
-function getIdentity() {
- try {
-   const candidates=[
-     window.EYTAuth?.currentUser,
-     window.EYTStorage?.getUser?.(),
-     window.EYTStorage?.getCurrentUser?.()
-   ];
-   for(const user of candidates) {
-     if(user && typeof user==="object"){
-       const id=user.id||user.uid||user.user_id||user.email;
-       if(id)return String(id);
-     }
-   }
- } catch(_) {}
- return null;
-}
+async function getAuthenticatedStudent() {
+  const candidates = [
+    window.EYTSupabase,
+    window.EYTSupabaseClient,
+    window.supabaseClient,
+    window.supabase
+  ];
 
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+
+    const client = candidate.client || candidate;
+
+    if (typeof client.auth?.getUser !== "function") continue;
+
+    try {
+      const { data, error } = await client.auth.getUser();
+
+      if (!error && data?.user?.id) {
+        return {
+          id: data.user.id,
+          email: data.user.email || "",
+          name:
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name ||
+            data.user.email ||
+            "Aluno",
+          client
+        };
+      }
+    } catch (error) {
+      console.warn("[VanessaSchool] Falha na consulta de sessao:", error);
+    }
+  }
+
+  return null;
+}
 function stateKey(id) {
  return KEY_PREFIX+id;
 }
@@ -180,12 +200,77 @@ function readState(id) {
 function saveState(id,state) {
  state.updatedAt=new Date().toISOString();
  localStorage.setItem(stateKey(id),JSON.stringify(state));
+ if (activeStudent?.id === id) {
+   void saveRemoteState(activeStudent, state);
+ }
  window.dispatchEvent(new CustomEvent("vanessa:progress",{detail:{
    level:state.assignedLevel,
    completed:state.completed.length
  }}));
 }
 
+let activeStudent = null;
+
+async function loadRemoteState(student) {
+  const { data, error } = await student.client
+    .from("student_learning_progress")
+    .select("state")
+    .eq("user_id", student.id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[VanessaSchool] Progresso remoto indisponivel:", error.message);
+    return null;
+  }
+
+  return data?.state || null;
+}
+
+async function saveRemoteState(student, state) {
+  const { error } = await student.client
+    .from("student_learning_progress")
+    .upsert({
+      user_id: student.id,
+      state,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+
+  if (error) {
+    console.warn("[VanessaSchool] Falha ao sincronizar:", error.message);
+    return false;
+  }
+
+  return true;
+}
+
+async function synchronizeStudent(student) {
+  const local = readState(student.id);
+  const remote = await loadRemoteState(student);
+
+  if (!remote) return local;
+
+  const merged = {
+    ...local,
+    ...remote,
+    profileDone: true,
+    completed: [...new Set([
+      ...(local.completed || []),
+      ...(remote.completed || [])
+    ])]
+  };
+
+  const localTime = Date.parse(local.updatedAt || "") || 0;
+  const remoteTime = Date.parse(remote.updatedAt || "") || 0;
+
+  if (localTime > remoteTime) {
+    merged.placement = local.placement;
+    merged.assignedLevel = local.assignedLevel;
+    merged.tutorialDone = local.tutorialDone;
+  }
+
+  localStorage.setItem(stateKey(student.id), JSON.stringify(merged));
+  return merged;
+}
 function evaluatePlacement(answers) {
  const byLevel={};
  let total=0;
@@ -429,29 +514,45 @@ function renderLibrary(root) {
 }
 
 function render(root,id,state) {
- if(!state.profileDone)return renderProfile(root,id,state);
+ state.profileDone=true;
  if(!state.tutorialDone)return renderTutorial(root,id,state);
  if(!state.placement)return renderPlacement(root,id,state);
  return renderUnits(root,id,state);
 }
 
-function init() {
- const root=document.getElementById("vanessaLearningApp");
- if(!root)return;
- const id=getIdentity();
- if(!id){
-   root.replaceChildren();
-   root.append(heading("Acesso necessário",
-     "Entre com sua conta de aluno para acessar a trilha."));
-   const link=create("a",{
-     href:"acesso.html",class:"vs-source",text:"Entrar na plataforma"
-   });
-   root.append(link);
-   return;
- }
- render(root,id,readState(id));
-}
+async function init() {
+  const root = document.getElementById("vanessaLearningApp");
+  if (!root) return;
 
+  root.replaceChildren();
+  root.append(heading(
+    "Carregando sua aprendizagem",
+    "Identificando sua conta..."
+  ));
+
+  const student = await getAuthenticatedStudent();
+
+  if (!student) {
+    root.replaceChildren();
+    root.append(heading(
+      "Acesso necessario",
+      "Entre com sua conta atual para continuar."
+    ));
+    root.append(create("a", {
+      href: "acesso.html",
+      class: "vs-source",
+      text: "Entrar na plataforma"
+    }));
+    return;
+  }
+
+  activeStudent = student;
+
+  const state = await synchronizeStudent(student);
+  state.profileDone = true;
+
+  render(root, student.id, state);
+}
 window.VanessaLearningV4={
  VERSION,LEVELS,UNITS,QUESTION_BANK,
  evaluatePlacement,isUnlocked,init
