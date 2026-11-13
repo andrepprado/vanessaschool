@@ -72,38 +72,84 @@ const SENTENCES = [
 
 const QUESTIONS = [];
 
-SENTENCES.forEach((entry, index) => {
-  const meta = TOPICS[index];
-  const correct = entry[1];
-  const alternatives = [correct, meta[2], meta[3], meta[4]]
-    .filter((x, i, a) => x && a.indexOf(x) === i);
+const QUESTION_BANK = [
+["A1","Verb to be","I ___ a student.","am","is","are","be"],
+["A1","Verb to be","She ___ my teacher.","is","am","are","be"],
+["A1","Pronouns","___ are my friends.","They","He","She","It"],
+["A1","Articles","I have ___ apple.","an","a","the","some"],
+["A1","Articles","He is ___ doctor.","a","an","are","some"],
+["A1","Simple present","She ___ English every day.","studies","study","studying","studied"],
+["A1","Simple present","They ___ in Brazil.","live","lives","living","lived"],
+["A1","There is / There are","There ___ two chairs.","are","is","am","be"],
+["A1","Prepositions","The book is ___ the table.","on","at","to","from"],
+["A1","Questions","___ is your name?","What","When","Where","Who"],
 
-  const fillers = ["do","did","been","would","were","having"];
-  for (const x of fillers) {
-    if (alternatives.length >= 4) break;
-    if (!alternatives.includes(x)) alternatives.push(x);
-  }
+["A2","Simple past","Yesterday we ___ a movie.","watched","watch","watching","watches"],
+["A2","Simple past","She ___ to London last year.","went","go","goes","going"],
+["A2","Present continuous","He is ___ dinner.","cooking","cook","cooked","cooks"],
+["A2","Comparatives","My house is ___ than yours.","bigger","biggest","big","more big"],
+["A2","Superlatives","This is the ___ day of my life.","best","better","good","well"],
+["A2","Future","I am going ___ study tonight.","to","for","at","in"],
+["A2","Countable nouns","How ___ books do you have?","many","much","little","any"],
+["A2","Uncountable nouns","How ___ water do you drink?","much","many","few","several"],
+["A2","Adverbs","She speaks English ___.","well","good","betterly","nice"],
+["A2","Modal verbs","You ___ wear a seat belt.","must","can to","must to","are"],
 
+["B1","Present perfect","I have ___ my homework.","finished","finish","finishing","finishes"],
+["B1","Present perfect","She has lived here ___ 2020.","since","for","during","from"],
+["B1","Conditionals","If it rains, we ___ stay home.","will","would","had","were"],
+["B1","Modals","You ___ see a doctor.","should","should to","ought","must to"],
+["B1","Past continuous","I ___ sleeping when you called.","was","am","have","had"],
+["B1","Relative clauses","The man ___ called is my uncle.","who","where","when","whose"],
+["B1","Gerunds","I enjoy ___ books.","reading","read","to reading","reads"],
+["B1","Infinitives","She decided ___ early.","to leave","leaving","leave","left"],
+["B1","Passive voice","English ___ spoken worldwide.","is","are","has","have"],
+["B1","Reported speech","He said he ___ tired.","was","is","were","be"],
+
+["B2","Second conditional","If I were rich, I ___ travel.","would","will","can","had"],
+["B2","Third conditional","If I had known, I ___ helped.","would have","will have","had","would"],
+["B2","Passive voice","The report ___ completed yesterday.","was","is","has","were"],
+["B2","Past perfect","She ___ left before I arrived.","had","has","have","was"],
+["B2","Reported speech","She said she ___ seen it.","had","has","have","was"],
+["B2","Wish","I wish I ___ more time.","had","have","will have","having"],
+["B2","Despite","___ the rain, we went out.","Despite","Although","However","Because"],
+["B2","Phrasal verbs","Please ___ the lights.","turn off","turning off","turns off","turned off"],
+["B2","Relative clauses","The book, ___ I bought yesterday, is excellent.","which","who","where","whose"],
+["B2","Modals of deduction","He ___ have forgotten the meeting.","might","can to","should to","is"],
+
+["C1","Inversion","Never ___ I seen such a view.","have","has","had been","am"],
+["C1","Inversion","Hardly ___ she arrived when it started.","had","has","have","was"],
+["C1","Subjunctive","It is essential that he ___ present.","be","is","was","being"],
+["C1","Mixed conditionals","If I had studied, I ___ employed now.","would be","will be","had been","am"],
+["C1","Cleft sentences","It was John ___ solved the problem.","who","which","where","whose"],
+["C1","Advanced connectors","The plan is risky; ___, it may succeed.","nevertheless","because","despite","although"],
+["C1","Formal English","The committee recommended that she ___ appointed.","be","is","was","being"],
+["C1","Inversion","Not only ___ she sing, but she also dances.","does","do","is","has"],
+["C1","Conditionals","Were I to accept, I ___ need more time.","would","will","had","have"],
+["C1","Emphasis","What I ___ need is more time.","do","does","didn't","doing"],
+
+["C2","Inversion","No sooner ___ he arrived than it began.","had","has","have","was"],
+["C2","Formal register","___ the objections, the proposal passed.","Notwithstanding","Although","However","Because"],
+["C2","Conditionals","Had she known, she ___ differently.","would have acted","will act","acts","had acted"],
+["C2","Nuanced modality","He ___ well have misunderstood the instructions.","may","must to","can to","shall to"],
+["C2","Advanced grammar","Little ___ they know what awaited them.","did","do","had","were"],
+["C2","Inversion","Under no circumstances ___ this be permitted.","should","does","has","is"],
+["C2","Emphasis","What matters most ___ accuracy.","is","are","were","have"],
+["C2","Formal structures","It is imperative that the matter ___ resolved.","be","is","was","being"],
+["C2","Complex structures","Scarcely ___ we begun when the alarm rang.","had","have","has","were"],
+["C2","Advanced inversion","So compelling ___ the evidence that nobody objected.","was","were","has","have"]
+];
+
+QUESTION_BANK.forEach((row,index) => {
   QUESTIONS.push({
-    id: "Q" + String(index + 1).padStart(2,"0"),
-    level: meta[0],
-    topic: meta[1],
-    question: entry[0],
-    options: alternatives,
-    answer: correct
+    id:"Q"+String(index+1).padStart(2,"0"),
+    level:row[0],
+    topic:row[1],
+    question:row[2],
+    options:row.slice(3),
+    answer:row[3]
   });
-
-  const second = {
-    id: "Q" + String(index + 31).padStart(2,"0"),
-    level: meta[0],
-    topic: meta[1],
-    question: "Choose the correct completion: " + entry[0],
-    options: [...alternatives].reverse(),
-    answer: correct
-  };
-  QUESTIONS.push(second);
 });
-
 const CONTENT = [
   ["A1","Greetings and introductions"],
   ["A1","Verb to be"],
