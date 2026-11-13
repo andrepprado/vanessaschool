@@ -1,0 +1,30 @@
+/* VanessaSchool - identidade visual original */
+:root {
+    --vs-brand-pink: #E91E8C;
+    --vs-brand-pink-hover: #C71572;
+    --vs-brand-navy: #0B1F3F;
+    --vs-brand-navy-hover: #17345F;
+}
+
+/* Tutorial de acesso */
+.vs-tutorial-scope button[data-vs-role="next"] {
+    background: var(--vs-brand-pink) !important;
+    border-color: var(--vs-brand-pink) !important;
+    color: #fff !important;
+}
+
+.vs-tutorial-scope button[data-vs-role="next"]:hover {
+    background: var(--vs-brand-pink-hover) !important;
+}
+
+.vs-tutorial-scope button[data-vs-role="previous"],
+.vs-tutorial-scope button[data-vs-role="finish"] {
+    background: var(--vs-brand-navy) !important;
+    border-color: var(--vs-brand-navy) !important;
+    color: #fff !important;
+}
+
+.vs-tutorial-scope button:disabled {
+    opacity: .4 !important;
+    cursor: not-allowed !important;
+}
